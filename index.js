@@ -16,6 +16,7 @@ import { initSettings } from "./src/settings/settings.js";
 import { eventHandlers } from "./src/events.js";
 
 import { registerGenerationMutexListeners } from './lib/interconnection.js';
+import { initLocalization } from "./lib/i18n.js";
 import { TrackerInterface } from "./src/ui/trackerInterface.js";
 import { TrackerPreviewManager } from "./src/ui/trackerPreviewManager.js";
 import { generateTrackerCommand, getTrackerCommand, saveTrackerToMessageCommand, stateTrackerCommand, trackerOverrideCommand, toggleTrackerInjectionCommand } from "./src/commands.js";
@@ -28,6 +29,7 @@ if (!extension_settings[extensionName]) extension_settings[extensionName] = {};
 export const extensionSettings = extension_settings[extensionName];
 
 jQuery(async () => {
+	await initLocalization();
 	await initSettings();
 	await TrackerInterface.initializeTrackerButtons();
 	TrackerPreviewManager.init();

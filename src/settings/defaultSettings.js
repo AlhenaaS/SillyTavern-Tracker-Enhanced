@@ -1,8 +1,6 @@
-//#region Setting Enums
+import { t } from "../../lib/i18n.js";
 
-export const generationModes = {
-	SINGLE_STAGE: "single-stage",
-};
+//#region Setting Enums
 
 export const generationTargets = {
 	BOTH: "both",
@@ -27,7 +25,7 @@ export const PREVIEW_PLACEMENT = {
 
 //#region Shared
 
-const generateContextTemplate = `<|begin_of_text|><|start_header_id|>system<|end_header_id|>
+const generateContextTemplate = t("prompts.generateContextTemplate", `<|begin_of_text|><|start_header_id|>system<|end_header_id|>
 
 {{trackerSystemPrompt}}
 
@@ -48,8 +46,8 @@ const generateContextTemplate = `<|begin_of_text|><|start_header_id|>system<|end
 {{currentTracker}}
 </tracker>
 
-<!-- End of Context --><|eot_id|>`;
-const generateSystemPrompt = `You are a Scene Tracker Assistant, tasked with providing clear, consistent, and structured updates to a scene tracker for a roleplay. Use the latest message, previous tracker details, and context from recent messages to accurately update the tracker. Your response must follow the specified {{trackerFormat}} structure exactly, ensuring that each field is filled and complete. If specific information is not provided, make reasonable assumptions based on prior descriptions, logical inferences, or default character details.
+<!-- End of Context --><|eot_id|>`);
+const generateSystemPrompt = t("prompts.generateSystemPrompt", `You are a Scene Tracker Assistant, tasked with providing clear, consistent, and structured updates to a scene tracker for a roleplay. Use the latest message, previous tracker details, and context from recent messages to accurately update the tracker. Your response must follow the specified {{trackerFormat}} structure exactly, ensuring that each field is filled and complete. If specific information is not provided, make reasonable assumptions based on prior descriptions, logical inferences, or default character details.
 
 ### Key Instructions:
 1. **Tracker Format**: Always respond with a complete tracker in {{trackerFormat}} format. Every field must be present in the response, even if unchanged. Do not omit fields or change the {{trackerFormat}} structure.
@@ -83,20 +81,20 @@ Return your response in the following {{trackerFormat}} structure, following thi
 2. **Structured Response**: Do not add any extra information outside of the {{trackerFormat}} tracker structure.
 3. **Complete Entries**: Always provide the full tracker in {{trackerFormat}}, even if only minor updates are made.
 
-Your primary objective is to ensure clarity, consistency, and structured responses for scene tracking in {{trackerFormat}} format, providing complete details even when specifics are not explicitly stated.`;
-const generateRequestPrompt = `[Analyze the previous message along with the recent messages provided below and update the current scene tracker based on logical inferences and explicit details. Pause and ensure only the tracked data is provided, formatted in {{trackerFormat}}. Avoid adding, omitting, or rearranging fields unless specified. Respond with the full tracker every time.
+Your primary objective is to ensure clarity, consistency, and structured responses for scene tracking in {{trackerFormat}} format, providing complete details even when specifics are not explicitly stated.`);
+const generateRequestPrompt = t("prompts.generateRequestPrompt", `[Analyze the previous message along with the recent messages provided below and update the current scene tracker based on logical inferences and explicit details. Pause and ensure only the tracked data is provided, formatted in {{trackerFormat}}. Avoid adding, omitting, or rearranging fields unless specified. Respond with the full tracker every time.
 
 ### Response Rules:
 {{trackerFieldPrompt}}
 
-Ensure the response remains consistent, strictly follows this structure in {{trackerFormat}}, and omits any extra data or deviations. You MUST enclose the tracker in <tracker></tracker> tags]`;
-const generateRecentMessagesTemplate = `{{#if tracker}}Tracker: <tracker>
+Ensure the response remains consistent, strictly follows this structure in {{trackerFormat}}, and omits any extra data or deviations. You MUST enclose the tracker in <tracker></tracker> tags]`);
+const generateRecentMessagesTemplate = t("prompts.generateRecentMessagesTemplate", `{{#if tracker}}Tracker: <tracker>
 {{tracker}}
 </tracker>
-{{/if}}{{char}}: {{message}}`;
+{{/if}}{{char}}: {{message}}`);
 
-const characterDescriptionTemplate = `### {{char}}'s Description
-{{charDescription}}`;
+const characterDescriptionTemplate = t("prompts.characterDescriptionTemplate", `### {{char}}'s Description
+{{charDescription}}`);
 
 const mesTrackerTemplate = `<div class="tracker_default_mes_template">
     <table>
@@ -570,13 +568,15 @@ const minimumDepth = 0;
 
 const responseLength = 0;
 
-const roleplayPrompt = "Treat the tracker block as backstage notes. Never include <tracker> tags or describe tracker updates in your reply. Stay fully in character and respond only with the dialogue or actions the character would naturally deliver, using the tracker information purely as reference.";
+const roleplayPrompt = t("prompts.roleplayPrompt", "Treat the tracker block as backstage notes. Never include <tracker> tags or describe tracker updates in your reply. Stay fully in character and respond only with the dialogue or actions the character would naturally deliver, using the tracker information purely as reference.");
 
 //#endregion
 
 export const defaultSettings = {
 
 	enabled: true,
+
+	languageOverride: "auto",
 
 	selectedProfile: "current",
 
@@ -587,11 +587,6 @@ export const defaultSettings = {
 	showPopupFor: generationTargets.NONE,
 
 	trackerFormat: trackerFormat.YAML,
-
-
-
-	generationMode: generationModes.SINGLE_STAGE,
-
 
 
 	generateContextTemplate: generateContextTemplate,
@@ -632,14 +627,11 @@ export const defaultSettings = {
 
 	roleplayPrompt: roleplayPrompt,
 
-	selectedPreset: "Default-SingleStage",
+	selectedPreset: "Default-BuildIn",
 
 	presets: {
 
-		"Default-SingleStage": {
-
-			generationMode: generationModes.SINGLE_STAGE,
-
+		"Default-BuildIn": {	
 
 
 			generateContextTemplate: generateContextTemplate,

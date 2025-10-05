@@ -3,6 +3,7 @@ import { getContext } from '../../../../../../scripts/extensions.js';
 
 import { extensionFolderPath, extensionSettings } from "../../index.js";
 import { error, debug, toTitleCase } from "../../lib/utils.js";
+import { getSupportedLocales, setLocale, t, translateHtml, onLocaleChange, getCurrentLocale } from "../../lib/i18n.js";
 import { defaultSettings, generationTargets } from "./defaultSettings.js";
 import { generationCaptured } from "../../lib/interconnection.js";
 import { TrackerPromptMakerModal } from "../ui/trackerPromptMakerModal.js";
@@ -11,7 +12,99 @@ import { TrackerJavaScriptGenerator } from "../ui/components/trackerJavaScriptGe
 import { TrackerInterface } from "../ui/trackerInterface.js";
 import { DevelopmentTestUI } from "../ui/developmentTestUI.js";
 
-export { generationModes, generationTargets, trackerFormat } from "./defaultSettings.js";
+export { generationTargets, trackerFormat } from "./defaultSettings.js";
+
+let settingsRootElement = null;
+let localeListenerRegistered = false;
+
+const generationTargetLabelKeys = {
+	[generationTargets.BOTH]: "settings.generation_target.option.both",
+	[generationTargets.USER]: "settings.generation_target.option.user",
+	[generationTargets.CHARACTER]: "settings.generation_target.option.character",
+	[generationTargets.NONE]: "settings.generation_target.option.none",
+};
+
+const staticLocalizationBindings = [
+	{ element: () => settingsRootElement?.querySelector(".inline-drawer-header > b"), key: "settings.title" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_enable"]'), key: "settings.enable.label" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_connection_profile"]'), key: "settings.connection_profile.label" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_connection_profile')?.closest('.tracker-block')?.querySelector('small'), key: "settings.connection_profile.help", target: "html" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_connection_profile option[value="current"]'), key: "settings.connection_profile.option.current" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_completion_preset"]'), key: "settings.completion_preset.label" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_completion_preset')?.closest('.tracker-block')?.querySelector('small'), key: "settings.completion_preset.help", target: "html" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_completion_preset option[value="current"]'), key: "settings.completion_preset.option.current" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_generation_target"]'), key: "settings.generation_target.label" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_generation_target')?.closest('.tracker-block')?.querySelector('small'), key: "settings.generation_target.help", target: "html" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_generation_target option[value="both"]'), key: "settings.generation_target.option.both" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_generation_target option[value="user"]'), key: "settings.generation_target.option.user" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_generation_target option[value="character"]'), key: "settings.generation_target.option.character" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_generation_target option[value="none"]'), key: "settings.generation_target.option.none" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_show_popup_for"]'), key: "settings.show_popup_for.label" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_show_popup_for')?.closest('.tracker-block')?.querySelector('small'), key: "settings.show_popup_for.help", target: "html" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_format"]'), key: "settings.format.label" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_format')?.closest('.tracker-block')?.querySelector('small'), key: "settings.format.help", target: "html" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_preset_select"]'), key: "settings.presets.label" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_preset_new'), key: "settings.presets.button.new.title", target: "attr:title" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_preset_save'), key: "settings.presets.button.save.title", target: "attr:title" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_preset_rename'), key: "settings.presets.button.rename.title", target: "attr:title" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_preset_restore'), key: "settings.presets.button.restore.title", target: "attr:title" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_preset_delete'), key: "settings.presets.button.delete.title", target: "attr:title" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_preset_import'), key: "settings.presets.import.input.title", target: "attr:title" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_preset_import'), key: "settings.presets.import.input.aria", target: "attr:aria-label" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_preset_import_button'), key: "settings.presets.import.button.title", target: "attr:title" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_preset_export'), key: "settings.presets.export.button.title", target: "attr:title" },
+	{ element: () => settingsRootElement?.querySelector('#preset_settings details > summary'), key: "settings.presets.summary" },
+	{ element: () => settingsRootElement?.querySelector('#generate_context_section label'), key: "settings.context.label" },
+	{ element: () => settingsRootElement?.querySelector('#generate_context_section small'), key: "settings.context.help", target: "html" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_system_prompt"]'), key: "settings.system.label" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_system_prompt"]')?.parentElement?.querySelector('small'), key: "settings.system.help", target: "html" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_request_prompt"]'), key: "settings.request.label" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_request_prompt"]')?.parentElement?.querySelector('small'), key: "settings.request.help", target: "html" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_roleplay_prompt"]'), key: "settings.roleplay.label" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_roleplay_prompt"]')?.parentElement?.querySelector('small'), key: "settings.roleplay.help", target: "html" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_recent_messages"]'), key: "settings.recent_messages.label" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_recent_messages"]')?.parentElement?.querySelector('small'), key: "settings.recent_messages.help", target: "html" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_character_description"]'), key: "settings.character_description.label" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_character_description"]')?.parentElement?.querySelector('small'), key: "settings.character_description.help", target: "html" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_mes_tracker_template"]'), key: "settings.message_tracker_html.label" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_mes_tracker_template"]')?.parentElement?.querySelector('small'), key: "settings.message_tracker_html.help", target: "html" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_generate_template'), key: "settings.message_tracker_html.generate_button.value", target: "value" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_generate_template'), key: "settings.message_tracker_html.generate_button.title", target: "attr:title" },
+	{ element: () => settingsRootElement?.querySelectorAll('.tracker-template-controls-hint')?.[0], key: "settings.message_tracker_html.generate_hint" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_mes_tracker_javascript"]'), key: "settings.message_tracker_script.label" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_mes_tracker_javascript"]')?.parentElement?.querySelector('small'), key: "settings.message_tracker_script.help", target: "html" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_generate_javascript'), key: "settings.message_tracker_script.generate_button.value", target: "value" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_generate_javascript'), key: "settings.message_tracker_script.generate_button.title", target: "attr:title" },
+	{ element: () => settingsRootElement?.querySelectorAll('.tracker-template-controls-hint')?.[1], key: "settings.message_tracker_script.generate_hint" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_prompt_maker"]'), key: "settings.prompt_maker.label" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_prompt_maker"]')?.parentElement?.querySelector('small'), key: "settings.prompt_maker.help", target: "html" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_prompt_maker'), key: "settings.prompt_maker.button", target: "value" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_number_of_messages"]'), key: "settings.number_of_messages.label" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_number_of_messages"]')?.parentElement?.querySelector('small'), key: "settings.number_of_messages.help", target: "html" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_generate_from_message"]'), key: "settings.generate_from_message.label" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_generate_from_message"]')?.parentElement?.querySelector('small'), key: "settings.generate_from_message.help", target: "html" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_minimum_depth"]'), key: "settings.minimum_depth.label" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_minimum_depth"]')?.parentElement?.querySelector('small'), key: "settings.minimum_depth.help", target: "html" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_response_length"]'), key: "settings.response_length.label" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_response_length"]')?.parentElement?.querySelector('small'), key: "settings.response_length.help", target: "html" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_toolbar_indicator"]'), key: "settings.toolbar_indicator.label" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_debug"]'), key: "settings.debug.label" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_reset_presets'), key: "settings.reset_presets.button", target: "value" }
+];
+const LOCALE_PRESET_FIELD_KEYS = [
+	"generateContextTemplate",
+	"generateSystemPrompt",
+	"generateRequestPrompt",
+	"generateRecentMessagesTemplate",
+	"characterDescriptionTemplate",
+	"mesTrackerTemplate",
+	"mesTrackerJavascript",
+	"roleplayPrompt",
+	"trackerDef",
+];
+
+const localePresetCache = new Map();
+let activeLocalePresetToast = null;
 
 /**
  * Checks if the extension is enabled.
@@ -60,6 +153,7 @@ export async function initSettings() {
 		Object.assign(extensionSettings, defaultSettings, currentSettings);
 	}
 
+	initializeLocalePresetSnapshot();
 	saveSettingsDebounced();
 
 	await loadSettingsUI();
@@ -96,8 +190,24 @@ async function loadSettingsUI() {
 		$("#extensions_settings2").append(settingsHtml);
 		debug("Settings UI HTML appended successfully");
 
+		settingsRootElement = document.getElementById("tracker_enhanced_settings");
+		initializeLocalePresetSnapshot();
+		const currentLocale = getCurrentLocale();
+		applySettingsLocalization(currentLocale);
+
+		if (!localeListenerRegistered) {
+			onLocaleChange((locale) => {
+				applySettingsLocalization(locale);
+				maybeOfferLocalePreset(locale);
+			});
+			localeListenerRegistered = true;
+		}
+
+
 		setSettingsInitialValues();
 		registerSettingsListeners();
+		maybeOfferLocalePreset(currentLocale);
+		
 		
 		// Initialize Development Test UI
 		DevelopmentTestUI.init();
@@ -109,10 +219,259 @@ async function loadSettingsUI() {
 	}
 }
 
+function applySettingsLocalization(locale = getCurrentLocale()) {
+	if (!settingsRootElement) {
+		return;
+	}
+	translateHtml(settingsRootElement);
+	refreshLanguageOverrideDropdown();
+	localizeStaticSettingsContent();
+	updatePopupDropdown();
+}
+
+function localizeStaticSettingsContent() {
+	if (!settingsRootElement) {
+		return;
+	}
+	for (const binding of staticLocalizationBindings) {
+		const element = typeof binding.element === "function" ? binding.element() : settingsRootElement.querySelector(binding.element);
+		if (!element) {
+			continue;
+		}
+		const target = binding.target || "text";
+		if (target.startsWith("attr:")) {
+			const attrName = target.split(":")[1];
+			const fallbackAttr = element.getAttribute(attrName) || "";
+			element.setAttribute(attrName, t(binding.key, fallbackAttr));
+			continue;
+		}
+		let fallback = "";
+		switch (target) {
+			case "html":
+				fallback = element.innerHTML || "";
+				break;
+			case "value":
+				fallback = element.value || "";
+				break;
+			default:
+				fallback = element.textContent || "";
+				break;
+		}
+		const localized = t(binding.key, fallback);
+		if (target === "html") {
+			element.innerHTML = localized;
+		} else if (target === "value") {
+			element.value = localized;
+		} else {
+			element.textContent = localized;
+		}
+	}
+}
+function initializeLocalePresetSnapshot() {
+	if (!extensionSettings.localePresetSnapshot || typeof extensionSettings.localePresetSnapshot !== "object") {
+		extensionSettings.localePresetSnapshot = {
+			locale: "default",
+			values: getPromptSettingsSnapshot(),
+		};
+	}
+}
+
+function getPromptSettingsSnapshot() {
+	const snapshot = {};
+	for (const key of LOCALE_PRESET_FIELD_KEYS) {
+		if (Object.prototype.hasOwnProperty.call(extensionSettings, key)) {
+			snapshot[key] = deepClone(extensionSettings[key]);
+		}
+	}
+	return snapshot;
+}
+
+function storeLocalePresetSnapshot(locale, values) {
+	extensionSettings.localePresetSnapshot = {
+		locale,
+		values: clonePresetValues(values),
+	};
+}
+
+function getLocalePresetSnapshot() {
+	const snapshot = extensionSettings.localePresetSnapshot;
+	return snapshot && typeof snapshot === "object" ? snapshot : null;
+}
+
+function clonePresetValues(values = {}) {
+	const clone = {};
+	for (const [key, value] of Object.entries(values)) {
+		if (LOCALE_PRESET_FIELD_KEYS.includes(key)) {
+			clone[key] = deepClone(value);
+		}
+	}
+	return clone;
+}
+
+function deepClone(value) {
+	if (value === null || typeof value !== "object") {
+		return value;
+	}
+	try {
+		return JSON.parse(JSON.stringify(value));
+	} catch (err) {
+		return value;
+	}
+}
+
+function arePromptValuesEqual(a = {}, b = {}) {
+	for (const key of LOCALE_PRESET_FIELD_KEYS) {
+		if (!deepEqual(a[key], b[key])) {
+			return false;
+		}
+	}
+	return true;
+}
+
+function deepEqual(a, b) {
+	if (a === b) return true;
+	if (typeof a !== typeof b) return false;
+	if (a && b && typeof a === "object") {
+		try {
+			return JSON.stringify(a) === JSON.stringify(b);
+		} catch (err) {
+			return false;
+		}
+	}
+	return false;
+}
+
+async function loadLocalePreset(locale) {
+	if (localePresetCache.has(locale)) {
+		const cached = localePresetCache.get(locale);
+		return cached ? { ...cached, values: clonePresetValues(cached.values) } : null;
+	}
+	try {
+		const response = await fetch(`${extensionFolderPath}/presets/${locale}.json`);
+		if (!response.ok) {
+			warn("Locale preset not found", { locale, status: response.status });
+			localePresetCache.set(locale, null);
+			return null;
+		}
+		const preset = await response.json();
+		localePresetCache.set(locale, preset);
+		return preset ? { ...preset, values: clonePresetValues(preset.values || {}) } : null;
+	} catch (err) {
+		warn("Failed to load locale preset", { locale, error: err });
+		localePresetCache.set(locale, null);
+		return null;
+	}
+}
+
+async function maybeOfferLocalePreset(locale) {
+	if (locale === "auto" || !locale) {
+		locale = getCurrentLocale();
+	}
+	if (!locale) return;
+	const snapshot = getLocalePresetSnapshot();
+	const currentValues = getPromptSettingsSnapshot();
+	const snapshotLocale = snapshot?.locale;
+	const matchesSnapshot = snapshot && arePromptValuesEqual(snapshot.values, currentValues);
+	if (snapshotLocale === locale && matchesSnapshot) {
+		return;
+	}
+	const preset = await loadLocalePreset(locale);
+	if (!preset || !preset.values) {
+		return;
+	}
+	const hasCustomChanges = snapshot ? !arePromptValuesEqual(snapshot.values, currentValues) : false;
+	showLocalePresetToast(locale, preset, hasCustomChanges);
+}
+
+function showLocalePresetToast(locale, preset, hasCustomChanges) {
+	if (activeLocalePresetToast?.toast) {
+		toastr.clear(activeLocalePresetToast.toast);
+		activeLocalePresetToast = null;
+	}
+	const lines = [];
+	if (hasCustomChanges) {
+		lines.push(`<strong>${t("preset.toast.warning", "WARN: Custom data detected!")}</strong>`);
+	}
+	lines.push(t("preset.toast.message", "Locale preset available—load it?"));
+	const applyLabel = t("preset.toast.apply", "Load preset");
+	const message = `${lines.map((line) => `<div>${line}</div>`).join("")}<div style="margin-top:6px;"><button type="button" class="locale-preset-apply-button menu_button" data-locale="${locale}">${applyLabel}</button></div>`;
+	const toast = toastr[hasCustomChanges ? "warning" : "info"](message, t("preset.toast.title", "Locale preset"), {
+		timeOut: 0,
+		extendedTimeOut: 0,
+		tapToDismiss: false,
+		closeButton: true,
+		escapeHtml: false,
+	});
+	if (!toast) {
+		return;
+	}
+	const $toast = toast.jquery ? toast : (window.jQuery || globalThis.jQuery)(toast);
+	$toast.find('.locale-preset-apply-button').on('click', async (event) => {
+		event.preventDefault();
+		toastr.clear(toast);
+		activeLocalePresetToast = null;
+		await applyLocalePreset(locale, preset);
+	});
+	activeLocalePresetToast = { locale, toast, preset };
+}
+
+async function applyLocalePreset(locale, preset) {
+	const values = clonePresetValues(preset.values || {});
+	for (const key of LOCALE_PRESET_FIELD_KEYS) {
+		if (Object.prototype.hasOwnProperty.call(values, key)) {
+			extensionSettings[key] = deepClone(values[key]);
+		}
+	}
+	storeLocalePresetSnapshot(locale, values);
+	if (preset.title) {
+		extensionSettings.presets = extensionSettings.presets || {};
+		if (!extensionSettings.presets[preset.title]) {
+			extensionSettings.presets[preset.title] = clonePresetValues(values);
+			updatePresetDropdown();
+		}
+	}
+	setSettingsInitialValues();
+	saveSettingsDebounced();
+	toastr.success(t("preset.toast.applied", "Locale preset applied."));
+}
+
+function refreshLanguageOverrideDropdown() {
+	if (!settingsRootElement) {
+		return;
+	}
+	const select = settingsRootElement.querySelector("#tracker_enhanced_language_override");
+	if (!select) {
+		return;
+	}
+	const previousValue = extensionSettings.languageOverride || "auto";
+	select.innerHTML = "";
+
+	const autoOption = document.createElement("option");
+	autoOption.value = "auto";
+	autoOption.textContent = t("settings.language.auto", "Auto (SillyTavern default)");
+	select.append(autoOption);
+
+	for (const locale of getSupportedLocales()) {
+		const option = document.createElement("option");
+		option.value = locale.id;
+		option.textContent = locale.label;
+		select.append(option);
+	}
+
+	const hasExisting = Array.from(select.options).some((option) => option.value === previousValue);
+	select.value = hasExisting ? previousValue : "auto";
+
+	if (!hasExisting && previousValue !== "auto") {
+		extensionSettings.languageOverride = "auto";
+		saveSettingsDebounced();
+	}
+}
+
 /**
  * Sets the initial values for the settings UI elements based on current settings.
  */
 function setSettingsInitialValues() {
+	refreshLanguageOverrideDropdown();
 	// Populate presets dropdown
 	updatePresetDropdown();
 	initializeOverridesDropdowns();
@@ -169,6 +528,7 @@ function registerSettingsListeners() {
 	$("#tracker_enhanced_generation_target").on("change", onSettingSelectChange("generationTarget"));
 	$("#tracker_enhanced_show_popup_for").on("change", onSettingSelectChange("showPopupFor"));
 	$("#tracker_enhanced_format").on("change", onSettingSelectChange("trackerFormat"));
+	$("#tracker_enhanced_language_override").on("change", onLanguageOverrideChange);
 	$("#tracker_enhanced_toolbar_indicator").on("input", (event) => {
 		const enabled = $(event.currentTarget).is(":checked");
 		extensionSettings.toolbarIndicatorEnabled = enabled;
@@ -205,6 +565,19 @@ function registerSettingsListeners() {
 
 	eventSource.on(event_types.CONNECTION_PROFILE_LOADED, onMainSettingsConnectionProfileChange);
 }
+async function onLanguageOverrideChange(event) {
+	const selectedLocale = String($(event.currentTarget).val() || "auto");
+	debug("Language override changed", selectedLocale);
+	extensionSettings.languageOverride = selectedLocale;
+	saveSettingsDebounced();
+	try {
+		await setLocale(selectedLocale);
+		await maybeOfferLocalePreset(selectedLocale);
+	} catch (err) {
+		error("Failed to switch tracker locale", err);
+	}
+}
+
 
 // #endregion
 
@@ -635,7 +1008,6 @@ function onPresetImportChange(event) {
  */
 function getCurrentPresetSettings() {
 	return {
-		generationMode: extensionSettings.generationMode,
 
 		generateContextTemplate: extensionSettings.generateContextTemplate,
 		generateSystemPrompt: extensionSettings.generateSystemPrompt,
@@ -686,7 +1058,8 @@ function onSettingSelectChange(settingName) {
 	};
 }
 
-/**
+/**
+
  * Returns a function to handle textarea input changes for a given setting.
  * @param {string} settingName The name of the setting.
  * @returns {Function} The event handler function.
@@ -696,7 +1069,7 @@ function onSettingInputareaInput(settingName) {
 		const value = $(this).val();
 		extensionSettings[settingName] = value;
 		saveSettingsDebounced();
-		if(settingName === "mesTrackerJavascript") {
+		if (settingName === "mesTrackerJavascript") {
 			processTrackerJavascript();
 		}
 	};
@@ -999,7 +1372,7 @@ function updatePopupDropdown() {
 
 	showPopupForSelect.empty();
 	for (const popupOption of availablePopupOptions) {
-		const text = toTitleCase(popupOption);
+		const text = t(generationTargetLabelKeys[popupOption] || popupOption, toTitleCase(popupOption));
 		const option = $("<option>").val(popupOption).text(text);
 		if (popupOption === extensionSettings.showPopupFor) {
 			option.attr("selected", "selected");

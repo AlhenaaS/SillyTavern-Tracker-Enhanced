@@ -11,6 +11,7 @@ An advanced, feature-rich tracker extension for SillyTavern that provides compre
   - *Inline* simply injected into the main chat and asked the roleplay LLM to handle the tracker task, which was counterintuitive since it bypassed our independent connection.  
   - *Two-Stage* sent two requests, which I never found useful.  
   - Both were removed to simplify pipelines and settings.
+- Add locale support for Simplified Chinese.
 
 02-10-2025
 - Added AGPL-3.0 LICENSE file (based on SillyTavern’s official license).
