@@ -20,6 +20,12 @@
   width: fit-content;
 }
 
+#tracker_enhanced_settings .tracker-prompt-maker-block {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
 .tracker-editor-container,
 .tracker-view-container {
   text-align: start;

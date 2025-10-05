@@ -35,5 +35,8 @@
 
 ## Environment Notes
 - Windows 11 with PowerShell 7; prefer launching commands via `pwsh -NoLogo -NoProfile` to avoid user profile noise.
+ - Inline python (`python -c`) commands with loops or generators often confuse PowerShell quoting and raise parser errors (e.g., "Unexpected token 'in'"); prefer writing a short script via here-string + `Set-Content` instead of relying on complex escaping.
+ - PowerShell does not support bash-style `python - <<'PY'` heredocs; use temporary files for multi-line snippets.
+
 - Long embedded strings in PowerShell inline commands are brittle, so use here-strings or drop a temporary script file (e.g., write a `.py` helper) when you need heavy quoting or backslashes.
 - Python resolves through pyenv shims; prefer explicit `python` but be ready to pass `encoding="utf-8"` when reading repo files to dodge the default `gbk` codec.

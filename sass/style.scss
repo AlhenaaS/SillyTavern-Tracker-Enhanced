@@ -21,6 +21,14 @@
 	}
 }
 
+#tracker_enhanced_settings {
+	.tracker-prompt-maker-block {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 5px;
+	}
+}
+
 .tracker-editor-container,
 .tracker-view-container {
 	text-align: start;
@@ -224,6 +232,9 @@
 	.drag-handle {
 		cursor: move; /* Changes the cursor to indicate draggable area */
 		font-size: 18px; /* Increases the size for better visibility */
+		-webkit-user-select: none;
+		-moz-user-select: none;
+		-ms-user-select: none;
 		user-select: none; /* Prevents text selection when dragging */
 	}
 
@@ -242,10 +253,10 @@
 
 	.fields-container.dragging > .field-wrapper,
 	.nested-fields-container.dragging > .field-wrapper {
-		user-select: none;
-		-moz-user-select: none;
 		-webkit-user-select: none;
+		-moz-user-select: none;
 		-ms-user-select: none;
+		user-select: none;
 	}
 
 	/* Shrink sibling fields in the same container during drag */

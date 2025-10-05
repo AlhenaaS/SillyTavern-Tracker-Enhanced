@@ -2,7 +2,7 @@ import { saveSettingsDebounced } from "../../../../../../script.js";
 import { getContext } from '../../../../../../scripts/extensions.js';
 
 import { extensionFolderPath, extensionSettings } from "../../index.js";
-import { error, debug, toTitleCase } from "../../lib/utils.js";
+import { error, debug, warn, toTitleCase } from "../../lib/utils.js";
 import { getSupportedLocales, setLocale, t, translateHtml, onLocaleChange, getCurrentLocale } from "../../lib/i18n.js";
 import { defaultSettings, generationTargets } from "./defaultSettings.js";
 import { generationCaptured } from "../../lib/interconnection.js";
@@ -91,7 +91,7 @@ const staticLocalizationBindings = [
 	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_debug"]'), key: "settings.debug.label" },
 	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_reset_presets'), key: "settings.reset_presets.button", target: "value" }
 ];
-const LOCALE_PRESET_FIELD_KEYS = [
+const PRESET_VALUE_KEYS = [
 	"generateContextTemplate",
 	"generateSystemPrompt",
 	"generateRequestPrompt",
@@ -102,9 +102,6 @@ const LOCALE_PRESET_FIELD_KEYS = [
 	"roleplayPrompt",
 	"trackerDef",
 ];
-
-const localePresetCache = new Map();
-let activeLocalePresetToast = null;
 
 /**
  * Checks if the extension is enabled.
@@ -153,7 +150,12 @@ export async function initSettings() {
 		Object.assign(extensionSettings, defaultSettings, currentSettings);
 	}
 
-	initializeLocalePresetSnapshot();
+	delete extensionSettings.localePresetSnapshot;
+
+	if (!extensionSettings.selectedPreset) {
+		extensionSettings.selectedPreset = defaultSettings.selectedPreset || "Default-BuildIn";
+	}
+
 	saveSettingsDebounced();
 
 	await loadSettingsUI();
@@ -191,24 +193,20 @@ async function loadSettingsUI() {
 		debug("Settings UI HTML appended successfully");
 
 		settingsRootElement = document.getElementById("tracker_enhanced_settings");
-		initializeLocalePresetSnapshot();
 		const currentLocale = getCurrentLocale();
 		applySettingsLocalization(currentLocale);
 
 		if (!localeListenerRegistered) {
 			onLocaleChange((locale) => {
 				applySettingsLocalization(locale);
-				maybeOfferLocalePreset(locale);
 			});
 			localeListenerRegistered = true;
 		}
 
 
+		await ensureLocalePresetsRegistered();
 		setSettingsInitialValues();
 		registerSettingsListeners();
-		maybeOfferLocalePreset(currentLocale);
-		
-		
 		// Initialize Development Test UI
 		DevelopmentTestUI.init();
 		
@@ -267,45 +265,86 @@ function localizeStaticSettingsContent() {
 		}
 	}
 }
-function initializeLocalePresetSnapshot() {
-	if (!extensionSettings.localePresetSnapshot || typeof extensionSettings.localePresetSnapshot !== "object") {
-		extensionSettings.localePresetSnapshot = {
-			locale: "default",
-			values: getPromptSettingsSnapshot(),
-		};
+let localePresetRegistrationPromise = null;
+
+async function ensureLocalePresetsRegistered() {
+	if (!localePresetRegistrationPromise) {
+		localePresetRegistrationPromise = seedLocalePresetEntries();
 	}
+	return localePresetRegistrationPromise;
 }
 
-function getPromptSettingsSnapshot() {
-	const snapshot = {};
-	for (const key of LOCALE_PRESET_FIELD_KEYS) {
-		if (Object.prototype.hasOwnProperty.call(extensionSettings, key)) {
-			snapshot[key] = deepClone(extensionSettings[key]);
+async function seedLocalePresetEntries() {
+	extensionSettings.presets = extensionSettings.presets || {};
+	const existingPresetNames = new Set(Object.keys(extensionSettings.presets));
+	const localeCatalog = new Map();
+	const localeIds = [];
+	let presetAdded = false;
+
+	for (const locale of getSupportedLocales()) {
+		if (!locale || !locale.id || locale.id === "auto") {
+			continue;
+		}
+		localeIds.push(locale.id);
+		if (locale.label) {
+			localeCatalog.set(locale.id, locale.label);
 		}
 	}
-	return snapshot;
+
+	await Promise.all(
+		localeIds.map(async (localeId) => {
+			const definition = await loadLocalePresetDefinition(localeId);
+			if (!definition || !definition.values) {
+				return;
+			}
+			const presetTitle = (definition.title || "").trim() || getFallbackPresetTitle(localeId, localeCatalog.get(localeId));
+			if (!presetTitle || existingPresetNames.has(presetTitle)) {
+				return;
+			}
+			const sanitizedValues = sanitizePresetValues(definition.values);
+			if (Object.keys(sanitizedValues).length === 0) {
+				return;
+			}
+			extensionSettings.presets[presetTitle] = sanitizedValues;
+			presetAdded = true;
+			existingPresetNames.add(presetTitle);
+		})
+	);
+
+	if (presetAdded) {
+		saveSettingsDebounced();
+	}
 }
 
-function storeLocalePresetSnapshot(locale, values) {
-	extensionSettings.localePresetSnapshot = {
-		locale,
-		values: clonePresetValues(values),
-	};
+async function loadLocalePresetDefinition(localeId) {
+	try {
+		const response = await fetch(`${extensionFolderPath}/presets/${localeId}.json`);
+		if (!response.ok) {
+			warn("Locale preset not found", { locale: localeId, status: response.status });
+			return null;
+		}
+		return await response.json();
+	} catch (err) {
+		warn("Failed to load locale preset", { locale: localeId, error: err });
+		return null;
+	}
 }
 
-function getLocalePresetSnapshot() {
-	const snapshot = extensionSettings.localePresetSnapshot;
-	return snapshot && typeof snapshot === "object" ? snapshot : null;
+function getFallbackPresetTitle(localeId, localeLabel) {
+	if (localeLabel && typeof localeLabel === "string") {
+		return `Locale Default (${localeLabel})`;
+	}
+	return `Locale Default (${localeId})`;
 }
 
-function clonePresetValues(values = {}) {
-	const clone = {};
-	for (const [key, value] of Object.entries(values)) {
-		if (LOCALE_PRESET_FIELD_KEYS.includes(key)) {
-			clone[key] = deepClone(value);
+function sanitizePresetValues(values = {}) {
+	const sanitized = {};
+	for (const key of PRESET_VALUE_KEYS) {
+		if (Object.prototype.hasOwnProperty.call(values, key)) {
+			sanitized[key] = deepClone(values[key]);
 		}
 	}
-	return clone;
+	return sanitized;
 }
 
 function deepClone(value) {
@@ -315,124 +354,9 @@ function deepClone(value) {
 	try {
 		return JSON.parse(JSON.stringify(value));
 	} catch (err) {
+		debug("Failed to clone preset value", { error: err });
 		return value;
 	}
-}
-
-function arePromptValuesEqual(a = {}, b = {}) {
-	for (const key of LOCALE_PRESET_FIELD_KEYS) {
-		if (!deepEqual(a[key], b[key])) {
-			return false;
-		}
-	}
-	return true;
-}
-
-function deepEqual(a, b) {
-	if (a === b) return true;
-	if (typeof a !== typeof b) return false;
-	if (a && b && typeof a === "object") {
-		try {
-			return JSON.stringify(a) === JSON.stringify(b);
-		} catch (err) {
-			return false;
-		}
-	}
-	return false;
-}
-
-async function loadLocalePreset(locale) {
-	if (localePresetCache.has(locale)) {
-		const cached = localePresetCache.get(locale);
-		return cached ? { ...cached, values: clonePresetValues(cached.values) } : null;
-	}
-	try {
-		const response = await fetch(`${extensionFolderPath}/presets/${locale}.json`);
-		if (!response.ok) {
-			warn("Locale preset not found", { locale, status: response.status });
-			localePresetCache.set(locale, null);
-			return null;
-		}
-		const preset = await response.json();
-		localePresetCache.set(locale, preset);
-		return preset ? { ...preset, values: clonePresetValues(preset.values || {}) } : null;
-	} catch (err) {
-		warn("Failed to load locale preset", { locale, error: err });
-		localePresetCache.set(locale, null);
-		return null;
-	}
-}
-
-async function maybeOfferLocalePreset(locale) {
-	if (locale === "auto" || !locale) {
-		locale = getCurrentLocale();
-	}
-	if (!locale) return;
-	const snapshot = getLocalePresetSnapshot();
-	const currentValues = getPromptSettingsSnapshot();
-	const snapshotLocale = snapshot?.locale;
-	const matchesSnapshot = snapshot && arePromptValuesEqual(snapshot.values, currentValues);
-	if (snapshotLocale === locale && matchesSnapshot) {
-		return;
-	}
-	const preset = await loadLocalePreset(locale);
-	if (!preset || !preset.values) {
-		return;
-	}
-	const hasCustomChanges = snapshot ? !arePromptValuesEqual(snapshot.values, currentValues) : false;
-	showLocalePresetToast(locale, preset, hasCustomChanges);
-}
-
-function showLocalePresetToast(locale, preset, hasCustomChanges) {
-	if (activeLocalePresetToast?.toast) {
-		toastr.clear(activeLocalePresetToast.toast);
-		activeLocalePresetToast = null;
-	}
-	const lines = [];
-	if (hasCustomChanges) {
-		lines.push(`<strong>${t("preset.toast.warning", "WARN: Custom data detected!")}</strong>`);
-	}
-	lines.push(t("preset.toast.message", "Locale preset available—load it?"));
-	const applyLabel = t("preset.toast.apply", "Load preset");
-	const message = `${lines.map((line) => `<div>${line}</div>`).join("")}<div style="margin-top:6px;"><button type="button" class="locale-preset-apply-button menu_button" data-locale="${locale}">${applyLabel}</button></div>`;
-	const toast = toastr[hasCustomChanges ? "warning" : "info"](message, t("preset.toast.title", "Locale preset"), {
-		timeOut: 0,
-		extendedTimeOut: 0,
-		tapToDismiss: false,
-		closeButton: true,
-		escapeHtml: false,
-	});
-	if (!toast) {
-		return;
-	}
-	const $toast = toast.jquery ? toast : (window.jQuery || globalThis.jQuery)(toast);
-	$toast.find('.locale-preset-apply-button').on('click', async (event) => {
-		event.preventDefault();
-		toastr.clear(toast);
-		activeLocalePresetToast = null;
-		await applyLocalePreset(locale, preset);
-	});
-	activeLocalePresetToast = { locale, toast, preset };
-}
-
-async function applyLocalePreset(locale, preset) {
-	const values = clonePresetValues(preset.values || {});
-	for (const key of LOCALE_PRESET_FIELD_KEYS) {
-		if (Object.prototype.hasOwnProperty.call(values, key)) {
-			extensionSettings[key] = deepClone(values[key]);
-		}
-	}
-	storeLocalePresetSnapshot(locale, values);
-	if (preset.title) {
-		extensionSettings.presets = extensionSettings.presets || {};
-		if (!extensionSettings.presets[preset.title]) {
-			extensionSettings.presets[preset.title] = clonePresetValues(values);
-			updatePresetDropdown();
-		}
-	}
-	setSettingsInitialValues();
-	saveSettingsDebounced();
-	toastr.success(t("preset.toast.applied", "Locale preset applied."));
 }
 
 function refreshLanguageOverrideDropdown() {
@@ -572,7 +496,6 @@ async function onLanguageOverrideChange(event) {
 	saveSettingsDebounced();
 	try {
 		await setLocale(selectedLocale);
-		await maybeOfferLocalePreset(selectedLocale);
 	} catch (err) {
 		error("Failed to switch tracker locale", err);
 	}

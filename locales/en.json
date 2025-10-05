@@ -66,10 +66,5 @@
   "settings.response_length.help": "Set a response token limit for tracker prompts. Leave blank or set to 0 to use the default response token limit.",
   "settings.toolbar_indicator.label": "Show toolbar injection indicator",
   "settings.debug.label": "Enable Debug Logging",
-  "settings.reset_presets.button": "Reset Default Presets",
-  "preset.toast.title": "Locale preset",
-  "preset.toast.warning": "WARN: Custom data detected!",
-  "preset.toast.message": "Locale preset available—load it?",
-  "preset.toast.apply": "Load preset",
-  "preset.toast.applied": "Locale preset applied."
+  "settings.reset_presets.button": "Reset Default Presets"
 }
