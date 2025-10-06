@@ -34,9 +34,7 @@
 - Development moved from Claude to Codex agents. Keep AGENTS.md updated with key learnings (like the tracker generation findings above) so future compactions retain context.
 
 ## Environment Notes
-- Windows 11 with PowerShell 7; prefer launching commands via `pwsh -NoLogo -NoProfile` to avoid user profile noise.
- - Inline python (`python -c`) commands with loops or generators often confuse PowerShell quoting and raise parser errors (e.g., "Unexpected token 'in'"); prefer writing a short script via here-string + `Set-Content` instead of relying on complex escaping.
- - PowerShell does not support bash-style `python - <<'PY'` heredocs; use temporary files for multi-line snippets.
-
-- Long embedded strings in PowerShell inline commands are brittle, so use here-strings or drop a temporary script file (e.g., write a `.py` helper) when you need heavy quoting or backslashes.
+- Windows 11 Git Bash (Windows Terminal -> `D:\ScoopApps\apps\git\current\bin\bash.exe`):
+  - Prefix shell invocations with `["bash","-lc", ...]` when calling the `shell` tool.
+  - POSIX quoting and heredocs work as expected; watch for Windows path translations when passing repo paths.
 - Python resolves through pyenv shims; prefer explicit `python` but be ready to pass `encoding="utf-8"` when reading repo files to dodge the default `gbk` codec.
