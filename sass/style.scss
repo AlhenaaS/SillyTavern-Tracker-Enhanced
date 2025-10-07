@@ -126,6 +126,78 @@
 			display: flex;
 			gap: 10px;
 			align-items: center;
+			flex-wrap: wrap;
+
+			.field-metadata-badges {
+				display: flex;
+				flex-direction: column;
+				gap: 4px;
+				align-items: flex-start;
+				margin-top: 4px;
+			}
+
+			.field-meta-row {
+				display: flex;
+				width: 100%;
+				gap: 16px;
+				align-items: center;
+				flex-wrap: wrap;
+			}
+
+			.field-gender-specific {
+				display: flex;
+				gap: 6px;
+				align-items: center;
+
+				label {
+					margin: 0;
+					white-space: nowrap;
+				}
+
+				select {
+					margin: 0;
+				}
+			}
+
+			.field-metadata-row {
+				display: flex;
+				gap: 6px;
+				align-items: center;
+				flex-wrap: wrap;
+			}
+
+			.field-metadata-label {
+				font-size: 12px;
+				color: var(--SmartThemeTextColor);
+				opacity: 0.7;
+			}
+
+			.field-badge {
+				display: inline-block;
+				padding: 2px 8px;
+				border-radius: 999px;
+				font-size: 12px;
+				text-transform: uppercase;
+				background-color: rgba(255, 255, 255, 0.1);
+				border: 1px solid rgba(255, 255, 255, 0.2);
+				color: var(--SmartThemeTextColor);
+			}
+
+			.field-badge--internal {
+				background-color: rgba(0, 153, 255, 0.1);
+				border-color: rgba(0, 153, 255, 0.4);
+			}
+
+			.field-badge--external {
+				background-color: rgba(0, 200, 83, 0.1);
+				border-color: rgba(0, 200, 83, 0.4);
+			}
+
+			.field-badge--id {
+				background-color: rgba(255, 193, 7, 0.1);
+				border-color: rgba(255, 193, 7, 0.4);
+				text-transform: none;
+			}
 
 			.field-name-wrapper {
 				flex-grow: 1;

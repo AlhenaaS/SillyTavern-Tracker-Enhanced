@@ -218,6 +218,21 @@ export function cleanTracker(trackerInput, backendObject, outputFormat = OUTPUT_
 	return formatOutput(cleaned, outputFormat);
 }
 
+export function stripInternalOnlyFields(trackerInput, backendObj) {
+	if (!backendObj || typeof backendObj !== "object") {
+		return trackerInput;
+	}
+
+	const tracker = typeof trackerInput === "string" ? yamlToJSON(trackerInput) : trackerInput;
+	if (!tracker || typeof tracker !== "object") {
+		return trackerInput;
+	}
+
+	const clonedTracker = cloneTrackerData(tracker);
+	removeInternalOnlyFields(clonedTracker, backendObj);
+	return clonedTracker;
+}
+
 /* Helper Functions */
 
 function getMaxExampleCount(backendObject) {
@@ -318,6 +333,70 @@ function shouldIncludeField(field, includeFields, includeEphemeral = false) {
 	if (includeFields === FIELD_INCLUDE_OPTIONS.DYNAMIC && (field.presence === FIELD_PRESENCE_OPTIONS.DYNAMIC || (field.presence === FIELD_PRESENCE_OPTIONS.EPHEMERAL && includeEphemeral))) return true;
 	if (includeFields === FIELD_INCLUDE_OPTIONS.STATIC && field.presence === FIELD_PRESENCE_OPTIONS.STATIC) return true;
 	return false;
+}
+
+function cloneTrackerData(value) {
+	try {
+		return JSON.parse(JSON.stringify(value));
+	} catch (err) {
+		return _.cloneDeep ? _.cloneDeep(value) : value;
+	}
+}
+
+function removeInternalOnlyFields(trackerNode, backendNode) {
+	if (!trackerNode || typeof trackerNode !== "object" || !backendNode || typeof backendNode !== "object") {
+		return;
+	}
+
+	for (const field of Object.values(backendNode)) {
+		if (!field || typeof field !== "object") {
+			continue;
+		}
+
+		const metadata = field.metadata || {};
+		const fieldName = field.name;
+		if (!fieldName || !Object.prototype.hasOwnProperty.call(trackerNode, fieldName)) {
+			continue;
+		}
+
+		if (metadata.internal && metadata.external === false) {
+			delete trackerNode[fieldName];
+			continue;
+		}
+
+		const nestedFields = field.nestedFields || {};
+		if (Object.keys(nestedFields).length === 0) {
+			continue;
+		}
+
+		const trackerValue = trackerNode[fieldName];
+		if (field.type === "OBJECT" || field.type === "ARRAY_OBJECT") {
+			if (trackerValue && typeof trackerValue === "object" && !Array.isArray(trackerValue)) {
+				removeInternalOnlyFields(trackerValue, nestedFields);
+			}
+		} else if (field.type === "FOR_EACH_OBJECT") {
+			if (trackerValue && typeof trackerValue === "object" && !Array.isArray(trackerValue)) {
+				for (const key of Object.keys(trackerValue)) {
+					if (trackerValue[key] && typeof trackerValue[key] === "object") {
+						removeInternalOnlyFields(trackerValue[key], nestedFields);
+					}
+				}
+			}
+		} else if (field.type === "FOR_EACH_ARRAY") {
+			if (trackerValue && typeof trackerValue === "object" && !Array.isArray(trackerValue)) {
+				for (const key of Object.keys(trackerValue)) {
+					const arrayItems = trackerValue[key];
+					if (Array.isArray(arrayItems)) {
+						arrayItems.forEach((item) => {
+							if (item && typeof item === "object") {
+								removeInternalOnlyFields(item, nestedFields);
+							}
+						});
+					}
+				}
+			}
+		}
+	}
 }
 
 function handleString(field, includeFields, index = null, trackerValue = null, extraFields = null, charIndex = null, includeEphemeral = false) {

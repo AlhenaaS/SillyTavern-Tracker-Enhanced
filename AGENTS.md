@@ -34,7 +34,4 @@
 - Development moved from Claude to Codex agents. Keep AGENTS.md updated with key learnings (like the tracker generation findings above) so future compactions retain context.
 
 ## Environment Notes
-- Windows 11 Git Bash (Windows Terminal -> `D:\ScoopApps\apps\git\current\bin\bash.exe`):
-  - Prefix shell invocations with `["bash","-lc", ...]` when calling the `shell` tool.
-  - POSIX quoting and heredocs work as expected; watch for Windows path translations when passing repo paths.
-- Python resolves through pyenv shims; prefer explicit `python` but be ready to pass `encoding="utf-8"` when reading repo files to dodge the default `gbk` codec.
+- WSL2 Ubuntu 22.04

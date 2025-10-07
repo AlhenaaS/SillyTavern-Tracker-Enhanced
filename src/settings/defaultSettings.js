@@ -1,5 +1,153 @@
 import { t } from "../../lib/i18n.js";
 
+export const DEFAULT_PRESET_NAME = "Default Built-In (EN)";
+
+const SCHEMA_VERSION_FIELD_DEFINITION = {
+	name: "Schema Version",
+	type: "STRING",
+	presence: "STATIC",
+	prompt: "Do not change this",
+	defaultValue: "1",
+	exampleValues: ["1"],
+	nestedFields: {},
+	metadata: {
+		internal: true,
+		external: false,
+		internalKeyId: "schemaVersion",
+		internalOnly: true,
+	},
+};
+
+const METADATA_OVERRIDES = [
+	{
+		path: ["Schema Version"],
+		metadata: {
+			internal: true,
+			external: false,
+			internalKeyId: "schemaVersion",
+		},
+	},
+	{
+		path: ["Time"],
+		metadata: {
+			internal: true,
+			external: true,
+			internalKeyId: "time",
+		},
+	},
+	{
+		path: ["Characters"],
+		metadata: {
+			internal: true,
+			external: true,
+			internalKeyId: "characters",
+		},
+	},
+	{
+		path: ["Characters", "Gender"],
+		metadata: {
+			internal: true,
+			external: true,
+			internalKeyId: "characterGender",
+		},
+	},
+];
+
+function cloneDefinition(definition) {
+	return JSON.parse(JSON.stringify(definition));
+}
+
+function getNextFieldId(definition) {
+	let maxIndex = -1;
+	for (const key of Object.keys(definition)) {
+		const match = key.match(/^field-(\d+)$/);
+		if (match) {
+			maxIndex = Math.max(maxIndex, Number(match[1]));
+		}
+	}
+	return `field-${maxIndex + 1}`;
+}
+
+export function ensureSchemaVersionField(definition) {
+	const exists = Object.values(definition || {}).some((field) => field?.name === SCHEMA_VERSION_FIELD_DEFINITION.name);
+	if (exists) {
+		return;
+	}
+
+	const fieldId = getNextFieldId(definition || {});
+	definition[fieldId] = cloneDefinition(SCHEMA_VERSION_FIELD_DEFINITION);
+}
+
+function pathsMatch(actualPath, patternPath) {
+	if (actualPath.length !== patternPath.length) {
+		return false;
+	}
+	for (let index = 0; index < patternPath.length; index++) {
+		const patternSegment = patternPath[index];
+		if (patternSegment === "*") {
+			continue;
+		}
+		if (patternSegment !== actualPath[index]) {
+			return false;
+		}
+	}
+	return true;
+}
+
+function findMetadataOverride(path) {
+	for (const override of METADATA_OVERRIDES) {
+		if (pathsMatch(path, override.path)) {
+			return cloneDefinition(override.metadata);
+		}
+	}
+	return null;
+}
+
+function normalizeMetadata(metadata = {}) {
+	const normalized = {
+		internal: Boolean(metadata.internal),
+		external: metadata.external !== false,
+		internalKeyId: metadata.internalKeyId || null,
+	};
+
+	if (Object.prototype.hasOwnProperty.call(metadata, "internalOnly")) {
+		normalized.internalOnly = Boolean(metadata.internalOnly);
+	} else {
+		normalized.internalOnly = normalized.internal && !normalized.external;
+	}
+
+	return normalized;
+}
+
+function applyMetadataRecursive(fields, path = []) {
+	for (const field of Object.values(fields || {})) {
+		if (!field || typeof field !== "object") {
+			continue;
+		}
+
+		const currentPath = [...path, field.name || ""];
+		const normalizedMetadata = normalizeMetadata(field.metadata);
+		const overrideMetadata = findMetadataOverride(currentPath);
+		if (overrideMetadata) {
+			Object.assign(normalizedMetadata, overrideMetadata);
+			normalizedMetadata.internalOnly = normalizedMetadata.internal && !normalizedMetadata.external;
+		}
+		field.metadata = normalizedMetadata;
+
+		if (field.nestedFields && Object.keys(field.nestedFields).length > 0) {
+			applyMetadataRecursive(field.nestedFields, currentPath);
+		}
+	}
+}
+
+export function ensureTrackerMetadata(definition) {
+	if (!definition || typeof definition !== "object") {
+		return definition;
+	}
+	applyMetadataRecursive(definition, []);
+	return definition;
+}
+
 //#region Setting Enums
 
 export const generationTargets = {
@@ -559,6 +707,9 @@ const trackerDef = {
 	}
 };
 
+ensureSchemaVersionField(trackerDef);
+ensureTrackerMetadata(trackerDef);
+
 const trackerPreviewSelector = ".mes_block .mes_text";
 const trackerPreviewPlacement = "before";
 
@@ -627,11 +778,10 @@ export const defaultSettings = {
 
 	roleplayPrompt: roleplayPrompt,
 
-	selectedPreset: "Default-BuildIn",
+	selectedPreset: DEFAULT_PRESET_NAME,
 
 	presets: {
-
-		"Default-BuildIn": {	
+		[DEFAULT_PRESET_NAME]: {
 
 
 			generateContextTemplate: generateContextTemplate,
@@ -657,7 +807,6 @@ export const defaultSettings = {
 			trackerDef: trackerDef,
 
 		},
-
 	},
 
 	debugMode: false,
@@ -729,4 +878,3 @@ export const testGroupData = {
 		party_reputation: 'Respected'
 	}
 };
-

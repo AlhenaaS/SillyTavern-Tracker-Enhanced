@@ -6,9 +6,10 @@ import { log, debug, getLastMessageWithTracker, getLastNonSystemMessageIndex, ge
 import { extensionSettings } from "../index.js";
 import { generateTracker, getRequestPrompt } from "./generation.js";
 import { generationTargets } from "./settings/settings.js";
-import { FIELD_INCLUDE_OPTIONS, getDefaultTracker, OUTPUT_FORMATS, getTracker as getCleanTracker, trackerExists, cleanTracker } from "./trackerDataHandler.js";
+import { FIELD_INCLUDE_OPTIONS, getDefaultTracker, OUTPUT_FORMATS, getTracker as getCleanTracker, trackerExists, cleanTracker, stripInternalOnlyFields } from "./trackerDataHandler.js";
 import { TrackerEditorModal } from "./ui/trackerEditorModal.js";
 import { TrackerPreviewManager } from "./ui/trackerPreviewManager.js";
+import { jsonToYAML } from "../lib/ymlParser.js";
 
 // Constants
 const ACTION_TYPES = {
@@ -70,8 +71,11 @@ export async function injectTracker(tracker = "", position = 0) {
 	let trackerYAML = "";
 	let trackerIncluded = false;
 	if(trackerExists(tracker, extensionSettings.trackerDef) && tracker != "") {
-		trackerYAML = cleanTracker(tracker, extensionSettings.trackerDef, OUTPUT_FORMATS.YAML, false);
-		if(trackerYAML != "") {
+		const cleanedTracker = cleanTracker(tracker, extensionSettings.trackerDef, OUTPUT_FORMATS.JSON, false);
+		const sanitizedTracker = stripInternalOnlyFields(cleanedTracker, extensionSettings.trackerDef);
+		const hasSanitizedContent = sanitizedTracker && typeof sanitizedTracker === "object" && Object.keys(sanitizedTracker).length > 0;
+		trackerYAML = hasSanitizedContent ? jsonToYAML(sanitizedTracker).trim() : "";
+		if(trackerYAML !== "") {
 			debug("Injecting tracker:", { tracker: trackerYAML, position });
 			const roleplayPrompt = (extensionSettings.roleplayPrompt ?? "").trim();
 			const trackerBlock = `<tracker>\n${trackerYAML}\n</tracker>`;

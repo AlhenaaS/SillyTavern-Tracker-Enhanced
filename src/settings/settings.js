@@ -4,7 +4,7 @@ import { getContext } from '../../../../../../scripts/extensions.js';
 import { extensionFolderPath, extensionSettings } from "../../index.js";
 import { error, debug, warn, toTitleCase } from "../../lib/utils.js";
 import { getSupportedLocales, setLocale, t, translateHtml, onLocaleChange, getCurrentLocale } from "../../lib/i18n.js";
-import { defaultSettings, generationTargets } from "./defaultSettings.js";
+import { DEFAULT_PRESET_NAME, defaultSettings, ensureSchemaVersionField, ensureTrackerMetadata, generationTargets } from "./defaultSettings.js";
 import { generationCaptured } from "../../lib/interconnection.js";
 import { TrackerPromptMakerModal } from "../ui/trackerPromptMakerModal.js";
 import { TrackerTemplateGenerator } from "../ui/components/trackerTemplateGenerator.js";
@@ -16,6 +16,7 @@ export { generationTargets, trackerFormat } from "./defaultSettings.js";
 
 let settingsRootElement = null;
 let localeListenerRegistered = false;
+const LEGACY_DEFAULT_PRESET_NAME = "Default-BuildIn";
 
 const generationTargetLabelKeys = {
 	[generationTargets.BOTH]: "settings.generation_target.option.both",
@@ -126,6 +127,8 @@ export async function toggleExtension(enable = true) {
  * Saves the settings and loads the settings UI.
  */
 export async function initSettings() {
+	migrateDefaultPresetName(extensionSettings);
+
 	const currentSettings = { ...extensionSettings };
 
 	if (!currentSettings.trackerDef) {
@@ -153,8 +156,12 @@ export async function initSettings() {
 	delete extensionSettings.localePresetSnapshot;
 
 	if (!extensionSettings.selectedPreset) {
-		extensionSettings.selectedPreset = defaultSettings.selectedPreset || "Default-BuildIn";
+		extensionSettings.selectedPreset = defaultSettings.selectedPreset || DEFAULT_PRESET_NAME;
 	}
+
+	ensureSchemaVersionField(extensionSettings.trackerDef);
+	ensureTrackerMetadata(extensionSettings.trackerDef);
+	ensurePresetsMetadata(extensionSettings.presets);
 
 	saveSettingsDebounced();
 
@@ -177,6 +184,47 @@ function migrateIsDynamicToPresence(obj) {
 		} else if (typeof obj[key] === "object") {
 			// Recursively migrate nested objects
 			migrateIsDynamicToPresence(obj[key]);
+		}
+	}
+}
+
+function migrateDefaultPresetName(settings) {
+	if (!settings || typeof settings !== "object") return;
+
+	const presets = settings.presets;
+	if (presets && Object.prototype.hasOwnProperty.call(presets, LEGACY_DEFAULT_PRESET_NAME)) {
+		if (!presets[DEFAULT_PRESET_NAME]) {
+			presets[DEFAULT_PRESET_NAME] = presets[LEGACY_DEFAULT_PRESET_NAME];
+		}
+		delete presets[LEGACY_DEFAULT_PRESET_NAME];
+	}
+
+	if (settings.selectedPreset === LEGACY_DEFAULT_PRESET_NAME) {
+		settings.selectedPreset = DEFAULT_PRESET_NAME;
+	}
+
+	const legacyOldSettings = settings.oldSettings;
+	if (legacyOldSettings && typeof legacyOldSettings === "object") {
+		if (legacyOldSettings.presets && Object.prototype.hasOwnProperty.call(legacyOldSettings.presets, LEGACY_DEFAULT_PRESET_NAME)) {
+			if (!legacyOldSettings.presets[DEFAULT_PRESET_NAME]) {
+				legacyOldSettings.presets[DEFAULT_PRESET_NAME] = legacyOldSettings.presets[LEGACY_DEFAULT_PRESET_NAME];
+			}
+			delete legacyOldSettings.presets[LEGACY_DEFAULT_PRESET_NAME];
+		}
+
+		if (legacyOldSettings.selectedPreset === LEGACY_DEFAULT_PRESET_NAME) {
+			legacyOldSettings.selectedPreset = DEFAULT_PRESET_NAME;
+		}
+	}
+}
+
+function ensurePresetsMetadata(presets) {
+	if (!presets || typeof presets !== "object") return;
+
+	for (const preset of Object.values(presets)) {
+		if (preset && typeof preset === "object" && preset.trackerDef) {
+			ensureSchemaVersionField(preset.trackerDef);
+			ensureTrackerMetadata(preset.trackerDef);
 		}
 	}
 }
@@ -266,8 +314,13 @@ function localizeStaticSettingsContent() {
 	}
 }
 let localePresetRegistrationPromise = null;
+const BUILTIN_PRESET_LOCALES = new Set(["en"]);
 
-async function ensureLocalePresetsRegistered() {
+async function ensureLocalePresetsRegistered(options = {}) {
+	if (options.force) {
+		localePresetRegistrationPromise = null;
+	}
+
 	if (!localePresetRegistrationPromise) {
 		localePresetRegistrationPromise = seedLocalePresetEntries();
 	}
@@ -281,6 +334,13 @@ async function seedLocalePresetEntries() {
 	const localeIds = [];
 	let presetAdded = false;
 
+	const builtInPresetDefinition = defaultSettings.presets?.[DEFAULT_PRESET_NAME];
+	if (builtInPresetDefinition && !existingPresetNames.has(DEFAULT_PRESET_NAME)) {
+		extensionSettings.presets[DEFAULT_PRESET_NAME] = deepClone(builtInPresetDefinition);
+		presetAdded = true;
+		existingPresetNames.add(DEFAULT_PRESET_NAME);
+	}
+
 	for (const locale of getSupportedLocales()) {
 		if (!locale || !locale.id || locale.id === "auto") {
 			continue;
@@ -293,6 +353,9 @@ async function seedLocalePresetEntries() {
 
 	await Promise.all(
 		localeIds.map(async (localeId) => {
+			if (BUILTIN_PRESET_LOCALES.has(localeId)) {
+				return;
+			}
 			const definition = await loadLocalePresetDefinition(localeId);
 			if (!definition || !definition.values) {
 				return;
@@ -343,6 +406,10 @@ function sanitizePresetValues(values = {}) {
 		if (Object.prototype.hasOwnProperty.call(values, key)) {
 			sanitized[key] = deepClone(values[key]);
 		}
+	}
+	if (sanitized.trackerDef) {
+		ensureSchemaVersionField(sanitized.trackerDef);
+		ensureTrackerMetadata(sanitized.trackerDef);
 	}
 	return sanitized;
 }
@@ -915,6 +982,7 @@ function onPresetImportChange(event) {
 					extensionSettings.presets[presetName] = importedPresets[presetName];
 				}
 			}
+			ensurePresetsMetadata(extensionSettings.presets);
 			updatePresetDropdown();
 			saveSettingsDebounced();
 			toastr.success("Presets imported successfully.");
@@ -1195,7 +1263,7 @@ function onTrackerPromptResetClick() {
     }, 60000);
 
     // Bind the second-click event to reset presets
-    resetButton.one("click", function () {
+    resetButton.one("click", async () => {
         clearTimeout(timeoutId); // Clear the timeout to prevent reverting behavior
 
 		debug("Resetting tracker enhanced presets to default values while preserving connection and UI settings.");
@@ -1230,7 +1298,7 @@ function onTrackerPromptResetClick() {
             }
             
             // Update UI components
-            updatePresetDropdown();
+            await ensureLocalePresetsRegistered({ force: true });
             setSettingsInitialValues();
             processTrackerJavascript();
             

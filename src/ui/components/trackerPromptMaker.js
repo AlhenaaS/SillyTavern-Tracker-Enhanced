@@ -13,6 +13,7 @@ export class TrackerPromptMaker {
 		this.element = $('<div class="tracker-prompt-maker"></div>'); // Root element of the component.
 		this.fieldCounter = 0; // Counter to generate unique field IDs.
 		this.exampleCounter = 0;
+		this.showInternalFields = false;
 		this.init(existingObject); // Initialize the component.
 	}
 
@@ -67,6 +68,22 @@ export class TrackerPromptMaker {
 	buildUI() {
 		// Clear existing content in this.element to prevent duplication
 		this.element.empty();
+
+		const internalToggleWrapper = $('<div class="internal-toggle-wrapper"></div>');
+		const internalToggleLabel = $(`
+			<label class="show-internal-toggle">
+				<input type="checkbox" />
+				Show internal keys
+			</label>
+		`);
+		this.internalToggleInput = internalToggleLabel.find("input");
+		this.internalToggleInput.prop("checked", this.showInternalFields);
+		this.internalToggleInput.on("change", (event) => {
+			this.showInternalFields = $(event.currentTarget).is(":checked");
+			this.updateInternalFieldVisibility();
+		});
+		internalToggleWrapper.append(internalToggleLabel);
+		this.element.append(internalToggleWrapper);
 
 		// Container for fields.
 		this.fieldsContainer = $('<div class="fields-container"></div>');
@@ -263,6 +280,86 @@ export class TrackerPromptMaker {
 		return null;
 	}
 
+	normalizeFieldMetadata(metadata = {}, isNewField = false) {
+		const normalized = {
+			internal: Boolean(metadata.internal),
+			external: metadata.external !== false,
+			internalKeyId: metadata.internalKeyId || null,
+		};
+
+		if (Object.prototype.hasOwnProperty.call(metadata, "internalOnly")) {
+			normalized.internalOnly = Boolean(metadata.internalOnly);
+		} else {
+			normalized.internalOnly = normalized.internal && !normalized.external;
+		}
+
+		if (isNewField && metadata.internal === undefined && metadata.external === undefined && metadata.internalKeyId === undefined) {
+			normalized.internal = false;
+			normalized.external = true;
+			normalized.internalOnly = false;
+		}
+
+		return normalized;
+	}
+
+	updateInternalFieldVisibility() {
+		const showInternal = this.showInternalFields;
+		if (!this.fieldsContainer) return;
+
+		this.fieldsContainer.find(".field-wrapper").each((_, element) => {
+			const wrapper = $(element);
+			const metadata = wrapper.data("metadata") || {};
+			const isInternalOnly = Boolean(metadata.internalOnly);
+			if (isInternalOnly && !showInternal) {
+				wrapper.hide();
+			} else {
+				wrapper.show();
+			}
+		});
+	}
+
+	createMetadataBadges(metadata) {
+		const hasInternal = Boolean(metadata.internal);
+		const hasExternal = Boolean(metadata.external);
+		const hasKeyId = Boolean(metadata.internalKeyId);
+
+		if (!hasInternal && !hasExternal && !hasKeyId) {
+			return null;
+		}
+
+		const container = $('<div class="field-metadata-badges"></div>');
+
+		if (hasInternal || hasExternal) {
+			const badgeRow = $('<div class="field-metadata-row field-metadata-row--flags"></div>');
+			badgeRow.append('<span class="field-meta-label">Meta:</span>');
+			if (hasInternal) {
+				badgeRow.append('<span class="field-badge field-badge--internal">Internal</span>');
+			}
+			if (hasExternal) {
+				badgeRow.append('<span class="field-badge field-badge--external">External</span>');
+			}
+			container.append(badgeRow);
+		}
+
+		if (hasKeyId) {
+			const idRow = $('<div class="field-metadata-row field-metadata-row--id"></div>');
+			idRow.append('<span class="field-metadata-label">internalKeyId:</span>');
+			idRow.append(`<span class="field-badge field-badge--id">${metadata.internalKeyId}</span>`);
+			container.append(idRow);
+		}
+
+		return container;
+	}
+
+	applyReadOnlyState(fieldWrapper, metadata) {
+		if (!metadata.internalOnly) {
+			return;
+		}
+
+		fieldWrapper.find("input, textarea, select").prop("disabled", true);
+		fieldWrapper.find(".menu_button").prop("disabled", true).addClass("disabled");
+	}
+
 	/**
 	 * Adds a new field to the component.
 	 * @param {Object|null} parentObject - The parent object in the backendObject where the field should be added.
@@ -289,7 +386,17 @@ export class TrackerPromptMaker {
 			}
 		}
 
+		const metadata = this.normalizeFieldMetadata(fieldData.metadata, isNewField);
+		fieldData.metadata = metadata;
+
 		const fieldWrapper = $('<div class="field-wrapper"></div>').attr("data-field-id", fieldId);
+		fieldWrapper.data("metadata", metadata);
+		if (metadata.internal) {
+			fieldWrapper.addClass("field-wrapper--internal");
+		}
+		if (metadata.internalOnly) {
+			fieldWrapper.addClass("field-wrapper--internal-only");
+		}
 
 		// Combined div for Field Name, Static/Dynamic Toggle, and Field Type Selector
 		const nameDynamicTypeDiv = $('<div class="name-dynamic-type-wrapper"></div>');
@@ -364,8 +471,18 @@ export class TrackerPromptMaker {
 			});
 		const genderSpecificDiv = $('<div class="gender-specific-wrapper"></div>').append(genderSpecificLabel, genderSpecificSelector);
 
-		// Append field name, static/dynamic toggle, field type, and gender specific to the combined div
-		nameDynamicTypeDiv.append(fieldNameDiv, presenceDiv, fieldTypeDiv, genderSpecificDiv);
+		// Append field name, presence, and type selectors
+		nameDynamicTypeDiv.append(fieldNameDiv, presenceDiv, fieldTypeDiv);
+
+		const metaRowContainer = $('<div class="field-meta-row"></div>');
+		genderSpecificDiv.addClass("field-gender-specific");
+		metaRowContainer.append(genderSpecificDiv);
+
+		const metadataBadges = this.createMetadataBadges(metadata);
+		if (metadataBadges) {
+			metaRowContainer.append(metadataBadges);
+		}
+		nameDynamicTypeDiv.append(metaRowContainer);
 
 		// Append the combined div to fieldWrapper
 		fieldWrapper.append(nameDynamicTypeDiv);
@@ -420,6 +537,9 @@ export class TrackerPromptMaker {
 		// Add Nested Field Button
 		const addNestedFieldBtn = $('<button class="menu_button interactable">Add Nested Field</button>')
 			.on("click", () => {
+				if (metadata.internalOnly) {
+					return;
+				}
 				this.addField(null, fieldId);
 				// After adding a nested field, make it sortable
 				const nestedFieldData = this.getFieldDataById(fieldId).nestedFields;
@@ -429,9 +549,10 @@ export class TrackerPromptMaker {
 			.hide(); // Initially hidden
 
 		// Show the button if the field type allows nesting
-		if (TrackerPromptMaker.NESTING_FIELD_TYPES.includes(fieldData.type)) {
+		if (TrackerPromptMaker.NESTING_FIELD_TYPES.includes(fieldData.type) && !metadata.internalOnly) {
 			addNestedFieldBtn.show();
 		}
+		addNestedFieldBtn.prop("disabled", metadata.internalOnly);
 
 		buttonsWrapper.append(addNestedFieldBtn);
 
@@ -439,6 +560,9 @@ export class TrackerPromptMaker {
 		const removeFieldBtn = $('<button class="menu_button interactable">Remove Field</button>').on("click", () => {
 			this.removeField(fieldId, fieldWrapper);
 		});
+		if (metadata.internal) {
+			removeFieldBtn.hide();
+		}
 		buttonsWrapper.append(removeFieldBtn);
 
 		fieldWrapper.append(buttonsWrapper);
@@ -465,6 +589,7 @@ export class TrackerPromptMaker {
 					defaultValue: fieldData.defaultValue || "",
 					exampleValues: [...fieldData.exampleValues],
 					nestedFields: {},
+					metadata: metadata,
 				};
 			} else {
 				error(`Parent field with ID ${parentFieldId} not found.`);
@@ -478,6 +603,7 @@ export class TrackerPromptMaker {
 				defaultValue: fieldData.defaultValue || "",
 				exampleValues: [...fieldData.exampleValues],
 				nestedFields: {},
+				metadata: metadata,
 			};
 		}
 
@@ -500,6 +626,9 @@ export class TrackerPromptMaker {
 				this.addField(null, fieldId, nestedFieldData, nestedFieldId, false);
 			});
 		}
+
+		this.applyReadOnlyState(fieldWrapper, metadata);
+		this.updateInternalFieldVisibility();
 	}
 
 	/**
@@ -508,6 +637,15 @@ export class TrackerPromptMaker {
 	 * @param {jQuery} fieldWrapper - The jQuery element of the field wrapper in the UI.
 	 */
 	removeField(fieldId, fieldWrapper) {
+		const fieldData = this.getFieldDataById(fieldId);
+		if (fieldData?.metadata?.internal) {
+			warn(`Attempted to remove internal field "${fieldData.name}" ignored.`);
+			if (typeof toastr !== "undefined") {
+				toastr.warning("Internal fields cannot be removed.");
+			}
+			return;
+		}
+
 		// Confirm before removing
 		if (confirm("Are you sure you want to remove this field?")) {
 			// Remove from backend object
@@ -652,7 +790,11 @@ export class TrackerPromptMaker {
 		const collectAllFields = (fields) => {
 			Object.keys(fields).forEach((fieldId) => {
 				const fieldData = fields[fieldId];
-				allFields.push(fieldId);
+				const metadata = fieldData.metadata || {};
+				const isInternalOnly = Boolean(metadata.internal) && metadata.external === false;
+				if (!isInternalOnly) {
+					allFields.push(fieldId);
+				}
 				if (fieldData.nestedFields && Object.keys(fieldData.nestedFields).length > 0) {
 					collectAllFields(fieldData.nestedFields);
 				}
@@ -683,7 +825,11 @@ export class TrackerPromptMaker {
 		const collectAllFields = (fields) => {
 			Object.keys(fields).forEach((fieldId) => {
 				const fieldData = fields[fieldId];
-				allFields.push(fieldId);
+				const metadata = fieldData.metadata || {};
+				const isInternalOnly = Boolean(metadata.internal) && metadata.external === false;
+				if (!isInternalOnly) {
+					allFields.push(fieldId);
+				}
 				if (fieldData.nestedFields && Object.keys(fieldData.nestedFields).length > 0) {
 					collectAllFields(fieldData.nestedFields);
 				}
@@ -723,6 +869,10 @@ export class TrackerPromptMaker {
 	 */
 	addExampleValue(fieldWrapper, exampleValue = "", pushToBackend = true) {
 		const fieldId = fieldWrapper.attr("data-field-id");
+		const metadata = fieldWrapper.data("metadata") || {};
+		if (metadata.internalOnly && pushToBackend) {
+			return;
+		}
 
 		// Example value input
 		const exampleValueInput = $('<input class="text_pole" type="text" placeholder="Example Value">')
@@ -839,6 +989,8 @@ export class TrackerPromptMaker {
 			// Make top-level container sortable
 			this.makeFieldsSortable(this.fieldsContainer, this.backendObject);
 
+			this.updateInternalFieldVisibility();
+
 			debug("Populated from existing object.");
 		} catch (err) {
 			error("Error populating from existing object:", err);
@@ -876,11 +1028,15 @@ export class TrackerPromptMaker {
 	rebuildBackendObjectFromDOM() {
 		// Reset a global rebuild counter
 		let rebuildCounter = 0;
+		const previousBackendObject = this.backendObject;
 
-		const rebuildObject = (container) => {
+		const rebuildObject = (container, sourceBackend) => {
 			const newObject = {};
 			container.children(".field-wrapper").each((_, fieldEl) => {
 				const $fieldEl = $(fieldEl);
+				const originalFieldId = $fieldEl.attr("data-field-id");
+				const sourceFieldData = this.getFieldDataById(originalFieldId, sourceBackend || {});
+				const metadata = this.normalizeFieldMetadata(sourceFieldData?.metadata || {}, false);
 
 				// Use the global rebuildCounter rather than the index
 				const fieldId = `field-${rebuildCounter++}`;
@@ -898,12 +1054,15 @@ export class TrackerPromptMaker {
 
 				// Rename the data-field-id attribute to maintain consistency
 				$fieldEl.attr("data-field-id", fieldId);
+				$fieldEl.data("metadata", metadata);
+				$fieldEl.toggleClass("field-wrapper--internal", metadata.internal);
+				$fieldEl.toggleClass("field-wrapper--internal-only", metadata.internalOnly);
 
 				// Rebuild nested fields recursively
 				const $nestedContainer = $fieldEl.find("> .nested-fields-container");
 				let nestedFields = {};
 				if ($nestedContainer.length > 0 && $nestedContainer.children(".field-wrapper").length > 0) {
-					nestedFields = rebuildObject($nestedContainer);
+					nestedFields = rebuildObject($nestedContainer, sourceFieldData?.nestedFields || {});
 				}
 
 				newObject[fieldId] = {
@@ -914,13 +1073,16 @@ export class TrackerPromptMaker {
 					defaultValue: defaultValue,
 					exampleValues: exampleValues,
 					nestedFields: nestedFields,
+					metadata: metadata,
 				};
+
+				this.applyReadOnlyState($fieldEl, metadata);
 			});
 			return newObject;
 		};
 
 		// Rebuild the entire backend object using the global counter
-		this.backendObject = rebuildObject(this.fieldsContainer);
+		this.backendObject = rebuildObject(this.fieldsContainer, previousBackendObject);
 
 		// Update fieldCounter to one plus the highest index found
 		this.fieldCounter = rebuildCounter;
@@ -942,6 +1104,7 @@ export class TrackerPromptMaker {
 
 		debug("Rebuilt backend object from DOM.", { backendObject: this.backendObject });
 
+		this.updateInternalFieldVisibility();
 		this.syncBackendObject();
 	}
 
