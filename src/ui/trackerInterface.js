@@ -54,19 +54,19 @@ export class TrackerInterface {
         const editorHeader = `<div id="trackerInterfaceHeader">Tracker Enhanced</div>`;
         const editorContainer = `<div id="trackerInterfaceContents" class="scrollY"></div>`;
         const editorFooter = `<div id="trackerInterfaceFooter">
-            <div class="tracker-interface-toggle-row interactable" style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-                <label id="trackerInterfaceInjectionToggleLabel" class="tracker-interface-toggle interactable" style="display:flex;align-items:center;gap:4px;">
+            <div class="tracker-interface-toggle-row interactable">
+                <label id="trackerInterfaceInjectionToggleLabel" class="tracker-interface-toggle interactable">
                     <input type="checkbox" id="trackerInterfaceInjectionToggle">
                     <span>Inject tracker</span>
                 </label>
             </div>
-            <div class="tracker-interface-button-row" style="display:flex;align-items:center;gap:8px;">
+            <div class="tracker-interface-button-row">
                 <button id="trackerInterfaceViewButton" class="menu_button menu_button_default interactable" tabindex="0">View</button>
                 <button id="trackerInterfaceEditButton" class="menu_button menu_button_default interactable" tabindex="0">Edit</button>
                 <button id="trackerInterfaceRegenerateTracker" class="menu_button menu_button_default interactable" tabindex="0">Regenerate</button>
                 <select id="trackerInterfaceRegenOptions" class="tracker-regen-options">
+                    <option value="all-fields" selected>All Fields</option>
                     <option value="no-static">No Static Fields</option>
-                    <option value="all-fields">All Fields</option>
                     <option value="static-only">Static Only</option>
                 </select>
             </div>
@@ -176,18 +176,19 @@ export class TrackerInterface {
      */
     async regenerateTracker() {
         const option = this.regenOptions.val();
-        let fieldIncludeOption;
+        let fieldIncludeOption = FIELD_INCLUDE_OPTIONS.ALL;
 
         switch (option) {
-            case 'all-fields':
-                fieldIncludeOption = FIELD_INCLUDE_OPTIONS.ALL;
+            case 'no-static':
+                fieldIncludeOption = FIELD_INCLUDE_OPTIONS.DYNAMIC;
                 break;
             case 'static-only':
                 fieldIncludeOption = FIELD_INCLUDE_OPTIONS.STATIC;
                 // Additional logic for static-only if needed
                 break;
+            case 'all-fields':
             default:
-                fieldIncludeOption = FIELD_INCLUDE_OPTIONS.DYNAMIC;
+                fieldIncludeOption = FIELD_INCLUDE_OPTIONS.ALL;
         }
 
         // Show loading indicator
@@ -423,5 +424,3 @@ export class TrackerInterface {
         });
     }
 }
-
-

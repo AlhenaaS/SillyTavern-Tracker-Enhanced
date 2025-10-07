@@ -359,7 +359,8 @@ function removeInternalOnlyFields(trackerNode, backendNode) {
 			continue;
 		}
 
-		if (metadata.internal && metadata.external === false) {
+		const isInternalOnly = metadata.internalOnly === true || (metadata.internal && metadata.external === false);
+		if (isInternalOnly) {
 			delete trackerNode[fieldName];
 			continue;
 		}

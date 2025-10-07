@@ -381,7 +381,7 @@ async function sendIndependentGenerationRequest(prompt, maxTokens = null) {
  * @param {string} includedFields - Which fields to include in the tracker.
  * @returns {object|null} The new tracker object or null if failed.
  */
-export async function generateTracker(mesNum, includedFields = FIELD_INCLUDE_OPTIONS.DYNAMIC) {
+export async function generateTracker(mesNum, includedFields = FIELD_INCLUDE_OPTIONS.ALL) {
 	if (mesNum == null || mesNum < 0 || chat[mesNum].extra?.isSmallSys) return null;
 
 	log(`[Tracker Enhanced] 🚀 Starting tracker generation for message ${mesNum} using INDEPENDENT connection`);
@@ -488,7 +488,7 @@ async function sendGenerateTrackerRequest(systemPrompt, requestPrompt, responseL
  * @param {string} includedFields
  * @returns {string} The system prompt.
  */
-function getGenerateSystemPrompt(mesNum, includedFields = FIELD_INCLUDE_OPTIONS.DYNAMIC) {
+function getGenerateSystemPrompt(mesNum, includedFields = FIELD_INCLUDE_OPTIONS.ALL) {
 	const trackerSystemPrompt = getSystemPrompt(extensionSettings.generateSystemPrompt, includedFields);
 	const characterDescriptions = getCharacterDescriptions();
 	const trackerExamples = getExampleTrackers(includedFields);

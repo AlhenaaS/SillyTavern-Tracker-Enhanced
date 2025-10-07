@@ -1,22 +1,64 @@
+#trackerEnhancedInterface,
 #trackerInterface {
 	top: unset;
+	display: flex;
 	flex-direction: column;
+	align-items: stretch;
 	padding: 10px;
-	gap: 10px;
+	gap: 12px;
+	max-height: min(85vh, 720px);
+	overflow: hidden;
+
+	.panelControlBar {
+		flex-shrink: 0;
+	}
+
 	#trackerInterfaceHeader {
 		font-size: 17.55px;
 		font-weight: 700;
+		flex-shrink: 0;
+	}
+
+	#trackerInterfaceContents {
+		flex: 1 1 auto;
+		min-height: 0;
+		padding-right: 6px;
+		overflow-y: auto;
 	}
 
 	#trackerInterfaceFooter {
 		display: flex;
-		justify-content: center;
-		align-items: center;
-		flex-wrap: nowrap;
-		gap: 10px;
+		flex-direction: column;
+		align-items: stretch;
+		flex-shrink: 0;
+		gap: 8px;
 
-		button {
-			width: fit-content;
+		.tracker-interface-toggle-row {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			flex-wrap: wrap;
+
+			label {
+				display: flex;
+				align-items: center;
+				gap: 6px;
+			}
+		}
+
+		.tracker-interface-button-row {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			flex-wrap: wrap;
+
+			button {
+				width: fit-content;
+			}
+
+			select {
+				flex-shrink: 0;
+			}
 		}
 	}
 }
