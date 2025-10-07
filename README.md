@@ -4,6 +4,11 @@ An advanced, feature-rich tracker extension for SillyTavern that provides compre
 
 ## Changelog
 
+06-10-2025
+- Embedded tracker field metadata directly into `src/settings/defaultSettings.js` and shipped presets, eliminating the hidden override map.
+- Added a one-click metadata upgrade prompt (and `window.trackerEnhanced.upgradeTrackerMetadata()` helper) for legacy presets that still lack embedded metadata.
+- Tracker regeneration and slash command defaults now send the complete schema (`include=all`) so internal-only fields remain available to the tracker LLM.
+
 05-10-2025
 - Added a configurable **“Roleplay Injection Prompt”**, allowing injected tracker payloads to begin with a short guidance line.  
   - This helps the roleplay LLM understand the purpose of the tracker.  
@@ -121,4 +126,3 @@ When selecting a "Dedicated Completion Preset", you'll see compatibility indicat
 
 - **SillyTavern**: https://github.com/SillyTavern/SillyTavern
 - **Original Tracker**: https://github.com/kaldigo/SillyTavern-Tracker
-

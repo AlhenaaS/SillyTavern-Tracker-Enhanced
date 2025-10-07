@@ -16,7 +16,13 @@
           "18:45:50; 10/16/2024 (Wednesday)",
           "15:10:20; 10/16/2024 (Wednesday)"
         ],
-        "nestedFields": {}
+        "nestedFields": {},
+        "metadata": {
+          "internal": true,
+          "external": true,
+          "internalKeyId": "time",
+          "internalOnly": false
+        }
       },
       "field-1": {
         "name": "Location",
@@ -29,7 +35,12 @@
           "Main Gym Hall, Maple Street Fitness Center, Denver, CO",
           "South Beach, Miami, FL"
         ],
-        "nestedFields": {}
+        "nestedFields": {},
+        "metadata": {
+          "internal": false,
+          "external": true,
+          "internalOnly": false
+        }
       },
       "field-2": {
         "name": "Weather",
@@ -42,7 +53,12 @@
           "Clear skies, warm evening",
           "Sunny, gentle sea breeze"
         ],
-        "nestedFields": {}
+        "nestedFields": {},
+        "metadata": {
+          "internal": false,
+          "external": true,
+          "internalOnly": false
+        }
       },
       "field-3": {
         "name": "Topics",
@@ -67,7 +83,12 @@
               "Workout",
               "Relaxation"
             ],
-            "nestedFields": {}
+            "nestedFields": {},
+            "metadata": {
+              "internal": false,
+              "external": true,
+              "internalOnly": false
+            }
           },
           "field-5": {
             "name": "EmotionalTone",
@@ -80,7 +101,12 @@
               "Focused",
               "Calm"
             ],
-            "nestedFields": {}
+            "nestedFields": {},
+            "metadata": {
+              "internal": false,
+              "external": true,
+              "internalOnly": false
+            }
           },
           "field-6": {
             "name": "InteractionTheme",
@@ -93,8 +119,18 @@
               "Supportive",
               "Casual"
             ],
-            "nestedFields": {}
+            "nestedFields": {},
+            "metadata": {
+              "internal": false,
+              "external": true,
+              "internalOnly": false
+            }
           }
+        },
+        "metadata": {
+          "internal": false,
+          "external": true,
+          "internalOnly": false
         }
       },
       "field-7": {
@@ -108,7 +144,12 @@
           "[\"Daniel Lee\", \"Olivia Harris\"]",
           "[\"Liam Johnson\", \"Emily Clark\"]"
         ],
-        "nestedFields": {}
+        "nestedFields": {},
+        "metadata": {
+          "internal": false,
+          "external": true,
+          "internalOnly": false
+        }
       },
       "field-8": {
         "name": "Characters",
@@ -134,7 +175,13 @@
               "\"Female ♀️\"",
               "[\"Trans ⚧️\", \"Unkown ❓\"]"
             ],
-            "nestedFields": {}
+            "nestedFields": {},
+            "metadata": {
+              "internal": true,
+              "external": true,
+              "internalKeyId": "characterGender",
+              "internalOnly": false
+            }
           },
           "field-10": {
             "name": "Age",
@@ -148,7 +195,12 @@
               "\"18\"",
               "\"32\""
             ],
-            "nestedFields": {}
+            "nestedFields": {},
+            "metadata": {
+              "internal": false,
+              "external": true,
+              "internalOnly": false
+            }
           },
           "field-11": {
             "name": "Hair",
@@ -162,7 +214,12 @@
               "[\"Short brown hair, damp with sweat\", \"Medium-length red hair, tied up in a high ponytail\"]",
               "[\"Short sandy blonde hair, slightly tousled\", \"Long wavy brown hair, loose and flowing\"]"
             ],
-            "nestedFields": {}
+            "nestedFields": {},
+            "metadata": {
+              "internal": false,
+              "external": true,
+              "internalOnly": false
+            }
           },
           "field-12": {
             "name": "Makeup",
@@ -176,7 +233,12 @@
               "[\"None\", \"Minimal, sweat-resistant mascara\"]",
               "[\"None\", \"Sunscreen applied, no additional makeup\"]"
             ],
-            "nestedFields": {}
+            "nestedFields": {},
+            "metadata": {
+              "internal": false,
+              "external": true,
+              "internalOnly": false
+            }
           },
           "field-13": {
             "name": "Outfit",
@@ -190,7 +252,12 @@
               "[\"Gray moisture-wicking t-shirt; Black athletic shorts; White ankle socks; Gray running shoes; Black sports watch; Blue compression boxer briefs\", \"Black sports tank top; Purple athletic leggings; Black athletic sneakers; White ankle socks; Fitness tracker bracelet; Black racerback sports bra; Black seamless athletic bikini briefs matching the bra\"]",
               "[\"Light blue short-sleeve shirt; Khaki shorts; Brown leather sandals; Silver wristwatch; Blue plaid cotton boxer shorts\", \"White sundress over a red halter bikini; Straw hat; Brown flip-flops; Gold anklet; Red halter bikini top; Red tie-side bikini bottoms matching the top\"]"
             ],
-            "nestedFields": {}
+            "nestedFields": {},
+            "metadata": {
+              "internal": false,
+              "external": true,
+              "internalOnly": false
+            }
           },
           "field-14": {
             "name": "StateOfDress",
@@ -204,7 +271,12 @@
               "[\"Workout attire, lightly perspiring\", \"Workout attire, energized\"]",
               "[\"Shirt and sandals removed, placed on beach towel\", \"Sundress and hat removed, placed on beach chair\"]"
             ],
-            "nestedFields": {}
+            "nestedFields": {},
+            "metadata": {
+              "internal": false,
+              "external": true,
+              "internalOnly": false
+            }
           },
           "field-15": {
             "name": "PostureAndInteraction",
@@ -218,7 +290,12 @@
               "[\"Lifting weights at the bench press, focused on form\", \"Running on the treadmill at a steady pace\"]",
               "[\"Standing at the water's edge, feet in the surf\", \"Lying on a beach towel, sunbathing with eyes closed\"]"
             ],
-            "nestedFields": {}
+            "nestedFields": {},
+            "metadata": {
+              "internal": false,
+              "external": true,
+              "internalOnly": false
+            }
           },
           "field-16": {
             "name": "BustWaistHip",
@@ -232,7 +309,12 @@
               "\"B80:W60:H86 (CM)\"",
               "\"B79:W56:H83 (CM)\""
             ],
-            "nestedFields": {}
+            "nestedFields": {},
+            "metadata": {
+              "internal": false,
+              "external": true,
+              "internalOnly": false
+            }
           },
           "field-17": {
             "name": "FertilityCycle",
@@ -246,7 +328,12 @@
               "[\"Ovulating 🌺 (High Risk!)\", \"Luteal 🌙 (Moderate Risk)\"]",
               "[\"Pregnant 👶\"]"
             ],
-            "nestedFields": {}
+            "nestedFields": {},
+            "metadata": {
+              "internal": false,
+              "external": true,
+              "internalOnly": false
+            }
           },
           "field-18": {
             "name": "Pregnancy",
@@ -260,7 +347,12 @@
               "\"1st trimester, 0 days, impregnated by Harry\"",
               "\"3st trimester, 200 days, impregnated by Harry\""
             ],
-            "nestedFields": {}
+            "nestedFields": {},
+            "metadata": {
+              "internal": false,
+              "external": true,
+              "internalOnly": false
+            }
           },
           "field-19": {
             "name": "Virginity",
@@ -274,7 +366,12 @@
               "\"Virgin\"",
               "\"Lost to Sam Witwicky\""
             ],
-            "nestedFields": {}
+            "nestedFields": {},
+            "metadata": {
+              "internal": false,
+              "external": true,
+              "internalOnly": false
+            }
           },
           "field-20": {
             "name": "Traits",
@@ -288,7 +385,12 @@
               "[\"Giant Penis: causes tearing pain to partner during sex.\", \"Emotional Intelligence: deeply philosophical and sentimental\"]",
               "[\"Tight Pussy: increase partner pleasure during sex.\", \"Masochist: gain pleasure from pain.\", \"Sadistic: deriving pleasure from inflicting pain.\"]"
             ],
-            "nestedFields": {}
+            "nestedFields": {},
+            "metadata": {
+              "internal": false,
+              "external": true,
+              "internalOnly": false
+            }
           },
           "field-21": {
             "name": "Children",
@@ -302,8 +404,19 @@
               "[\"1st Born: Eve, Female ♀️, child with Harry\"]",
               "[\"1st Born: Aya, Female ♀️, child with Bob\", \"2nd Born: Max, Male ♂️, child with Sam\"]"
             ],
-            "nestedFields": {}
+            "nestedFields": {},
+            "metadata": {
+              "internal": false,
+              "external": true,
+              "internalOnly": false
+            }
           }
+        },
+        "metadata": {
+          "internal": true,
+          "external": true,
+          "internalKeyId": "characters",
+          "internalOnly": false
         }
       }
     },

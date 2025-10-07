@@ -4,7 +4,7 @@ import { getContext } from '../../../../../../scripts/extensions.js';
 import { extensionFolderPath, extensionSettings } from "../../index.js";
 import { error, debug, warn, toTitleCase } from "../../lib/utils.js";
 import { getSupportedLocales, setLocale, t, translateHtml, onLocaleChange, getCurrentLocale } from "../../lib/i18n.js";
-import { DEFAULT_PRESET_NAME, defaultSettings, ensureSchemaVersionField, ensureTrackerMetadata, generationTargets } from "./defaultSettings.js";
+import { DEFAULT_PRESET_NAME, TRACKER_METADATA_VERSION, defaultSettings, ensureSchemaVersionField, ensureTrackerMetadata, generationTargets } from "./defaultSettings.js";
 import { generationCaptured } from "../../lib/interconnection.js";
 import { TrackerPromptMakerModal } from "../ui/trackerPromptMakerModal.js";
 import { TrackerTemplateGenerator } from "../ui/components/trackerTemplateGenerator.js";
@@ -130,6 +130,8 @@ export async function initSettings() {
 	migrateDefaultPresetName(extensionSettings);
 
 	const currentSettings = { ...extensionSettings };
+	const hadExistingSettings = Object.keys(currentSettings).length > 0;
+	const hadMetadataSchemaVersion = Object.prototype.hasOwnProperty.call(currentSettings, "metadataSchemaVersion");
 
 	if (!currentSettings.trackerDef) {
 		const allowedKeys = ["enabled", "generateContextTemplate", "generateSystemPrompt", "generateRequestPrompt", "roleplayPrompt", "characterDescriptionTemplate", "mesTrackerTemplate", "numberOfMessages", "responseLength", "debugMode"];
@@ -153,6 +155,10 @@ export async function initSettings() {
 		Object.assign(extensionSettings, defaultSettings, currentSettings);
 	}
 
+	if (hadExistingSettings && !hadMetadataSchemaVersion) {
+		extensionSettings.metadataSchemaVersion = 0;
+	}
+
 	delete extensionSettings.localePresetSnapshot;
 
 	if (!extensionSettings.selectedPreset) {
@@ -160,8 +166,20 @@ export async function initSettings() {
 	}
 
 	ensureSchemaVersionField(extensionSettings.trackerDef);
-	ensureTrackerMetadata(extensionSettings.trackerDef);
-	ensurePresetsMetadata(extensionSettings.presets);
+	const trackerMetadataResult = ensureTrackerMetadata(extensionSettings.trackerDef);
+	const presetMetadataResult = ensurePresetsMetadata(extensionSettings.presets);
+
+	const currentMetadataVersion = extensionSettings.metadataSchemaVersion ?? 0;
+	const metadataNeedsUpgrade =
+		currentMetadataVersion < TRACKER_METADATA_VERSION ||
+		trackerMetadataResult.legacyDetected ||
+		presetMetadataResult.legacyDetected;
+
+	if (metadataNeedsUpgrade) {
+		showMetadataUpgradePrompt();
+	} else if (currentMetadataVersion < TRACKER_METADATA_VERSION) {
+		extensionSettings.metadataSchemaVersion = TRACKER_METADATA_VERSION;
+	}
 
 	saveSettingsDebounced();
 
@@ -219,14 +237,81 @@ function migrateDefaultPresetName(settings) {
 }
 
 function ensurePresetsMetadata(presets) {
-	if (!presets || typeof presets !== "object") return;
+	const result = { changed: false, legacyDetected: false };
+	if (!presets || typeof presets !== "object") return result;
 
 	for (const preset of Object.values(presets)) {
 		if (preset && typeof preset === "object" && preset.trackerDef) {
 			ensureSchemaVersionField(preset.trackerDef);
-			ensureTrackerMetadata(preset.trackerDef);
+			const metadataResult = ensureTrackerMetadata(preset.trackerDef);
+			result.changed = result.changed || metadataResult.changed;
+			result.legacyDetected = result.legacyDetected || metadataResult.legacyDetected;
 		}
 	}
+
+	return result;
+}
+
+let metadataUpgradeToast = null;
+let metadataUpgradePromptShown = false;
+
+async function upgradeLegacyTrackerMetadata() {
+	ensureSchemaVersionField(extensionSettings.trackerDef);
+	const trackerResult = ensureTrackerMetadata(extensionSettings.trackerDef);
+	const presetResult = ensurePresetsMetadata(extensionSettings.presets);
+
+	extensionSettings.metadataSchemaVersion = TRACKER_METADATA_VERSION;
+	saveSettingsDebounced();
+
+	if (metadataUpgradeToast && typeof toastr !== "undefined") {
+		try {
+			toastr.clear(metadataUpgradeToast);
+		} catch (err) {
+			debug("Failed to clear metadata upgrade toast", err);
+		}
+		metadataUpgradeToast = null;
+	}
+
+	if (typeof toastr !== "undefined") {
+		toastr.success("Tracker metadata upgraded to the latest format.", "Tracker Enhanced");
+	}
+
+	metadataUpgradePromptShown = false;
+	return {
+		trackerChanged: trackerResult.changed,
+		presetsChanged: presetResult.changed,
+	};
+}
+
+function showMetadataUpgradePrompt() {
+	if (metadataUpgradePromptShown) return;
+	if (typeof toastr === "undefined") {
+		debug("Legacy tracker metadata detected; toastr unavailable for prompt.");
+		return;
+	}
+
+	metadataUpgradePromptShown = true;
+	const message = "Legacy tracker metadata detected. Click to upgrade your tracker definitions now.";
+	const title = "Tracker Enhanced Metadata Upgrade";
+	const toast = toastr.info(message, title, {
+		closeButton: true,
+		tapToDismiss: false,
+		timeOut: 0,
+		extendedTimeOut: 0,
+	});
+
+	if (toast && typeof toast.on === "function") {
+		toast.on("click", async () => {
+			await upgradeLegacyTrackerMetadata();
+		});
+	}
+
+	metadataUpgradeToast = toast;
+}
+
+if (typeof window !== "undefined") {
+	window.trackerEnhanced = window.trackerEnhanced || {};
+	window.trackerEnhanced.upgradeTrackerMetadata = upgradeLegacyTrackerMetadata;
 }
 
 /**

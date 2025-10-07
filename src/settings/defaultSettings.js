@@ -18,40 +18,43 @@ const SCHEMA_VERSION_FIELD_DEFINITION = {
 	},
 };
 
-const METADATA_OVERRIDES = [
-	{
-		path: ["Schema Version"],
-		metadata: {
+export const TRACKER_METADATA_VERSION = 1;
+
+const SPECIAL_FIELD_METADATA = new Map([
+	[
+		"Schema Version",
+		{
 			internal: true,
 			external: false,
 			internalKeyId: "schemaVersion",
+			internalOnly: true,
 		},
-	},
-	{
-		path: ["Time"],
-		metadata: {
+	],
+	[
+		"Time",
+		{
 			internal: true,
 			external: true,
 			internalKeyId: "time",
 		},
-	},
-	{
-		path: ["Characters"],
-		metadata: {
+	],
+	[
+		"Characters",
+		{
 			internal: true,
 			external: true,
 			internalKeyId: "characters",
 		},
-	},
-	{
-		path: ["Characters", "Gender"],
-		metadata: {
+	],
+	[
+		"Characters>Gender",
+		{
 			internal: true,
 			external: true,
 			internalKeyId: "characterGender",
 		},
-	},
-];
+	],
+]);
 
 function cloneDefinition(definition) {
 	return JSON.parse(JSON.stringify(definition));
@@ -78,34 +81,9 @@ export function ensureSchemaVersionField(definition) {
 	definition[fieldId] = cloneDefinition(SCHEMA_VERSION_FIELD_DEFINITION);
 }
 
-function pathsMatch(actualPath, patternPath) {
-	if (actualPath.length !== patternPath.length) {
-		return false;
-	}
-	for (let index = 0; index < patternPath.length; index++) {
-		const patternSegment = patternPath[index];
-		if (patternSegment === "*") {
-			continue;
-		}
-		if (patternSegment !== actualPath[index]) {
-			return false;
-		}
-	}
-	return true;
-}
-
-function findMetadataOverride(path) {
-	for (const override of METADATA_OVERRIDES) {
-		if (pathsMatch(path, override.path)) {
-			return cloneDefinition(override.metadata);
-		}
-	}
-	return null;
-}
-
 function normalizeMetadata(metadata = {}) {
 	const normalized = {
-		internal: Boolean(metadata.internal),
+		internal: metadata.internal === true,
 		external: metadata.external !== false,
 		internalKeyId: metadata.internalKeyId || null,
 	};
@@ -119,33 +97,45 @@ function normalizeMetadata(metadata = {}) {
 	return normalized;
 }
 
-function applyMetadataRecursive(fields, path = []) {
+function applyMetadataRecursive(fields, path = [], context = { changed: false, legacyDetected: false }) {
 	for (const field of Object.values(fields || {})) {
-		if (!field || typeof field !== "object") {
-			continue;
-		}
+		if (!field || typeof field !== "object") continue;
 
 		const currentPath = [...path, field.name || ""];
-		const normalizedMetadata = normalizeMetadata(field.metadata);
-		const overrideMetadata = findMetadataOverride(currentPath);
-		if (overrideMetadata) {
-			Object.assign(normalizedMetadata, overrideMetadata);
-			normalizedMetadata.internalOnly = normalizedMetadata.internal && !normalizedMetadata.external;
+		const pathKey = currentPath.join(">");
+
+		const providedMetadata = field.metadata;
+		if (!providedMetadata || typeof providedMetadata !== "object") {
+			context.legacyDetected = true;
 		}
-		field.metadata = normalizedMetadata;
+
+		const specialMetadata = SPECIAL_FIELD_METADATA.get(pathKey);
+		const normalizedMetadata = normalizeMetadata({
+			...providedMetadata,
+			...(specialMetadata ? cloneDefinition(specialMetadata) : {}),
+		});
+
+		if (!providedMetadata || !_.isEqual(providedMetadata, normalizedMetadata)) {
+			context.changed = true;
+			field.metadata = normalizedMetadata;
+		} else {
+			field.metadata = normalizedMetadata;
+		}
 
 		if (field.nestedFields && Object.keys(field.nestedFields).length > 0) {
-			applyMetadataRecursive(field.nestedFields, currentPath);
+			applyMetadataRecursive(field.nestedFields, currentPath, context);
 		}
 	}
+
+	return context;
 }
 
 export function ensureTrackerMetadata(definition) {
 	if (!definition || typeof definition !== "object") {
-		return definition;
+		return { changed: false, legacyDetected: false };
 	}
-	applyMetadataRecursive(definition, []);
-	return definition;
+
+	return applyMetadataRecursive(definition, []);
 }
 
 //#region Setting Enums
@@ -415,7 +405,12 @@ const trackerDef = {
 			"18:45:50; 10/16/2024 (Wednesday)",
 			"15:10:20; 10/16/2024 (Wednesday)"
 		],
-		"nestedFields": {}
+		"nestedFields": {},
+		"metadata": {
+			"internal": true,
+			"external": true,
+			"internalKeyId": "time"
+		}
 	},
 	"field-1": {
 		"name": "Location",
@@ -428,7 +423,11 @@ const trackerDef = {
 			"Main Gym Hall, Maple Street Fitness Center, Denver, CO",
 			"South Beach, Miami, FL"
 		],
-		"nestedFields": {}
+		"nestedFields": {},
+		"metadata": {
+			"internal": false,
+			"external": true
+		}
 	},
 	"field-2": {
 		"name": "Weather",
@@ -441,7 +440,11 @@ const trackerDef = {
 			"Clear skies, warm evening",
 			"Sunny, gentle sea breeze"
 		],
-		"nestedFields": {}
+		"nestedFields": {},
+		"metadata": {
+			"internal": false,
+			"external": true
+		}
 	},
 	"field-3": {
 		"name": "Topics",
@@ -466,7 +469,11 @@ const trackerDef = {
 				"Workout",
 				"Relaxation"
 			],
-			"nestedFields": {}
+			"nestedFields": {},
+			"metadata": {
+				"internal": false,
+				"external": true
+			}
 			},
 			"field-5": {
 			"name": "EmotionalTone",
@@ -479,21 +486,33 @@ const trackerDef = {
 				"Focused",
 				"Calm"
 			],
-			"nestedFields": {}
-			},
-			"field-6": {
-			"name": "InteractionTheme",
-			"type": "STRING",
-			"presence": "DYNAMIC",
-			"prompt": "**One- or two-word topic** describing primary type of interactions or relationships in the scene.",
-			"defaultValue": "<Updated Interaction Theme if changed>",
-			"exampleValues": [
-				"Professional",
-				"Supportive",
-				"Casual"
-			],
-			"nestedFields": {}
+			"nestedFields": {},
+			"metadata": {
+				"internal": false,
+				"external": true
 			}
+			},
+		"field-6": {
+		"name": "InteractionTheme",
+		"type": "STRING",
+		"presence": "DYNAMIC",
+		"prompt": "**One- or two-word topic** describing primary type of interactions or relationships in the scene.",
+		"defaultValue": "<Updated Interaction Theme if changed>",
+		"exampleValues": [
+			"Professional",
+			"Supportive",
+			"Casual"
+		],
+		"nestedFields": {},
+		"metadata": {
+			"internal": false,
+			"external": true
+		}
+		}
+		},
+		"metadata": {
+			"internal": false,
+			"external": true
 		}
 	},
 	"field-7": {
@@ -507,7 +526,11 @@ const trackerDef = {
 			"[\"Daniel Lee\", \"Olivia Harris\"]",
 			"[\"Liam Johnson\", \"Emily Clark\"]"
 		],
-		"nestedFields": {}
+		"nestedFields": {},
+		"metadata": {
+			"internal": false,
+			"external": true
+		}
 	},
 	"field-8": {
 		"name": "Characters",
@@ -533,7 +556,12 @@ const trackerDef = {
 				"\"Female ♀️\"",
 				"[\"Trans ⚧️\", \"Unkown ❓\"]"
 			],
-			"nestedFields": {}
+			"nestedFields": {},
+			"metadata": {
+				"internal": true,
+				"external": true,
+				"internalKeyId": "characterGender"
+			}
 			},
 			"field-10": {
 			"name": "Age",
@@ -547,7 +575,11 @@ const trackerDef = {
 				"\"18\"",
 				"\"32\""
 			],
-			"nestedFields": {}
+			"nestedFields": {},
+			"metadata": {
+				"internal": false,
+				"external": true
+			}
 			},
 			"field-11": {
 			"name": "Hair",
@@ -561,7 +593,11 @@ const trackerDef = {
 				"[\"Short brown hair, damp with sweat\", \"Medium-length red hair, tied up in a high ponytail\"]",
 				"[\"Short sandy blonde hair, slightly tousled\", \"Long wavy brown hair, loose and flowing\"]"
 			],
-			"nestedFields": {}
+			"nestedFields": {},
+			"metadata": {
+				"internal": false,
+				"external": true
+			}
 			},
 			"field-12": {
 			"name": "Makeup",
@@ -575,7 +611,11 @@ const trackerDef = {
 				"[\"None\", \"Minimal, sweat-resistant mascara\"]",
 				"[\"None\", \"Sunscreen applied, no additional makeup\"]"
 			],
-			"nestedFields": {}
+			"nestedFields": {},
+			"metadata": {
+				"internal": false,
+				"external": true
+			}
 			},
 			"field-13": {
 			"name": "Outfit",
@@ -589,7 +629,11 @@ const trackerDef = {
 				"[\"Gray moisture-wicking t-shirt; Black athletic shorts; White ankle socks; Gray running shoes; Black sports watch; Blue compression boxer briefs\", \"Black sports tank top; Purple athletic leggings; Black athletic sneakers; White ankle socks; Fitness tracker bracelet; Black racerback sports bra; Black seamless athletic bikini briefs matching the bra\"]",
 				"[\"Light blue short-sleeve shirt; Khaki shorts; Brown leather sandals; Silver wristwatch; Blue plaid cotton boxer shorts\", \"White sundress over a red halter bikini; Straw hat; Brown flip-flops; Gold anklet; Red halter bikini top; Red tie-side bikini bottoms matching the top\"]"
 			],
-			"nestedFields": {}
+			"nestedFields": {},
+			"metadata": {
+				"internal": false,
+				"external": true
+			}
 			},
 			"field-14": {
 			"name": "StateOfDress",
@@ -603,7 +647,11 @@ const trackerDef = {
 				"[\"Workout attire, lightly perspiring\", \"Workout attire, energized\"]",
 				"[\"Shirt and sandals removed, placed on beach towel\", \"Sundress and hat removed, placed on beach chair\"]"
 			],
-			"nestedFields": {}
+			"nestedFields": {},
+			"metadata": {
+				"internal": false,
+				"external": true
+			}
 			},
 			"field-15": {
 			"name": "PostureAndInteraction",
@@ -617,7 +665,11 @@ const trackerDef = {
 				"[\"Lifting weights at the bench press, focused on form\", \"Running on the treadmill at a steady pace\"]",
 				"[\"Standing at the water's edge, feet in the surf\", \"Lying on a beach towel, sunbathing with eyes closed\"]"
 			],
-			"nestedFields": {}
+			"nestedFields": {},
+			"metadata": {
+				"internal": false,
+				"external": true
+			}
 			},
 			"field-16": {
 			"name": "BustWaistHip",
@@ -631,7 +683,11 @@ const trackerDef = {
 			"\"B80:W60:H86 (CM)\"",
 			"\"B79:W56:H83 (CM)\""
 			],
-			"nestedFields": {}
+			"nestedFields": {},
+			"metadata": {
+				"internal": false,
+				"external": true
+			}
 			},
 			"field-17": {
 			"name": "FertilityCycle",
@@ -645,7 +701,11 @@ const trackerDef = {
 				"[\"Ovulating 🌺 (High Risk!)\", \"Luteal 🌙 (Moderate Risk)\"]",
 				"[\"Pregnant 👶\"]"
 			],
-			"nestedFields": {}
+			"nestedFields": {},
+			"metadata": {
+				"internal": false,
+				"external": true
+			}
 			},
 			"field-18": {
 			"name": "Pregnancy",
@@ -659,7 +719,11 @@ const trackerDef = {
 				"\"1st trimester, 0 days, impregnated by Harry\"",
 				"\"3st trimester, 200 days, impregnated by Harry\""
 			],
-			"nestedFields": {}
+			"nestedFields": {},
+			"metadata": {
+				"internal": false,
+				"external": true
+			}
 			},
 			"field-19": {
 			"name": "Virginity",
@@ -673,7 +737,11 @@ const trackerDef = {
 				"\"Virgin\"",
 				"\"Lost to Sam Witwicky\""
 			],
-			"nestedFields": {}
+			"nestedFields": {},
+			"metadata": {
+				"internal": false,
+				"external": true
+			}
 			},
 			"field-20": {
 			"name": "Traits",
@@ -687,7 +755,11 @@ const trackerDef = {
 				"[\"Giant Penis: causes tearing pain to partner during sex.\", \"Emotional Intelligence: deeply philosophical and sentimental\"]",
 				"[\"Tight Pussy: increase partner pleasure during sex.\", \"Masochist: gain pleasure from pain.\", \"Sadistic: deriving pleasure from inflicting pain.\"]"
 			],
-			"nestedFields": {}
+			"nestedFields": {},
+			"metadata": {
+				"internal": false,
+				"external": true
+			}
 			},
 			"field-21": {
 			"name": "Children",
@@ -701,8 +773,17 @@ const trackerDef = {
 				"[\"1st Born: Eve, Female ♀️, child with Harry\"]",
 				"[\"1st Born: Aya, Female ♀️, child with Bob\", \"2nd Born: Max, Male ♂️, child with Sam\"]"
 			],
-			"nestedFields": {}
+			"nestedFields": {},
+			"metadata": {
+				"internal": false,
+				"external": true
 			}
+			}
+		},
+		"metadata": {
+			"internal": true,
+			"external": true,
+			"internalKeyId": "characters"
 		}
 	}
 };
@@ -812,6 +893,8 @@ export const defaultSettings = {
 	debugMode: false,
 
 	trackerInjectionEnabled: true,
+
+	metadataSchemaVersion: TRACKER_METADATA_VERSION,
 
 };
 
