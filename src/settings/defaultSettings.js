@@ -2,34 +2,154 @@ import { t } from "../../lib/i18n.js";
 
 export const DEFAULT_PRESET_NAME = "Default Built-In (EN)";
 
-const SCHEMA_VERSION_FIELD_DEFINITION = {
-	name: "Schema Version",
-	type: "STRING",
-	presence: "STATIC",
-	prompt: "Do not change this",
-	defaultValue: "1",
-	exampleValues: ["1"],
-	nestedFields: {},
-	metadata: {
-		internal: true,
-		external: false,
-		internalKeyId: "schemaVersion",
-		internalOnly: true,
-	},
-};
+export const TRACKER_METADATA_VERSION = 2;
 
-export const TRACKER_METADATA_VERSION = 1;
+const INTERNAL_DATA_DEFINITIONS = [
+	{
+		name: "StoryEvents",
+		definition: {
+			name: "StoryEvents",
+			type: "OBJECT",
+			presence: "DYNAMIC",
+			prompt: "Lifecycle event log used to coordinate internal tracker automations.",
+			defaultValue: "<Story events if present>",
+			exampleValues: [
+				"{}",
+				"{\"BirthEvents\": {\"Mira\": {\"NewBornDescription\": \"Mira, the newborn of Harry and Monika, female — she sleeps in short bursts and can only communicate through soft cries.\"}}, \"GrowthEvents\": {\"Molly Thompson\": {\"GrowthDescription\": \"Molly Thompson has grown into an energetic teenager with her father Jack's athletic build and her mother Rose's quick wit.\"}}, \"DeathEvents\": {\"Sir Alden\": {\"DeathCauseDescription\": \"Sir Alden fell defending the northern gate, struck down by the dragon's final burst of flame.\"}}}"
+			],
+			nestedFields: {
+				"internal-story-birth-events": {
+					name: "BirthEvents",
+					type: "FOR_EACH_OBJECT",
+					presence: "DYNAMIC",
+					genderSpecific: "all",
+					prompt: "Count only completed births — the baby must be fully delivered and present. Ignore labor, contractions, or partial delivery. Use \"Unnamed baby of <mother name>\" for unnamed babies. For each newborn, update the details:",
+					defaultValue: "<Baby Name>",
+					exampleValues: [
+						"[\"None\"]",
+						"[\"Liam Johnson\", \"Emily Clark\"]",
+						"[\"Unnamed baby of Alice\"]"
+					],
+					nestedFields: {
+						"internal-story-birth-description": {
+							name: "NewBornDescription",
+							type: "STRING",
+							presence: "DYNAMIC",
+							genderSpecific: "all",
+							prompt: "Describe the newborn, including name, gender, parents, appearance, notable traits, and their immediate newborn behaviours (e.g., crying, sleeping patterns, inability to speak or walk).",
+							defaultValue: "<description of the newborn baby>",
+							exampleValues: [
+								"Mira, the newborn of Harry and Monika, female — she sleeps in short bursts, cries softly when hungry, and cannot yet focus her bright blue eyes on anything distant.",
+								"Molly, the newborn of Jack and Rose, female — she clenches her tiny fists, reacts to her parents' voices, and only communicates with soft whimpers.",
+								"Arwen, the newborn of Elrond and Celebrían, female — she has luminous eyes, slightly pointed ears, and can only express herself through gentle coos."
+							],
+							metadata: {
+								internal: true,
+								external: false,
+								internalKeyId: "newBornDescription",
+								internalOnly: true,
+							},
+						},
+					},
+					metadata: {
+						internal: true,
+						external: false,
+						internalKeyId: "birthEvents",
+						internalOnly: true,
+					},
+				},
+				"internal-story-growth-events": {
+					name: "GrowthEvents",
+					type: "FOR_EACH_OBJECT",
+					presence: "DYNAMIC",
+					genderSpecific: "all",
+					prompt: "Track major growth milestones for existing characters. For each update, provide a complete, card-ready description that reflects current age, physical changes, behavioural shifts, skills, relationships, and notable story developments.",
+					defaultValue: "<Character Name>",
+					exampleValues: [
+						"[\"Mira Thompson\"]",
+						"[\"Molly Johnson\"]",
+						"[\"Arwen Half-elven\"]"
+					],
+					nestedFields: {
+						"internal-story-growth-description": {
+							name: "GrowthDescription",
+							type: "STRING",
+							presence: "DYNAMIC",
+							genderSpecific: "all",
+							prompt: "Provide a full character description reflecting the current stage of life: appearance, age, personality, behaviour, skills, relationships, and any recent narrative developments.",
+							defaultValue: "<updated character description>",
+							exampleValues: [
+								"Mira Thompson, now five years old, has inquisitive blue eyes, a restless mind, and a fearless curiosity. She chatters endlessly about the world she discovers each day and already mimics her mother Monika's analytical instincts.",
+								"Molly Johnson has grown into an energetic teenager with her father Jack's athletic build and her mother Rose's quick wit. She balances school with competitive swimming, and her confidence is tempered by a fierce loyalty to her family.",
+								"Arwen Half-elven now stands as a poised young adult, carrying the wisdom of her father Elrond and the grace of her mother Celebrían. Her luminous eyes reflect centuries of elven memory, and she moves through Rivendell as a calming presence and diplomat."
+							],
+							metadata: {
+								internal: true,
+								external: false,
+								internalKeyId: "growthDescription",
+								internalOnly: true,
+							},
+						},
+					},
+					metadata: {
+						internal: true,
+						external: false,
+						internalKeyId: "growthEvents",
+						internalOnly: true,
+					},
+				},
+				"internal-story-death-events": {
+					name: "DeathEvents",
+					type: "FOR_EACH_OBJECT",
+					presence: "DYNAMIC",
+					genderSpecific: "all",
+					prompt: "Track characters whose stories have ended. For each death, provide the character name and a concise description of how and why they died, along with any immediate narrative consequences.",
+					defaultValue: "<Character Name>",
+					exampleValues: [
+						"[\"Sir Alden\"]",
+						"[\"Mira Thompson\"]",
+						"[\"Unnamed soldier\"]"
+					],
+					nestedFields: {
+						"internal-story-death-description": {
+							name: "DeathCauseDescription",
+							type: "STRING",
+							presence: "DYNAMIC",
+							genderSpecific: "all",
+							prompt: "Summarize the cause of death and any immediate aftermath or impact on the narrative.",
+							defaultValue: "<cause of death description>",
+							exampleValues: [
+								"Sir Alden fell defending the northern gate, struck down by the dragon's final burst of flame.",
+								"Mira Thompson passed peacefully at the age of 84, surrounded by family after a lifetime of pioneering research.",
+								"The unnamed soldier perished during the midnight ambush, triggering the retreat of the remaining scouts."
+							],
+							metadata: {
+								internal: true,
+								external: false,
+								internalKeyId: "deathCauseDescription",
+								internalOnly: true,
+							},
+						},
+					},
+					metadata: {
+						internal: true,
+						external: false,
+						internalKeyId: "deathEvents",
+						internalOnly: true,
+					},
+				},
+			},
+			metadata: {
+				internal: true,
+				external: false,
+				internalKeyId: "storyEvents",
+				internalOnly: true,
+			},
+		},
+	},
+];
 
 const SPECIAL_FIELD_METADATA = new Map([
-	[
-		"Schema Version",
-		{
-			internal: true,
-			external: false,
-			internalKeyId: "schemaVersion",
-			internalOnly: true,
-		},
-	],
 	[
 		"Time",
 		{
@@ -71,14 +191,40 @@ function getNextFieldId(definition) {
 	return `field-${maxIndex + 1}`;
 }
 
-export function ensureSchemaVersionField(definition) {
-	const exists = Object.values(definition || {}).some((field) => field?.name === SCHEMA_VERSION_FIELD_DEFINITION.name);
-	if (exists) {
+function ensureFieldFromTemplate(container, template, context) {
+	if (!container || typeof container !== "object") {
 		return;
 	}
 
-	const fieldId = getNextFieldId(definition || {});
-	definition[fieldId] = cloneDefinition(SCHEMA_VERSION_FIELD_DEFINITION);
+	const entries = Object.entries(container);
+	const found = entries.find(([, field]) => field?.name === template.name);
+
+	if (!found) {
+		const fieldId = getNextFieldId(container);
+		container[fieldId] = cloneDefinition(template);
+		context.changed = true;
+		return;
+	}
+
+	const [fieldId] = found;
+	const templClone = cloneDefinition(template);
+	if (!_.isEqual(container[fieldId], templClone)) {
+		container[fieldId] = templClone;
+		context.changed = true;
+	}
+}
+
+export function ensureInternalDataFields(definition) {
+	const context = { changed: false };
+	if (!definition || typeof definition !== "object") {
+		return context;
+	}
+
+	for (const internalField of INTERNAL_DATA_DEFINITIONS) {
+		ensureFieldFromTemplate(definition, internalField.definition, context);
+	}
+
+	return context;
 }
 
 function normalizeMetadata(metadata = {}) {
@@ -785,10 +931,149 @@ const trackerDef = {
 			"external": true,
 			"internalKeyId": "characters"
 		}
+	},
+	"field-22": {
+		"name": "StoryEvents",
+		"type": "OBJECT",
+		"presence": "DYNAMIC",
+		"prompt": "Lifecycle event log used to coordinate internal tracker automations.",
+		"defaultValue": "<Story events if present>",
+		"exampleValues": [
+			"{}",
+			"{\"BirthEvents\": {\"Mira\": {\"NewBornDescription\": \"Mira, the newborn of Harry and Monika, female — she sleeps in short bursts and can only communicate through soft cries.\"}}, \"GrowthEvents\": {\"Molly Thompson\": {\"GrowthDescription\": \"Molly Thompson has grown into an energetic teenager with her father Jack's athletic build and her mother Rose's quick wit.\"}}, \"DeathEvents\": {\"Sir Alden\": {\"DeathCauseDescription\": \"Sir Alden fell defending the northern gate, struck down by the dragon's final burst of flame.\"}}}"
+		],
+		"nestedFields": {
+				"internal-story-birth-events": {
+				"name": "BirthEvents",
+				"type": "FOR_EACH_OBJECT",
+				"presence": "DYNAMIC",
+				"genderSpecific": "all",
+				"prompt": "Count only completed births — the baby must be fully delivered and present. Ignore labor, contractions, or partial delivery. Use \"Unnamed baby of <mother name>\" for unnamed babies. For each newborn, update the details:",
+				"defaultValue": "<Baby Name>",
+				"exampleValues": [
+					"[\"None\"]",
+					"[\"Liam Johnson\", \"Emily Clark\"]",
+					"[\"Unnamed baby of Alice\"]"
+				],
+				"nestedFields": {
+					"internal-story-birth-description": {
+					"name": "NewBornDescription",
+					"type": "STRING",
+					"presence": "DYNAMIC",
+					"genderSpecific": "all",
+					"prompt": "Describe the newborn, including name, gender, parents, appearance, notable traits, and their immediate newborn behaviours (e.g., crying, sleeping patterns, inability to speak or walk).",
+					"defaultValue": "<description of the newborn baby>",
+					"exampleValues": [
+						"Mira, the newborn of Harry and Monika, female — she sleeps in short bursts, cries softly when hungry, and cannot yet focus her bright blue eyes on anything distant.",
+						"Molly, the newborn of Jack and Rose, female — she clenches her tiny fists, reacts to her parents' voices, and only communicates with soft whimpers.",
+						"Arwen, the newborn of Elrond and Celebrían, female — she has luminous eyes, slightly pointed ears, and can only express herself through gentle coos."
+					],
+					"metadata": {
+						"internal": true,
+						"external": false,
+						"internalKeyId": "newBornDescription",
+						"internalOnly": true
+					}
+					}
+				},
+				"metadata": {
+					"internal": true,
+					"external": false,
+					"internalKeyId": "birthEvents",
+					"internalOnly": true
+				}
+				},
+				"internal-story-growth-events": {
+				"name": "GrowthEvents",
+				"type": "FOR_EACH_OBJECT",
+				"presence": "DYNAMIC",
+				"genderSpecific": "all",
+				"prompt": "Track major growth milestones for existing characters. For each update, provide a complete, card-ready description that reflects current age, physical changes, behavioural shifts, skills, relationships, and notable story developments.",
+				"defaultValue": "<Character Name>",
+				"exampleValues": [
+					"[\"Mira Thompson\"]",
+					"[\"Molly Johnson\"]",
+					"[\"Arwen Half-elven\"]"
+				],
+				"nestedFields": {
+					"internal-story-growth-description": {
+					"name": "GrowthDescription",
+					"type": "STRING",
+					"presence": "DYNAMIC",
+					"genderSpecific": "all",
+					"prompt": "Provide a full character description reflecting the current stage of life: appearance, age, personality, behaviour, skills, relationships, and any recent narrative developments.",
+					"defaultValue": "<updated character description>",
+					"exampleValues": [
+						"Mira Thompson, now five years old, has inquisitive blue eyes, a restless mind, and a fearless curiosity. She chatters endlessly about the world she discovers each day and already mimics her mother Monika's analytical instincts.",
+						"Molly Johnson has grown into an energetic teenager with her father Jack's athletic build and her mother Rose's quick wit. She balances school with competitive swimming, and her confidence is tempered by a fierce loyalty to her family.",
+						"Arwen Half-elven now stands as a poised young adult, carrying the wisdom of her father Elrond and the grace of her mother Celebrían. Her luminous eyes reflect centuries of elven memory, and she moves through Rivendell as a calming presence and diplomat."
+					],
+					"metadata": {
+						"internal": true,
+						"external": false,
+						"internalKeyId": "growthDescription",
+						"internalOnly": true
+					}
+					}
+				},
+				"metadata": {
+					"internal": true,
+					"external": false,
+					"internalKeyId": "growthEvents",
+					"internalOnly": true
+				}
+				},
+				"internal-story-death-events": {
+				"name": "DeathEvents",
+				"type": "FOR_EACH_OBJECT",
+				"presence": "DYNAMIC",
+				"genderSpecific": "all",
+				"prompt": "Track characters whose stories have ended. For each death, provide the character name and a concise description of how and why they died, along with any immediate narrative consequences.",
+				"defaultValue": "<Character Name>",
+				"exampleValues": [
+					"[\"Sir Alden\"]",
+					"[\"Mira Thompson\"]",
+					"[\"Unnamed soldier\"]"
+				],
+				"nestedFields": {
+					"internal-story-death-description": {
+					"name": "DeathCauseDescription",
+					"type": "STRING",
+					"presence": "DYNAMIC",
+					"genderSpecific": "all",
+					"prompt": "Summarize the cause of death and any immediate aftermath or impact on the narrative.",
+					"defaultValue": "<cause of death description>",
+					"exampleValues": [
+						"Sir Alden fell defending the northern gate, struck down by the dragon's final burst of flame.",
+						"Mira Thompson passed peacefully at the age of 84, surrounded by family after a lifetime of pioneering research.",
+						"The unnamed soldier perished during the midnight ambush, triggering the retreat of the remaining scouts."
+					],
+					"metadata": {
+						"internal": true,
+						"external": false,
+						"internalKeyId": "deathCauseDescription",
+						"internalOnly": true
+					}
+					}
+				},
+				"metadata": {
+					"internal": true,
+					"external": false,
+					"internalKeyId": "deathEvents",
+					"internalOnly": true
+				}
+				}
+			},
+		"metadata": {
+			"internal": true,
+			"external": false,
+			"internalKeyId": "storyEvents",
+			"internalOnly": true
+		}
 	}
 };
 
-ensureSchemaVersionField(trackerDef);
+ensureInternalDataFields(trackerDef);
 ensureTrackerMetadata(trackerDef);
 
 const trackerPreviewSelector = ".mes_block .mes_text";

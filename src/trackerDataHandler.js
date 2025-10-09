@@ -154,6 +154,8 @@ export function updateTracker(tracker, updatedTrackerInput, backendObject, inclu
 		finalTracker._extraFields = updatedTracker._extraFields; // Directly use `_extraFields` from updatedTracker
 	}
 
+	logInternalStoryEvents(finalTracker);
+
 	return formatOutput(finalTracker, outputFormat);
 }
 
@@ -396,6 +398,80 @@ function removeInternalOnlyFields(trackerNode, backendNode) {
 					}
 				}
 			}
+		}
+	}
+}
+
+function logInternalStoryEvents(tracker) {
+	if (!tracker || typeof tracker !== "object") {
+		return;
+	}
+
+	const storyEvents = tracker.StoryEvents;
+	if (!storyEvents || typeof storyEvents !== "object") {
+		return;
+	}
+
+	const birthEvents = storyEvents.BirthEvents;
+	if (birthEvents && typeof birthEvents === "object") {
+		for (const [name, payload] of Object.entries(birthEvents)) {
+			const normalizedName = typeof name === "string" ? name.trim() : "";
+			if (!normalizedName || normalizedName.toLowerCase() === "none") {
+				continue;
+			}
+
+			let description = "";
+			if (payload && typeof payload === "object" && typeof payload.NewBornDescription === "string") {
+				description = payload.NewBornDescription.trim();
+			}
+
+			debug("[Tracker Enhanced] Birth event detected", {
+				name: normalizedName,
+				description: description || undefined,
+				raw: payload,
+			});
+		}
+	}
+
+	const growthEvents = storyEvents.GrowthEvents;
+	if (growthEvents && typeof growthEvents === "object") {
+		for (const [name, payload] of Object.entries(growthEvents)) {
+			const normalizedName = typeof name === "string" ? name.trim() : "";
+			if (!normalizedName || normalizedName.toLowerCase() === "none") {
+				continue;
+			}
+
+			let description = "";
+			if (payload && typeof payload === "object" && typeof payload.GrowthDescription === "string") {
+				description = payload.GrowthDescription.trim();
+			}
+
+			debug("[Tracker Enhanced] Growth event detected", {
+				name: normalizedName,
+				description: description || undefined,
+				raw: payload,
+			});
+		}
+	}
+
+	const deathEvents = storyEvents.DeathEvents;
+	if (deathEvents && typeof deathEvents === "object") {
+		for (const [name, payload] of Object.entries(deathEvents)) {
+			const normalizedName = typeof name === "string" ? name.trim() : "";
+			if (!normalizedName || normalizedName.toLowerCase() === "none") {
+				continue;
+			}
+
+			let description = "";
+			if (payload && typeof payload === "object" && typeof payload.DeathCauseDescription === "string") {
+				description = payload.DeathCauseDescription.trim();
+			}
+
+			debug("[Tracker Enhanced] Death event detected", {
+				name: normalizedName,
+				description: description || undefined,
+				raw: payload,
+			});
 		}
 	}
 }

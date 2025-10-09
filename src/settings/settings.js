@@ -4,7 +4,7 @@ import { getContext } from '../../../../../../scripts/extensions.js';
 import { extensionFolderPath, extensionSettings } from "../../index.js";
 import { error, debug, warn, toTitleCase } from "../../lib/utils.js";
 import { getSupportedLocales, setLocale, t, translateHtml, onLocaleChange, getCurrentLocale } from "../../lib/i18n.js";
-import { DEFAULT_PRESET_NAME, TRACKER_METADATA_VERSION, defaultSettings, ensureSchemaVersionField, ensureTrackerMetadata, generationTargets } from "./defaultSettings.js";
+import { DEFAULT_PRESET_NAME, TRACKER_METADATA_VERSION, defaultSettings, ensureInternalDataFields, ensureTrackerMetadata, generationTargets } from "./defaultSettings.js";
 import { generationCaptured } from "../../lib/interconnection.js";
 import { TrackerPromptMakerModal } from "../ui/trackerPromptMakerModal.js";
 import { TrackerTemplateGenerator } from "../ui/components/trackerTemplateGenerator.js";
@@ -165,15 +165,16 @@ export async function initSettings() {
 		extensionSettings.selectedPreset = defaultSettings.selectedPreset || DEFAULT_PRESET_NAME;
 	}
 
-	ensureSchemaVersionField(extensionSettings.trackerDef);
+	const internalDataResult = ensureInternalDataFields(extensionSettings.trackerDef);
 	const trackerMetadataResult = ensureTrackerMetadata(extensionSettings.trackerDef);
 	const presetMetadataResult = ensurePresetsMetadata(extensionSettings.presets);
 
 	const currentMetadataVersion = extensionSettings.metadataSchemaVersion ?? 0;
 	const metadataNeedsUpgrade =
 		currentMetadataVersion < TRACKER_METADATA_VERSION ||
-		trackerMetadataResult.legacyDetected ||
-		presetMetadataResult.legacyDetected;
+			trackerMetadataResult.legacyDetected ||
+			presetMetadataResult.legacyDetected ||
+			internalDataResult.changed;
 
 	if (metadataNeedsUpgrade) {
 		showMetadataUpgradePrompt();
@@ -242,10 +243,10 @@ function ensurePresetsMetadata(presets) {
 
 	for (const preset of Object.values(presets)) {
 		if (preset && typeof preset === "object" && preset.trackerDef) {
-			ensureSchemaVersionField(preset.trackerDef);
+			const internalResult = ensureInternalDataFields(preset.trackerDef);
 			const metadataResult = ensureTrackerMetadata(preset.trackerDef);
-			result.changed = result.changed || metadataResult.changed;
-			result.legacyDetected = result.legacyDetected || metadataResult.legacyDetected;
+			result.changed = result.changed || internalResult.changed || metadataResult.changed;
+			result.legacyDetected = result.legacyDetected || metadataResult.legacyDetected || internalResult.changed;
 		}
 	}
 
@@ -256,7 +257,7 @@ let metadataUpgradeToast = null;
 let metadataUpgradePromptShown = false;
 
 async function upgradeLegacyTrackerMetadata() {
-	ensureSchemaVersionField(extensionSettings.trackerDef);
+	const internalDataResult = ensureInternalDataFields(extensionSettings.trackerDef);
 	const trackerResult = ensureTrackerMetadata(extensionSettings.trackerDef);
 	const presetResult = ensurePresetsMetadata(extensionSettings.presets);
 
@@ -277,10 +278,11 @@ async function upgradeLegacyTrackerMetadata() {
 	}
 
 	metadataUpgradePromptShown = false;
-	return {
-		trackerChanged: trackerResult.changed,
-		presetsChanged: presetResult.changed,
-	};
+		return {
+			internalDataChanged: internalDataResult.changed,
+			trackerChanged: trackerResult.changed,
+			presetsChanged: presetResult.changed,
+		};
 }
 
 function showMetadataUpgradePrompt() {
@@ -493,7 +495,7 @@ function sanitizePresetValues(values = {}) {
 		}
 	}
 	if (sanitized.trackerDef) {
-		ensureSchemaVersionField(sanitized.trackerDef);
+		ensureInternalDataFields(sanitized.trackerDef);
 		ensureTrackerMetadata(sanitized.trackerDef);
 	}
 	return sanitized;

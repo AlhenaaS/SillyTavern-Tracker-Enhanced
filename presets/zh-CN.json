@@ -418,6 +418,145 @@
           "internalKeyId": "characters",
           "internalOnly": false
         }
+      },
+      "field-9": {
+        "name": "StoryEvents",
+        "type": "OBJECT",
+        "presence": "DYNAMIC",
+        "prompt": "Lifecycle event log used to coordinate internal tracker automations.",
+        "defaultValue": "<Story events if present>",
+        "exampleValues": [
+          "{}",
+          "{\"BirthEvents\": {\"Mira\": {\"NewBornDescription\": \"Mira, the newborn of Harry and Monika, female — she sleeps in short bursts, cries softly when hungry, and cannot yet focus her bright blue eyes on anything distant.\"}}, \"GrowthEvents\": {\"Molly Thompson\": {\"GrowthDescription\": \"Molly Thompson has grown into an energetic teenager with her father Jack's athletic build and her mother Rose's quick wit.\"}}, \"DeathEvents\": {\"Sir Alden\": {\"DeathCauseDescription\": \"Sir Alden fell defending the northern gate, struck down by the dragon's final burst of flame.\"}}}"
+        ],
+        "nestedFields": {
+          "internal-story-birth-events": {
+            "name": "BirthEvents",
+            "type": "FOR_EACH_OBJECT",
+            "presence": "DYNAMIC",
+            "genderSpecific": "all",
+            "prompt": "Count only completed births — the baby must be fully delivered and present. Ignore labor, contractions, or partial delivery. Use \"Unnamed baby of <mother name>\" for unnamed babies. For each newborn, update the details:",
+            "defaultValue": "<Baby Name>",
+            "exampleValues": [
+              "[\"None\"]",
+              "[\"Liam Johnson\", \"Emily Clark\"]",
+              "[\"Unnamed baby of Alice\"]"
+            ],
+            "nestedFields": {
+              "internal-story-birth-description": {
+                "name": "NewBornDescription",
+                "type": "STRING",
+                "presence": "DYNAMIC",
+                "genderSpecific": "all",
+                "prompt": "Describe the newborn, including name, gender, parents, appearance, notable traits, and their immediate newborn behaviours (e.g., crying, sleeping patterns, inability to speak or walk).",
+                "defaultValue": "<description of the newborn baby>",
+                "exampleValues": [
+                  "Mira, the newborn of Harry and Monika, female — she sleeps in short bursts, cries softly when hungry, and cannot yet focus her bright blue eyes on anything distant.",
+                  "Molly, the newborn of Jack and Rose, female — she clenches her tiny fists, reacts to her parents' voices, and only communicates with soft whimpers.",
+                  "Arwen, the newborn of Elrond and Celebrían, female — she has luminous eyes, slightly pointed ears, and can only express herself through gentle coos."
+                ],
+                "metadata": {
+                  "internal": true,
+                  "external": false,
+                  "internalKeyId": "newBornDescription",
+                  "internalOnly": true
+                }
+              }
+            },
+            "metadata": {
+              "internal": true,
+              "external": false,
+              "internalKeyId": "birthEvents",
+              "internalOnly": true
+            }
+          },
+          "internal-story-growth-events": {
+            "name": "GrowthEvents",
+            "type": "FOR_EACH_OBJECT",
+            "presence": "DYNAMIC",
+            "genderSpecific": "all",
+            "prompt": "Track major growth milestones for existing characters. For each update, provide a complete, card-ready description that reflects current age, physical changes, behavioural shifts, skills, relationships, and notable story developments.",
+            "defaultValue": "<Character Name>",
+            "exampleValues": [
+              "[\"Mira Thompson\"]",
+              "[\"Molly Johnson\"]",
+              "[\"Arwen Half-elven\"]"
+            ],
+            "nestedFields": {
+              "internal-story-growth-description": {
+                "name": "GrowthDescription",
+                "type": "STRING",
+                "presence": "DYNAMIC",
+                "genderSpecific": "all",
+                "prompt": "Provide a full character description reflecting the current stage of life: appearance, age, personality, behaviour, skills, relationships, and any recent narrative developments.",
+                "defaultValue": "<updated character description>",
+                "exampleValues": [
+                  "Mira Thompson, now five years old, has inquisitive blue eyes, a restless mind, and a fearless curiosity. She chatters endlessly about the world she discovers each day and already mimics her mother Monika's analytical instincts.",
+                  "Molly Johnson has grown into an energetic teenager with her father Jack's athletic build and her mother Rose's quick wit. She balances school with competitive swimming, and her confidence is tempered by a fierce loyalty to her family.",
+                  "Arwen Half-elven now stands as a poised young adult, carrying the wisdom of her father Elrond and the grace of her mother Celebrían. Her luminous eyes reflect centuries of elven memory, and she moves through Rivendell as a calming presence and diplomat."
+                ],
+                "metadata": {
+                  "internal": true,
+                  "external": false,
+                  "internalKeyId": "growthDescription",
+                  "internalOnly": true
+                }
+              }
+            },
+            "metadata": {
+              "internal": true,
+              "external": false,
+              "internalKeyId": "growthEvents",
+              "internalOnly": true
+            }
+          },
+          "internal-story-death-events": {
+            "name": "DeathEvents",
+            "type": "FOR_EACH_OBJECT",
+            "presence": "DYNAMIC",
+            "genderSpecific": "all",
+            "prompt": "Track characters whose stories have ended. For each death, provide the character name and a concise description of how and why they died, along with any immediate narrative consequences.",
+            "defaultValue": "<Character Name>",
+            "exampleValues": [
+              "[\"Sir Alden\"]",
+              "[\"Mira Thompson\"]",
+              "[\"Unnamed soldier\"]"
+            ],
+            "nestedFields": {
+              "internal-story-death-description": {
+                "name": "DeathCauseDescription",
+                "type": "STRING",
+                "presence": "DYNAMIC",
+                "genderSpecific": "all",
+                "prompt": "Summarize the cause of death and any immediate aftermath or impact on the narrative.",
+                "defaultValue": "<cause of death description>",
+                "exampleValues": [
+                  "Sir Alden fell defending the northern gate, struck down by the dragon's final burst of flame.",
+                  "Mira Thompson passed peacefully at the age of 84, surrounded by family after a lifetime of pioneering research.",
+                  "The unnamed soldier perished during the midnight ambush, triggering the retreat of the remaining scouts."
+                ],
+                "metadata": {
+                  "internal": true,
+                  "external": false,
+                  "internalKeyId": "deathCauseDescription",
+                  "internalOnly": true
+                }
+              }
+            },
+            "metadata": {
+              "internal": true,
+              "external": false,
+              "internalKeyId": "deathEvents",
+              "internalOnly": true
+            }
+          }
+        },
+        "metadata": {
+          "internal": true,
+          "external": false,
+          "internalKeyId": "storyEvents",
+          "internalOnly": true
+        }
       }
     },
     "generateContextTemplate": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{{trackerSystemPrompt}}\n\n<!-- 上下文开始 -->\n\n{{characterDescriptions}}\n\n### 追踪器示例\n<!-- 追踪器示例开始 -->\n{{trackerExamples}}\n<!-- 追踪器示例结束 -->\n\n### 带追踪器的近期消息\n{{recentMessages}}\n\n### 当前追踪器\n<tracker>\n{{currentTracker}}\n</tracker>\n\n<!-- 上下文结束 --><|eot_id|>",
@@ -426,5 +565,6 @@
     "generateRecentMessagesTemplate": "{{#if tracker}}追踪器：<tracker>\n{{tracker}}\n</tracker>\n{{/if}}{{char}}：{{message}}",
     "characterDescriptionTemplate": "### {{char}} 的描述\n{{charDescription}}",
     "roleplayPrompt": "请把追踪器区块视为幕后记录。不要在回复中包含 <tracker> 标签，也不要描述追踪器的更新。请完全保持角色扮演，只输出角色会自然说出的内容，把追踪器仅作为参考信息。"
-  }
+  },
+  "metadataSchemaVersion": 2
 }

@@ -8,6 +8,9 @@ An advanced, feature-rich tracker extension for SillyTavern that provides compre
 - Embedded tracker field metadata directly into `src/settings/defaultSettings.js` and shipped presets, eliminating the hidden override map.
 - Added a one-click metadata upgrade prompt (and `window.trackerEnhanced.upgradeTrackerMetadata()` helper) for legacy presets that still lack embedded metadata.
 - Tracker regeneration and slash command defaults now send the complete schema (`include=all`) so internal-only fields remain available to the tracker LLM.
+- Introduced a `StoryEvents.BirthEvents` structure so regeneration captures completed births; entries are parsed and logged for upcoming automation hooks.
+
+- Introduced `StoryEvents.BirthEvents`, `StoryEvents.GrowthEvents`, and `StoryEvents.DeathEvents` so regeneration captures lifecycle updates; entries are parsed and logged for upcoming automation hooks.
 
 05-10-2025
 - Added a configurable **“Roleplay Injection Prompt”**, allowing injected tracker payloads to begin with a short guidance line.  

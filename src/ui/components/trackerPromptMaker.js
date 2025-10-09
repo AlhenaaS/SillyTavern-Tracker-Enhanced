@@ -48,6 +48,10 @@ export class TrackerPromptMaker {
 		};
 	}
 
+	static get LOCKED_INTERNAL_KEY_IDS() {
+		return new Set(["time", "characters", "characterGender"]);
+	}
+
 	/**
 	 * Initializes the component by building the UI and populating with existing data if provided.
 	 * @param {Object} existingObject - Optional existing JSON object.
@@ -72,8 +76,8 @@ export class TrackerPromptMaker {
 		const internalToggleWrapper = $('<div class="internal-toggle-wrapper"></div>');
 		const internalToggleLabel = $(`
 			<label class="show-internal-toggle">
+				<span>Show internal keys</span>
 				<input type="checkbox" />
-				Show internal keys
 			</label>
 		`);
 		this.internalToggleInput = internalToggleLabel.find("input");
@@ -352,12 +356,34 @@ export class TrackerPromptMaker {
 	}
 
 	applyReadOnlyState(fieldWrapper, metadata) {
-		if (!metadata.internalOnly) {
+		const isLockedKey =
+			metadata.internalKeyId && TrackerPromptMaker.LOCKED_INTERNAL_KEY_IDS.has(metadata.internalKeyId);
+
+		if (!metadata.internalOnly && !isLockedKey) {
 			return;
 		}
 
-		fieldWrapper.find("input, textarea, select").prop("disabled", true);
-		fieldWrapper.find(".menu_button").prop("disabled", true).addClass("disabled");
+		const disableSelectors = [
+			'.presence-wrapper select',
+			'.field-type-wrapper select',
+			'.field-gender-specific select'
+		];
+
+		if (metadata.internalOnly) {
+			fieldWrapper.find("input, textarea, select").prop("disabled", true);
+			fieldWrapper.find(".menu_button").prop("disabled", true).addClass("disabled");
+			fieldWrapper.find(".drag-handle").addClass("drag-handle--disabled").css("pointer-events", "none");
+			fieldWrapper.addClass("field-wrapper--locked");
+			return;
+		}
+
+		if (isLockedKey) {
+			disableSelectors.forEach((selector) => {
+				fieldWrapper.find(selector).prop("disabled", true);
+			});
+
+			fieldWrapper.addClass("field-wrapper--locked-partial");
+		}
 	}
 
 	/**

@@ -153,6 +153,17 @@
 .tracker-prompt-maker {
   text-align: left;
 }
+.tracker-prompt-maker .internal-toggle-wrapper {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 8px;
+}
+.tracker-prompt-maker .show-internal-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
 .tracker-prompt-maker > .fields-container {
   max-height: 80vh;
   overflow-y: scroll;
