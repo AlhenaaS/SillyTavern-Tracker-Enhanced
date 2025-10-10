@@ -19,7 +19,7 @@ export async function generateTrackerCommand(args, value){
     }
 
     let include = args?.include ? args.include.toUpperCase() : null;
-    if(!include || !Object.keys(FIELD_INCLUDE_OPTIONS).includes(include)) include = 'ALL';
+    if(!include || !Object.keys(FIELD_INCLUDE_OPTIONS).includes(include)) include = 'DYNAMIC';
 
     const previousMesId = getPreviousNonSystemMessageIndex(mesId);
     if (previousMesId !== -1) {

@@ -73,8 +73,8 @@ export class TrackerInterface {
                 <button id="trackerInterfaceEditButton" class="menu_button menu_button_default interactable" tabindex="0">Edit</button>
                 <button id="trackerInterfaceRegenerateTracker" class="menu_button menu_button_default interactable" tabindex="0">Regenerate</button>
                 <select id="trackerInterfaceRegenOptions" class="tracker-regen-options">
-                    <option value="all-fields" selected>All Fields</option>
-                    <option value="no-static">No Static Fields</option>
+                    <option value="no-static" selected>No Static Fields</option>
+                    <option value="all-fields">All Fields</option>
                     <option value="static-only">Static Only</option>
                 </select>
             </div>
@@ -230,19 +230,19 @@ export class TrackerInterface {
      */
     async regenerateTracker() {
         const option = this.regenOptions.val();
-        let fieldIncludeOption = FIELD_INCLUDE_OPTIONS.ALL;
+        let fieldIncludeOption = FIELD_INCLUDE_OPTIONS.DYNAMIC;
 
         switch (option) {
-            case 'no-static':
-                fieldIncludeOption = FIELD_INCLUDE_OPTIONS.DYNAMIC;
-                break;
             case 'static-only':
                 fieldIncludeOption = FIELD_INCLUDE_OPTIONS.STATIC;
                 // Additional logic for static-only if needed
                 break;
             case 'all-fields':
-            default:
                 fieldIncludeOption = FIELD_INCLUDE_OPTIONS.ALL;
+                break;
+            case 'no-static':
+            default:
+                fieldIncludeOption = FIELD_INCLUDE_OPTIONS.DYNAMIC;
         }
 
         // Show loading indicator
