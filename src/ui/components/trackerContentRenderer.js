@@ -231,6 +231,11 @@ export class TrackerContentRenderer {
 
 		const createEditorFields = (object, schema, parentElement) => {
 			for (const fieldSchema of Object.values(schema)) {
+				const metadata = fieldSchema.metadata || {};
+				if (metadata.internalOnly) {
+					continue;
+				}
+
 				const value = object[fieldSchema.name];
 				const fieldType = fieldSchema.type;
 
