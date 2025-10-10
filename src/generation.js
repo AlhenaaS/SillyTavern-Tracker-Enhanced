@@ -5,7 +5,7 @@ import { groups, selected_group } from "../../../../../scripts/group-chats.js";
 import { log, warn, debug, error, unescapeJsonString, getLastMessageWithTracker } from "../lib/utils.js";
 import { yamlToJSON } from "../lib/ymlParser.js";
 import { extensionSettings } from "../index.js";
-import { FIELD_INCLUDE_OPTIONS, getDefaultTracker, getExampleTrackers as getExampleTrackersFromDef, getTracker, getTrackerPrompt, OUTPUT_FORMATS, updateTracker } from "./trackerDataHandler.js";
+import { FIELD_INCLUDE_OPTIONS, getDefaultTracker, getTracker, getTrackerPrompt, OUTPUT_FORMATS, updateTracker } from "./trackerDataHandler.js";
 import { trackerFormat } from "./settings/defaultSettings.js";
 
 // #region Utility Functions
@@ -491,7 +491,6 @@ async function sendGenerateTrackerRequest(systemPrompt, requestPrompt, responseL
 function getGenerateSystemPrompt(mesNum, includedFields = FIELD_INCLUDE_OPTIONS.ALL) {
 	const trackerSystemPrompt = getSystemPrompt(extensionSettings.generateSystemPrompt, includedFields);
 	const characterDescriptions = getCharacterDescriptions();
-	const trackerExamples = getExampleTrackers(includedFields);
 	const recentMessages = getRecentMessages(extensionSettings.generateRecentMessagesTemplate, mesNum, includedFields);
 	const currentTracker = getCurrentTracker(mesNum, includedFields);
 	const trackerFormat = extensionSettings.trackerFormat;
@@ -500,7 +499,6 @@ function getGenerateSystemPrompt(mesNum, includedFields = FIELD_INCLUDE_OPTIONS.
 	const vars = {
 		trackerSystemPrompt,
 		characterDescriptions,
-		trackerExamples,
 		recentMessages,
 		currentTracker,
 		trackerFormat,
@@ -639,20 +637,6 @@ function getCurrentTracker(mesNum, includedFields) {
 	}
 
 	return returnTracker;
-}
-
-/**
- * Retrieves the example trackers.
- */
-function getExampleTrackers(includedFields) {
-	debug("Getting example trackers");
-	let trackerExamples = getExampleTrackersFromDef(extensionSettings.trackerDef, includedFields, OUTPUT_FORMATS[extensionSettings.trackerFormat]);
-	if (extensionSettings.trackerFormat == trackerFormat.JSON) {
-		trackerExamples = trackerExamples.map((ex) => JSON.stringify(ex, null, 2));
-	}
-	trackerExamples = "<START>\n<tracker>\n" + trackerExamples.join("\n</tracker>\n<END>\n<START>\n<tracker>\n") + "\n</tracker>\n<END>";
-
-	return trackerExamples;
 }
 
 /**

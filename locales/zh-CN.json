@@ -32,7 +32,7 @@
   "settings.presets.export.button.title": "导出当前追踪器增强预设",
   "settings.presets.summary": "预设设置",
   "settings.context.label": "上下文模板",
-  "settings.context.help": "定义用于生成追踪器的模板。可用宏包括：<br>{{trackerSystemPrompt}}、{{characterDescriptions}}、{{trackerExamples}}、{{recentMessages}}、{{currentTracker}}、{{trackerFormat}}、{{trackerFieldPrompt}}。",
+  "settings.context.help": "定义用于生成追踪器的模板。可用宏包括：<br>{{trackerSystemPrompt}}、{{characterDescriptions}}、{{recentMessages}}、{{currentTracker}}、{{trackerFormat}}、{{trackerFieldPrompt}}。",
   "settings.system.label": "系统提示词",
   "settings.system.help": "定义用于追踪器生成的系统级提示词。可用宏包括：<br>{{charNames}}、{{defaultTracker}}、{{trackerFormat}}。",
   "settings.request.label": "请求提示词",

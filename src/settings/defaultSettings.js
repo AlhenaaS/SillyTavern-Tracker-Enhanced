@@ -317,11 +317,6 @@ const generateContextTemplate = t("prompts.generateContextTemplate", `<|begin_of
 
 {{characterDescriptions}}
 
-### Example Trackers
-<!-- Start of Example Trackers -->
-{{trackerExamples}}
-<!-- End of Example Trackers -->
-
 ### Recent Messages with Trackers
 {{recentMessages}}
 

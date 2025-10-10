@@ -55,26 +55,6 @@ export function saveTracker(tracker, backendObj, mesId, useUpdatedExtraFieldsAsS
 }
 
 /**
- * Generates example trackers using the example values from the backendObject.
- * @param {Object} backendObject - The backend object defining the tracker structure.
- * @param {string} includeFields - Which fields to include ('dynamic', 'static', 'all').
- * @param {string} outputFormat - The desired output format ('json' or 'yaml').
- * @returns {Array} - An array of example trackers in the specified format.
- */
-export function getExampleTrackers(backendObject, includeFields = FIELD_INCLUDE_OPTIONS.DYNAMIC, outputFormat = OUTPUT_FORMATS.JSON) {
-	const trackers = [];
-	const numExamples = getMaxExampleCount(backendObject);
-
-	for (let i = 0; i < numExamples; i++) {
-		const tracker = {};
-		processFieldExamples(backendObject, tracker, includeFields, i);
-		trackers.push(formatOutput(tracker, outputFormat));
-	}
-
-	return trackers;
-}
-
-/**
  * Generates a default tracker using default values from the backendObject.
  * @param {Object} backendObject - The backend object defining the tracker structure.
  * @param {string} includeFields - Which fields to include ('dynamic', 'static', 'all').
@@ -233,33 +213,6 @@ export function stripInternalOnlyFields(trackerInput, backendObj) {
 	const clonedTracker = cloneTrackerData(tracker);
 	removeInternalOnlyFields(clonedTracker, backendObj);
 	return clonedTracker;
-}
-
-/* Helper Functions */
-
-function getMaxExampleCount(backendObject) {
-	let maxCount = 0;
-	function traverse(obj) {
-		Object.values(obj).forEach((field) => {
-			if (field.exampleValues) {
-				maxCount = Math.max(maxCount, field.exampleValues.length);
-			}
-			if (field.nestedFields) {
-				traverse(field.nestedFields);
-			}
-		});
-	}
-	traverse(backendObject);
-	return maxCount;
-}
-
-function processFieldExamples(backendObj, trackerObj, includeFields, exampleIndex) {
-	for (const field of Object.values(backendObj)) {
-		if (!shouldIncludeField(field, includeFields, true)) continue;
-
-		const handler = FIELD_TYPES_HANDLERS[field.type] || handleString;
-		trackerObj[field.name] = handler(field, includeFields, exampleIndex, null, null, null, true);
-	}
 }
 
 function processFieldDefaults(backendObj, trackerObj, includeFields) {
@@ -795,13 +748,15 @@ function buildPrompt(backendObj, includeFields, indentLevel, lines, includeEphem
 	const indent = "  ".repeat(indentLevel);
 	for (const field of Object.values(backendObj)) {
 		if (!shouldIncludeField(field, includeFields, includeEphemeral)) continue;
-		if (!field.prompt && !field.nestedFields) continue;
+		if (!field.prompt && !field.nestedFields && (!field.exampleValues || field.exampleValues.length === 0)) continue;
 
 		if (field.type === "FOR_EACH_OBJECT" || field.nestedFields) {
 			lines.push(`${indent}- **${field.name}:**${field.prompt ? " " + field.prompt : ""}`);
+			appendExampleLines(field, indentLevel, lines);
 			buildPrompt(field.nestedFields, includeFields, indentLevel + 1, lines, includeEphemeral);
 		} else {
 			lines.push(`${indent}- **${field.name}:** ${field.prompt}`);
+			appendExampleLines(field, indentLevel, lines);
 		}
 	}
 }
@@ -811,6 +766,56 @@ function formatOutput(tracker, outputFormat) {
 		return jsonToYAML(tracker);
 	}
 	return tracker;
+}
+
+function appendExampleLines(field, indentLevel, lines) {
+	if (!field || !Array.isArray(field.exampleValues) || field.exampleValues.length === 0) return;
+
+	const exampleIndent = "  ".repeat(indentLevel + 1);
+	field.exampleValues.forEach((exampleValue, idx) => {
+		const formatted = formatExampleValueForPrompt(exampleValue);
+		if (!formatted) return;
+
+		const hasMultiple = field.exampleValues.length > 1;
+		const label = hasMultiple ? `Example ${idx + 1}` : "Example";
+		lines.push(`${exampleIndent}- ${label}: ${formatted}`);
+	});
+}
+
+function formatExampleValueForPrompt(exampleValue) {
+	if (exampleValue === null || typeof exampleValue === "undefined") return "";
+
+	let raw = exampleValue;
+	if (typeof raw === "string") {
+		const trimmed = raw.trim();
+		if (!trimmed) return "";
+		raw = trimmed;
+		try {
+			raw = JSON.parse(trimmed);
+		} catch {
+			// Keep as trimmed string when JSON.parse fails
+			return trimmed.replace(/\s+/g, " ");
+		}
+	}
+
+	const formatted = stringifyExampleValue(raw);
+	return formatted.replace(/\s+/g, " ").trim();
+}
+
+function stringifyExampleValue(value) {
+	if (value === null || typeof value === "undefined") return "";
+	if (typeof value === "string") return value;
+	if (typeof value === "number" || typeof value === "boolean") return String(value);
+	if (Array.isArray(value)) {
+		return value.map((item) => stringifyExampleValue(item)).filter(Boolean).join("; ");
+	}
+	if (typeof value === "object") {
+		return Object.entries(value)
+			.map(([key, val]) => `${key}: ${stringifyExampleValue(val)}`)
+			.filter(Boolean)
+			.join("; ");
+	}
+	return String(value);
 }
 
 // Utility function to merge objects deeply or concatenate strings
