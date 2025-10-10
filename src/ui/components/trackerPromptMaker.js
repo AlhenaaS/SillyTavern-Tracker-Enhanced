@@ -47,10 +47,6 @@ export class TrackerPromptMaker {
 		};
 	}
 
-	static get LOCKED_INTERNAL_KEY_IDS() {
-		return new Set(["time", "characters", "characterGender"]);
-	}
-
 	/**
 	 * Initializes the component by building the UI and populating with existing data if provided.
 	 * @param {Object} existingObject - Optional existing JSON object.
@@ -272,14 +268,34 @@ export class TrackerPromptMaker {
 	}
 
 	normalizeFieldMetadata(metadata = {}, isNewField = false) {
+		const parseBoolean = (value, defaultValue = false) => {
+			if (typeof value === "boolean") {
+				return value;
+			}
+			if (typeof value === "string") {
+				const clean = value.trim().toLowerCase();
+				if (clean === "true") return true;
+				if (clean === "false") return false;
+			}
+			if (typeof value === "number") {
+				return value !== 0;
+			}
+			if (typeof value === "object" && value !== null) {
+				return defaultValue;
+			}
+			return defaultValue;
+		};
+
 		const normalized = {
-			internal: Boolean(metadata.internal),
-			external: metadata.external !== false,
+			internal: parseBoolean(metadata.internal, false),
+			external: Object.prototype.hasOwnProperty.call(metadata, "external")
+				? parseBoolean(metadata.external, false)
+				: true,
 			internalKeyId: metadata.internalKeyId || null,
 		};
 
 		if (Object.prototype.hasOwnProperty.call(metadata, "internalOnly")) {
-			normalized.internalOnly = Boolean(metadata.internalOnly);
+			normalized.internalOnly = parseBoolean(metadata.internalOnly, false);
 		} else {
 			normalized.internalOnly = normalized.internal && !normalized.external;
 		}
@@ -343,10 +359,9 @@ export class TrackerPromptMaker {
 	}
 
 	applyReadOnlyState(fieldWrapper, metadata) {
-		const isLockedKey =
-			metadata.internalKeyId && TrackerPromptMaker.LOCKED_INTERNAL_KEY_IDS.has(metadata.internalKeyId);
+		const isDualScope = metadata.internal === true && metadata.external === true;
 
-		if (!metadata.internalOnly && !isLockedKey) {
+		if (!metadata.internalOnly && !isDualScope) {
 			return;
 		}
 
@@ -364,7 +379,7 @@ export class TrackerPromptMaker {
 			return;
 		}
 
-		if (isLockedKey) {
+		if (isDualScope) {
 			disableSelectors.forEach((selector) => {
 				fieldWrapper.find(selector).prop("disabled", true);
 			});
@@ -523,12 +538,18 @@ export class TrackerPromptMaker {
 			});
 		const defaultValueDiv = $('<div class="default-value-wrapper"></div>').append(defaultValueLabel, defaultValueInput);
 
-		// Example Values Heading and Container
+		// Example Values Heading, Controls, and Container
 		const exampleValuesHeading = $("<h4>Example Values:</h4>");
+		const exampleValuesControls = $('<div class="example-values-controls"></div>').css({
+			display: "flex",
+			justifyContent: "flex-end",
+			gap: "6px",
+			marginBottom: "4px",
+		});
 		const exampleValuesContainer = $('<div class="example-values-container"></div>');
 
 		// Append default value div, example values heading, and container to defaultExampleWrapper
-		defaultExampleWrapper.append(defaultValueDiv, exampleValuesHeading, exampleValuesContainer);
+		defaultExampleWrapper.append(defaultValueDiv, exampleValuesHeading, exampleValuesControls, exampleValuesContainer);
 
 		// Append promptDiv and defaultExampleWrapper to promptDefaultExampleWrapper
 		promptDefaultExampleWrapper.append(promptDiv, defaultExampleWrapper);
@@ -562,8 +583,6 @@ export class TrackerPromptMaker {
 		}
 		addNestedFieldBtn.prop("disabled", metadata.internalOnly);
 
-		buttonsWrapper.append(addNestedFieldBtn);
-
 		// Add Example Value Button (per field)
 		const addExampleValueBtn = $('<button class="menu_button interactable">Add Example Value</button>')
 			.on("click", () => {
@@ -572,9 +591,13 @@ export class TrackerPromptMaker {
 				}
 				this.addExampleValue(fieldWrapper, "", true);
 				this.syncBackendObject();
+			})
+			.css({
+				width: "auto",
+				display: "inline-flex",
+				"white-space": "nowrap",
 			});
 		addExampleValueBtn.prop("disabled", metadata.internalOnly);
-		buttonsWrapper.append(addExampleValueBtn);
 
 		// Remove Example Value Button (per field)
 		const removeExampleValueBtn = $('<button class="menu_button interactable">Remove Example Value</button>')
@@ -583,9 +606,16 @@ export class TrackerPromptMaker {
 					return;
 				}
 				this.removeExampleValue(fieldWrapper);
+			})
+			.css({
+				width: "auto",
+				display: "inline-flex",
+				"white-space": "nowrap",
 			});
 		removeExampleValueBtn.prop("disabled", metadata.internalOnly);
-		buttonsWrapper.append(removeExampleValueBtn);
+		exampleValuesControls.append(addExampleValueBtn, removeExampleValueBtn);
+
+		buttonsWrapper.append(addNestedFieldBtn);
 
 		// Remove Field Button
 		const removeFieldBtn = $('<button class="menu_button interactable">Remove Field</button>').on("click", () => {

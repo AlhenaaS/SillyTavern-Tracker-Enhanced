@@ -841,9 +841,11 @@ const trackerDef = {
 			"prompt": "**Female Character only!** Displays the current fertility cycle stage. States advance with time. If Pregnancy tracking indicates conception, immediately switch FertilityCycle to \"Pregnant 👶\" and pause the cycle. Remain \"Pregnant 👶\" for the full duration of pregnancy. Resume cycle after delivery.",
 			"defaultValue": "<Current fertility cycle if no update is needed>",
 			"exampleValues": [
-				"[\"Menstrual 🩸 (Safe)\", \"Follicular 🌱 (Low Risk)\"]",
-				"[\"Ovulating 🌺 (High Risk!)\", \"Luteal 🌙 (Moderate Risk)\"]",
-				"[\"Pregnant 👶\"]"
+				"\"Menstrual 🩸 (Safe)\"",
+				"\"Follicular 🌱 (Low Risk)\"",
+				"\"Ovulating 🌸 (High Risk!)\"", 
+				"\"Luteal 🌙 (Moderate Risk)\"",
+				"\"Pregnant 👶\""
 			],
 			"nestedFields": {},
 			"metadata": {
