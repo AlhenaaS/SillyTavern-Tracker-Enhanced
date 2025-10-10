@@ -12,7 +12,6 @@ export class TrackerPromptMaker {
 		this.onTrackerPromptSave = onTrackerPromptSave; // Save callback.
 		this.element = $('<div class="tracker-prompt-maker"></div>'); // Root element of the component.
 		this.fieldCounter = 0; // Counter to generate unique field IDs.
-		this.exampleCounter = 0;
 		this.showInternalFields = false;
 		this.init(existingObject); // Initialize the component.
 	}
@@ -101,18 +100,6 @@ export class TrackerPromptMaker {
 			this.rebuildBackendObjectFromDOM(); // Rebuild keys after adding a new field.
 		});
 		buttonsWrapper.append(addFieldBtn);
-
-		// Button to add example values to all fields.
-		const addExampleValueBtn = $('<button class="menu_button interactable">Add Example Value</button>').on("click", () => {
-			this.addExampleValueToAllFields();
-		});
-		buttonsWrapper.append(addExampleValueBtn);
-
-		// Button to remove example values from all fields.
-		const removeExampleValueBtn = $('<button class="menu_button interactable">Remove Example Value</button>').on("click", () => {
-			this.removeExampleValueFromAllFields();
-		});
-		buttonsWrapper.append(removeExampleValueBtn);
 
 		// Button to generate template from current fields
 		// const generateTemplateBtn = $('<button class="menu_button interactable generate-template-btn">Generate Message Template</button>')
@@ -405,12 +392,7 @@ export class TrackerPromptMaker {
 			}
 		}
 
-		if (!fieldData.exampleValues) {
-			fieldData.exampleValues = [];
-			for (let i = 0; i < this.exampleCounter; i++) {
-				fieldData.exampleValues.push("");
-			}
-		}
+		fieldData.exampleValues = Array.isArray(fieldData.exampleValues) ? [...fieldData.exampleValues] : [];
 
 		const metadata = this.normalizeFieldMetadata(fieldData.metadata, isNewField);
 		fieldData.metadata = metadata;
@@ -581,6 +563,29 @@ export class TrackerPromptMaker {
 		addNestedFieldBtn.prop("disabled", metadata.internalOnly);
 
 		buttonsWrapper.append(addNestedFieldBtn);
+
+		// Add Example Value Button (per field)
+		const addExampleValueBtn = $('<button class="menu_button interactable">Add Example Value</button>')
+			.on("click", () => {
+				if (metadata.internalOnly) {
+					return;
+				}
+				this.addExampleValue(fieldWrapper, "", true);
+				this.syncBackendObject();
+			});
+		addExampleValueBtn.prop("disabled", metadata.internalOnly);
+		buttonsWrapper.append(addExampleValueBtn);
+
+		// Remove Example Value Button (per field)
+		const removeExampleValueBtn = $('<button class="menu_button interactable">Remove Example Value</button>')
+			.on("click", () => {
+				if (metadata.internalOnly) {
+					return;
+				}
+				this.removeExampleValue(fieldWrapper);
+			});
+		removeExampleValueBtn.prop("disabled", metadata.internalOnly);
+		buttonsWrapper.append(removeExampleValueBtn);
 
 		// Remove Field Button
 		const removeFieldBtn = $('<button class="menu_button interactable">Remove Field</button>').on("click", () => {
@@ -807,87 +812,6 @@ export class TrackerPromptMaker {
 	}
 
 	/**
-	 * Adds example value inputs to all fields and nested fields.
-	 */
-	addExampleValueToAllFields() {
-		// Collect all fields into a flat array
-		const allFields = [];
-
-		const collectAllFields = (fields) => {
-			Object.keys(fields).forEach((fieldId) => {
-				const fieldData = fields[fieldId];
-				const metadata = fieldData.metadata || {};
-				const isInternalOnly = Boolean(metadata.internal) && metadata.external === false;
-				if (!isInternalOnly) {
-					allFields.push(fieldId);
-				}
-				if (fieldData.nestedFields && Object.keys(fieldData.nestedFields).length > 0) {
-					collectAllFields(fieldData.nestedFields);
-				}
-			});
-		};
-
-		collectAllFields(this.backendObject);
-
-		// Add an example value to each field
-		allFields.forEach((fieldId) => {
-			const fieldWrapper = this.element.find(`[data-field-id="${fieldId}"]`);
-			this.addExampleValue(fieldWrapper, "", true);
-		});
-
-		this.exampleCounter++;
-
-		debug("Added example values to all fields.");
-		this.syncBackendObject(); // Ensure backendObject is updated
-	}
-
-	/**
-	 * Removes the last example value from all fields and nested fields.
-	 */
-	removeExampleValueFromAllFields() {
-		// Collect all fields into a flat array
-		const allFields = [];
-
-		const collectAllFields = (fields) => {
-			Object.keys(fields).forEach((fieldId) => {
-				const fieldData = fields[fieldId];
-				const metadata = fieldData.metadata || {};
-				const isInternalOnly = Boolean(metadata.internal) && metadata.external === false;
-				if (!isInternalOnly) {
-					allFields.push(fieldId);
-				}
-				if (fieldData.nestedFields && Object.keys(fieldData.nestedFields).length > 0) {
-					collectAllFields(fieldData.nestedFields);
-				}
-			});
-		};
-
-		collectAllFields(this.backendObject);
-
-		// Remove the last example value from each field
-		allFields.forEach((fieldId) => {
-			const fieldData = this.getFieldDataById(fieldId);
-			if (fieldData && fieldData.exampleValues && fieldData.exampleValues.length > 0) {
-				// Remove the last example value
-				fieldData.exampleValues.pop();
-
-				// Remove the last input element from the example values container
-				const fieldWrapper = this.element.find(`[data-field-id="${fieldId}"]`);
-				const exampleValuesContainer = fieldWrapper.find("> .prompt-default-example-wrapper > .default-example-wrapper > .example-values-container");
-				exampleValuesContainer.find("input.text_pole").last().remove();
-
-				// Update indices
-				this.updateExampleValueIndices(fieldId);
-			}
-		});
-
-		this.exampleCounter--;
-
-		debug("Removed example values from all fields.");
-		this.syncBackendObject();
-	}
-
-	/**
 	 * Adds an example value input to a specific field.
 	 * @param {jQuery} fieldWrapper - The jQuery element of the field wrapper.
 	 * @param {string} exampleValue - Optional initial value for the example value.
@@ -924,6 +848,31 @@ export class TrackerPromptMaker {
 		}
 
 		this.updateExampleValueIndices(fieldId);
+	}
+
+	/**
+	 * Removes the last example value for a specific field.
+	 * @param {jQuery} fieldWrapper - The jQuery element of the field wrapper.
+	 */
+	removeExampleValue(fieldWrapper) {
+		const fieldId = fieldWrapper.attr("data-field-id");
+		const fieldData = this.getFieldDataById(fieldId);
+		const metadata = fieldWrapper.data("metadata") || {};
+		if (!fieldData || metadata.internalOnly) {
+			return;
+		}
+
+		if (fieldData.exampleValues.length === 0) {
+			return;
+		}
+
+		fieldData.exampleValues.pop();
+
+		const exampleValuesContainer = fieldWrapper.find("> .prompt-default-example-wrapper > .default-example-wrapper > .example-values-container");
+		exampleValuesContainer.find("input.text_pole").last().remove();
+
+		this.updateExampleValueIndices(fieldId);
+		this.syncBackendObject();
 	}
 
 	/**
@@ -980,31 +929,6 @@ export class TrackerPromptMaker {
 			// Clear existing backend object and reset field counter
 			this.backendObject = {};
 			this.fieldCounter = 0;
-			this.exampleCounter = 0;
-
-			const collectExampleCount = (obj) => {
-				Object.values(obj).forEach((field) => {
-					if (field.exampleValues.length > this.exampleCounter) {
-						this.exampleCounter = field.exampleValues.length;
-					}
-					if (field.nestedFields && Object.keys(field.nestedFields).length > 0) {
-						collectExampleCount(field.nestedFields);
-					}
-				});
-			};
-			collectExampleCount(existingObject);
-
-			const normalizeExampleCount = (obj) => {
-				Object.values(obj).forEach((field) => {
-					while (field.exampleValues.length < this.exampleCounter) {
-						field.exampleValues.push("");
-					}
-					if (field.nestedFields && Object.keys(field.nestedFields).length > 0) {
-						normalizeExampleCount(field.nestedFields);
-					}
-				});
-			};
-			normalizeExampleCount(existingObject);
 
 			// Rebuild the UI
 			this.buildUI();
@@ -1112,21 +1036,6 @@ export class TrackerPromptMaker {
 
 		// Update fieldCounter to one plus the highest index found
 		this.fieldCounter = rebuildCounter;
-
-		// Update exampleCounter (max of any field's exampleValues length)
-		let maxExampleCount = 0;
-		const findMaxExamples = (obj) => {
-			Object.values(obj).forEach((f) => {
-				if (f.exampleValues.length > maxExampleCount) {
-					maxExampleCount = f.exampleValues.length;
-				}
-				if (f.nestedFields && Object.keys(f.nestedFields).length > 0) {
-					findMaxExamples(f.nestedFields);
-				}
-			});
-		};
-		findMaxExamples(this.backendObject);
-		this.exampleCounter = maxExampleCount;
 
 		debug("Rebuilt backend object from DOM.", { backendObject: this.backendObject });
 

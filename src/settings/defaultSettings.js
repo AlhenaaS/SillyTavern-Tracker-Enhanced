@@ -695,7 +695,8 @@ const trackerDef = {
 			"exampleValues": [
 				"\"Male ♂️\"",
 				"\"Female ♀️\"",
-				"[\"Trans ⚧️\", \"Unkown ❓\"]"
+				"\"Trans ⚧️\"",
+				"\"Unkown ❓\""
 			],
 			"nestedFields": {},
 			"metadata": {
