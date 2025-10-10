@@ -19,9 +19,11 @@ export class TrackerInterface {
         this.renderer = new TrackerContentRenderer();
         this.container = null;
         this.tracker = null;
+        this.trackerInternal = null;
         this.mesId = null;
         this.mode = 'view'; // 'view' or 'edit'
         this.onSave = null; // Callback function when tracker is updated
+        this.showInternalEvents = false;
     }
 
     /**
@@ -30,11 +32,13 @@ export class TrackerInterface {
      * @param {function} onSave - Callback function to save the updated tracker.
      * @param {string} [template] - Optional custom template string.
      */
-    init(tracker, mesId, onSave) {
+    init(tracker, mesId, onSave, trackerInternal = null) {
         debug("Initializing Tracker Interface", {tracker, mesId, onSave});
         this.tracker = tracker;
+        this.trackerInternal = trackerInternal;
         this.mesId = mesId;
         this.onSave = onSave;
+        this.showInternalEvents = false;
 
         if (this.container) {
             this.switchMode('view');
@@ -58,6 +62,10 @@ export class TrackerInterface {
                 <label id="trackerInterfaceInjectionToggleLabel" class="tracker-interface-toggle interactable">
                     <input type="checkbox" id="trackerInterfaceInjectionToggle">
                     <span>Inject tracker</span>
+                </label>
+                <label id="trackerInterfaceInternalToggleLabel" class="tracker-interface-toggle interactable">
+                    <input type="checkbox" id="trackerInterfaceInternalToggle">
+                    <span>Show Internal Events</span>
                 </label>
             </div>
             <div class="tracker-interface-button-row">
@@ -99,6 +107,8 @@ export class TrackerInterface {
         this.regenOptions = newElement.find('#trackerInterfaceRegenOptions');
         this.injectionToggle = newElement.find('#trackerInterfaceInjectionToggle');
         this.injectionToggleLabel = newElement.find('#trackerInterfaceInjectionToggleLabel');
+        this.internalToggle = newElement.find('#trackerInterfaceInternalToggle');
+        this.internalToggleLabel = newElement.find('#trackerInterfaceInternalToggleLabel');
 
         const updateInjectionToggleState = (enabled) => {
             const hint = enabled
@@ -112,6 +122,22 @@ export class TrackerInterface {
         this.injectionToggle.prop('checked', injectionEnabled);
         updateInjectionToggleState(injectionEnabled);
         TrackerInterface.updateInjectionIndicator(injectionEnabled);
+
+        const updateInternalToggleState = () => {
+            const hasInternalData = this.trackerInternal && typeof this.trackerInternal === 'object' && Object.keys(this.trackerInternal).length > 0;
+            this.internalToggle.prop('disabled', !hasInternalData);
+            this.internalToggle.prop('checked', hasInternalData && this.showInternalEvents);
+            this.internalToggleLabel.toggleClass('tracker-interface-toggle--disabled', !hasInternalData);
+            const hint = hasInternalData
+                ? 'Display internal-only story event data for debugging.'
+                : 'No internal story events available for this tracker.';
+            this.internalToggleLabel.attr('title', hint);
+            if (!hasInternalData) {
+                this.showInternalEvents = false;
+            }
+        };
+        this.updateInternalToggleState = updateInternalToggleState;
+        updateInternalToggleState();
 
         this.injectionToggle.on('change', async () => {
             const enabled = this.injectionToggle.is(':checked');
@@ -128,6 +154,12 @@ export class TrackerInterface {
             }
         });
 
+        this.internalToggle.on('change', () => {
+            const enabled = this.internalToggle.is(':checked');
+            this.showInternalEvents = enabled;
+            this.refreshContent(this.mode);
+        });
+
         // Event handlers for buttons
         this.viewButton.on('click', () => this.switchMode('view'));
         this.editButton.on('click', () => this.switchMode('edit'));
@@ -142,13 +174,35 @@ export class TrackerInterface {
         this.editorHeader.text('Tracker' + (this.mesId ? ` - Message ${this.mesId}` : ''));
 
         if (mode === 'view') {
-            const contentElement = this.renderer.renderDefaultView(this.tracker);
+            if (typeof this.updateInternalToggleState === 'function') {
+                this.updateInternalToggleState();
+            }
+            const hasInternalData = this.showInternalEvents && this.trackerInternal && Object.keys(this.trackerInternal).length > 0;
+            const dataToRender = hasInternalData ? this.trackerInternal : this.tracker;
+            const contentElement = this.renderer.renderDefaultView(dataToRender, { includeInternal: hasInternalData });
             this.contentArea.append(contentElement);
         } else if (mode === 'edit') {
+            if (this.showInternalEvents) {
+                this.showInternalEvents = false;
+                if (this.internalToggle) {
+                    this.internalToggle.prop('checked', false);
+                }
+                if (typeof this.updateInternalToggleState === 'function') {
+                    this.updateInternalToggleState();
+                }
+            }
             const contentElement = this.renderer.renderEditorView(this.tracker, (updatedTracker) => {
                 this.tracker = updatedTracker;
+                this.trackerInternal = chat[this.mesId]?.trackerInternal ?? null;
+                if (typeof this.updateInternalToggleState === 'function') {
+                    this.updateInternalToggleState();
+                }
                 if (this.onSave) {
-                    this.onSave(this.tracker);
+                    const savedTracker = this.onSave(this.tracker);
+                    if (savedTracker) {
+                        this.tracker = savedTracker;
+                    }
+                    this.trackerInternal = chat[this.mesId]?.trackerInternal ?? this.trackerInternal ?? null;
                 }
             });
             this.contentArea.append(contentElement);
@@ -216,19 +270,24 @@ export class TrackerInterface {
         }
 
         try {
-            const newTracker = await generateTracker(previousMesId, fieldIncludeOption);
-            if (!newTracker) {
+            const generationResult = await generateTracker(previousMesId, fieldIncludeOption);
+            if (!generationResult || !generationResult.tracker) {
                 toastr.warning('Tracker generation returned no data. Try again after additional chat context.');
                 this.refreshContent(this.mode);
                 return;
             }
 
-            let trackerUpdated = newTracker;
+            let trackerUpdated = generationResult.tracker;
+            this.trackerInternal = generationResult.trackerInternal ?? null;
 
             if (this.onSave) {
-                trackerUpdated = await this.onSave(newTracker);
+                trackerUpdated = await this.onSave(generationResult.tracker);
+                this.trackerInternal = chat[this.mesId]?.trackerInternal ?? this.trackerInternal ?? null;
             }
-            this.tracker = trackerUpdated ?? newTracker;
+            this.tracker = trackerUpdated ?? generationResult.tracker;
+            if (typeof this.updateInternalToggleState === 'function') {
+                this.updateInternalToggleState();
+            }
             this.refreshContent(this.mode);
         } catch (e) {
             toastr.error('Regeneration failed. Please try again.');
@@ -385,13 +444,14 @@ export class TrackerInterface {
             }
 
             const mesTracker = chat[mesId]?.tracker || {};
+            const mesTrackerInternal = chat[mesId]?.trackerInternal ?? null;
             const trackerData = getTracker(mesTracker, extensionSettings.trackerDef, FIELD_INCLUDE_OPTIONS.ALL, true, OUTPUT_FORMATS.JSON);
             const onSave = async (updatedTracker) => {
                 debug("Saving Tracker", {updatedTracker, mesId});
                 return await saveTracker(updatedTracker, extensionSettings.trackerDef, mesId, true);
             };
             const trackerInterface = new TrackerInterface();
-            trackerInterface.init(trackerData, mesId, onSave);
+            trackerInterface.init(trackerData, mesId, onSave, mesTrackerInternal);
             trackerInterface.show();
         };
 

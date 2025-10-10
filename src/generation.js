@@ -395,10 +395,14 @@ export async function generateTracker(mesNum, includedFields = FIELD_INCLUDE_OPT
 		const lastMesWithTrackerIndex = getLastMessageWithTracker(mesNum);
 		const lastMesWithTracker = chat[lastMesWithTrackerIndex];
 		let lastTracker = lastMesWithTracker ? lastMesWithTracker.tracker : getDefaultTracker(extensionSettings.trackerDef, FIELD_INCLUDE_OPTIONS.ALL, OUTPUT_FORMATS.JSON);
-		const result = updateTracker(lastTracker, tracker, extensionSettings.trackerDef, FIELD_INCLUDE_OPTIONS.ALL, OUTPUT_FORMATS.JSON, true);
+		const internalOutput = {};
+		const result = updateTracker(lastTracker, tracker, extensionSettings.trackerDef, FIELD_INCLUDE_OPTIONS.ALL, OUTPUT_FORMATS.JSON, true, internalOutput);
 		
 		log(`[Tracker Enhanced] ✅ Tracker generation completed successfully using independent connection`);
-		return result;
+		return {
+			tracker: result,
+			trackerInternal: internalOutput.data ?? null,
+		};
 	} catch (e) {
 		error(`[Tracker Enhanced] ❌ Failed to generate tracker using independent connection:`, e);
 		toastr.error("Failed to generate tracker. Make sure your selected connection profile and completion preset are valid and working");

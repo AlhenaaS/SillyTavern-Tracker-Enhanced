@@ -1174,6 +1174,7 @@ export const defaultSettings = {
 	debugMode: false,
 
 	trackerInjectionEnabled: true,
+	toolbarIndicatorEnabled: false,
 
 	metadataSchemaVersion: TRACKER_METADATA_VERSION,
 

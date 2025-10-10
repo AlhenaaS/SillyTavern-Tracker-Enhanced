@@ -1,6 +1,6 @@
 {
   "settings.language.auto": "Auto (Follow SillyTavern language)",
-  "settings.language.label": "Language Override",
+  "settings.language.label": "UI Language Override",
   "settings.language.help": "Choose the tracker interface language or follow SillyTavern's global setting.",
   "settings.generation_target.option.both": "Both",
   "settings.generation_target.option.user": "User",

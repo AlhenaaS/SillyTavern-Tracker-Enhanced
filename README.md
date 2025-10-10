@@ -4,12 +4,19 @@ An advanced, feature-rich tracker extension for SillyTavern that provides compre
 
 ## Changelog
 
+10-10-2025
+- Tracker reconciliation now strips internal-only StoryEvents from the public payload while preserving the raw data in `chat[mesId].trackerInternal` for diagnostics and exports.
+- Added a “Show Internal Events” toggle to the tracker interface so power users can inspect captured birth/growth/death events without exposing them to the roleplay LLM.
+- Normalized scalar handling during reconciliation so numeric and boolean values (like `Age: 18`) persist instead of reverting to placeholder prompts.
+- UI rendering no longer shows placeholder StoryEvents entries; true lifecycle events will surface in the internal view when present.
+
 06-10-2025
+- Introduce metedata for tracker schema and object. Now entries will be flaged as internal or external.    
+- Introduce internalKeyId for field anchoring so that we can expand this extension to call internal functions based on tracking result laster.
 - Embedded tracker field metadata directly into `src/settings/defaultSettings.js` and shipped presets, eliminating the hidden override map.
 - Added a one-click metadata upgrade prompt (and `window.trackerEnhanced.upgradeTrackerMetadata()` helper) for legacy presets that still lack embedded metadata.
 - Tracker regeneration and slash command defaults now send the complete schema (`include=all`) so internal-only fields remain available to the tracker LLM.
 - Introduced a `StoryEvents.BirthEvents` structure so regeneration captures completed births; entries are parsed and logged for upcoming automation hooks.
-
 - Introduced `StoryEvents.BirthEvents`, `StoryEvents.GrowthEvents`, and `StoryEvents.DeathEvents` so regeneration captures lifecycle updates; entries are parsed and logged for upcoming automation hooks.
 
 05-10-2025

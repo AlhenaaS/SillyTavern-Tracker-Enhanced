@@ -20,13 +20,22 @@ export class TrackerContentRenderer {
 	 * @param {object} tracker - The tracker data object.
 	 * @returns {HTMLElement} - The root element containing the rendered view.
 	 */
-	renderDefaultView(tracker) {
+	renderDefaultView(tracker, options = {}) {
+		const includeInternal = options.includeInternal === true;
 		const root = document.createElement("div");
 		root.className = "tracker-view-container";
 
+		const formatScalar = (val) => (typeof val === "undefined" || val === null ? "" : String(val));
+
 		const createFields = (object, schema, parentElement) => {
+			const sourceObject = object && typeof object === "object" ? object : {};
 			for (const fieldSchema of Object.values(schema)) {
-				const value = object[fieldSchema.name];
+				const metadata = fieldSchema.metadata || {};
+				if ((!includeInternal && metadata.internalOnly) || (includeInternal && !metadata.internalOnly)) {
+					continue;
+				}
+
+				const value = sourceObject[fieldSchema.name];
 				const fieldType = fieldSchema.type;
 
 				const wrapper = document.createElement("div");
@@ -50,6 +59,9 @@ export class TrackerContentRenderer {
 						break;
 					}
 					case this.FIELD_TYPES.OBJECT: {
+						if (!value || typeof value !== "object") {
+							break;
+						}
 						const nestedFields = document.createElement("div");
 						nestedFields.className = "tracker-view-nested";
 						createFields(value, fieldSchema.nestedFields, nestedFields);
@@ -57,6 +69,14 @@ export class TrackerContentRenderer {
 						break;
 					}
 					case this.FIELD_TYPES.FOR_EACH_OBJECT: {
+						if (!value || typeof value !== "object" || Array.isArray(value)) {
+							const valueSpan = document.createElement("span");
+							valueSpan.className = "tracker-view-value";
+							valueSpan.textContent = formatScalar(value);
+							wrapper.appendChild(valueSpan);
+							break;
+						}
+
 						const nestedFields = document.createElement("div");
 						nestedFields.className = "tracker-view-nested";
 						Object.entries(value).forEach(([nestedKey, nestedValue]) => {
@@ -70,7 +90,9 @@ export class TrackerContentRenderer {
 
 							const forEachFields = document.createElement("div");
 							forEachFields.className = "tracker-view-nested";
-							createFields(nestedValue, fieldSchema.nestedFields, forEachFields);
+							if (nestedValue && typeof nestedValue === "object") {
+								createFields(nestedValue, fieldSchema.nestedFields, forEachFields);
+							}
 							forEachWrapper.appendChild(forEachFields);
 							nestedFields.appendChild(forEachWrapper);
 						});
@@ -78,6 +100,14 @@ export class TrackerContentRenderer {
 						break;
 					}
 					case this.FIELD_TYPES.FOR_EACH_ARRAY: {
+						if (!value || typeof value !== "object") {
+							const valueSpan = document.createElement("span");
+							valueSpan.className = "tracker-view-value";
+							valueSpan.textContent = formatScalar(value);
+							wrapper.appendChild(valueSpan);
+							break;
+						}
+
 						const nestedFields = document.createElement("div");
 						nestedFields.className = "tracker-view-nested";
 
@@ -119,7 +149,9 @@ export class TrackerContentRenderer {
 
 										const arrItemFields = document.createElement("div");
 										arrItemFields.className = "tracker-view-nested";
-										createFields(arrItem, fieldSchema.nestedFields, arrItemFields);
+										if (arrItem && typeof arrItem === "object") {
+											createFields(arrItem, fieldSchema.nestedFields, arrItemFields);
+										}
 
 										arrItemWrapper.appendChild(arrItemFields);
 										forEachFields.appendChild(arrItemWrapper);
@@ -137,7 +169,7 @@ export class TrackerContentRenderer {
 					default: {
 						const valueSpan = document.createElement("span");
 						valueSpan.className = "tracker-view-value";
-						valueSpan.textContent = value || "";
+						valueSpan.textContent = typeof value === "undefined" || value === null ? "" : value;
 						wrapper.appendChild(valueSpan);
 						break;
 					}

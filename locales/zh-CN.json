@@ -1,6 +1,6 @@
 {
   "settings.language.auto": "自动（跟随 SillyTavern 语言）",
-  "settings.language.label": "语言覆盖",
+  "settings.language.label": "界面语言覆盖",
   "settings.language.help": "选择追踪器界面语言，或跟随 SillyTavern 的全局设置。",
   "settings.generation_target.option.both": "双方",
   "settings.generation_target.option.user": "用户",

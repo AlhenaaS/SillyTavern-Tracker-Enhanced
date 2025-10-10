@@ -45,8 +45,22 @@ export function saveTracker(tracker, backendObj, mesId, useUpdatedExtraFieldsAsS
 	}
 
 	const originalTracker = getTracker(chat[mesId].tracker, backendObj, FIELD_INCLUDE_OPTIONS.ALL, true, OUTPUT_FORMATS.JSON);
-	const updatedTracker = updateTracker(originalTracker, tracker, backendObj, true, OUTPUT_FORMATS.JSON, useUpdatedExtraFieldsAsSource);
+	const internalOutput = {};
+	const updatedTracker = updateTracker(
+		originalTracker,
+		tracker,
+		backendObj,
+		true,
+		OUTPUT_FORMATS.JSON,
+		useUpdatedExtraFieldsAsSource,
+		internalOutput
+	);
 	chat[mesId].tracker = updatedTracker;
+	if (internalOutput.data && Object.keys(internalOutput.data).length > 0) {
+		chat[mesId].trackerInternal = internalOutput.data;
+	} else {
+		delete chat[mesId].trackerInternal;
+	}
 
 	saveChatDebounced();
 	TrackerPreviewManager.updatePreview(mesId);
@@ -115,7 +129,7 @@ export function getTrackerPrompt(backendObject, includeFields = FIELD_INCLUDE_OP
  * @param {string} outputFormat - The desired output format ('json' or 'yaml').
  * @returns {Object|string} - The updated tracker in the specified format.
  */
-export function updateTracker(tracker, updatedTrackerInput, backendObject, includeUnmatchedFields = true, outputFormat = OUTPUT_FORMATS.JSON, useUpdatedExtraFieldsAsSource = false) {
+export function updateTracker(tracker, updatedTrackerInput, backendObject, includeUnmatchedFields = true, outputFormat = OUTPUT_FORMATS.JSON, useUpdatedExtraFieldsAsSource = false, internalOutput = null) {
 	debug("Updating tracker:", { tracker, updatedTrackerInput, backendObject, includeUnmatchedFields, outputFormat });
 	tracker = typeof tracker === "string" ? yamlToJSON(tracker) : tracker;
 	const updatedTracker = typeof updatedTrackerInput === "string" ? yamlToJSON(updatedTrackerInput) : updatedTrackerInput;
@@ -135,6 +149,18 @@ export function updateTracker(tracker, updatedTrackerInput, backendObject, inclu
 	}
 
 	logInternalStoryEvents(finalTracker);
+
+	const internalCollector = {};
+	removeInternalOnlyFields(finalTracker, backendObject, internalCollector, updatedTracker);
+	const cleanedInternal = cleanEmptyObjects(internalCollector);
+
+	if (internalOutput && typeof internalOutput === "object") {
+		if (cleanedInternal && Object.keys(cleanedInternal).length > 0) {
+			internalOutput.data = cleanedInternal;
+		} else {
+			internalOutput.data = null;
+		}
+	}
 
 	return formatOutput(finalTracker, outputFormat);
 }
@@ -298,7 +324,7 @@ function cloneTrackerData(value) {
 	}
 }
 
-function removeInternalOnlyFields(trackerNode, backendNode) {
+function removeInternalOnlyFields(trackerNode, backendNode, collector = null, sourceNode = null) {
 	if (!trackerNode || typeof trackerNode !== "object" || !backendNode || typeof backendNode !== "object") {
 		return;
 	}
@@ -316,6 +342,14 @@ function removeInternalOnlyFields(trackerNode, backendNode) {
 
 		const isInternalOnly = metadata.internalOnly === true || (metadata.internal && metadata.external === false);
 		if (isInternalOnly) {
+			if (collector && Object.prototype.hasOwnProperty.call(trackerNode, fieldName)) {
+				const sourceValue = sourceNode && typeof sourceNode === "object" && Object.prototype.hasOwnProperty.call(sourceNode, fieldName)
+					? sourceNode[fieldName]
+					: trackerNode[fieldName];
+				if (typeof sourceValue !== "undefined") {
+					collector[fieldName] = cloneTrackerData(sourceValue);
+				}
+			}
 			delete trackerNode[fieldName];
 			continue;
 		}
@@ -326,30 +360,93 @@ function removeInternalOnlyFields(trackerNode, backendNode) {
 		}
 
 		const trackerValue = trackerNode[fieldName];
+		const sourceValue = sourceNode && typeof sourceNode === "object" ? sourceNode[fieldName] : undefined;
+		if (!trackerValue || typeof trackerValue !== "object") {
+			continue;
+		}
+
 		if (field.type === "OBJECT" || field.type === "ARRAY_OBJECT") {
-			if (trackerValue && typeof trackerValue === "object" && !Array.isArray(trackerValue)) {
-				removeInternalOnlyFields(trackerValue, nestedFields);
+			let nestedCollector = null;
+			if (collector) {
+				nestedCollector = collector[fieldName] || (collector[fieldName] = {});
+			}
+			const nextSource = sourceValue && typeof sourceValue === "object" ? sourceValue : undefined;
+			removeInternalOnlyFields(trackerValue, nestedFields, nestedCollector, nextSource);
+			if (collector && nestedCollector && Object.keys(nestedCollector).length === 0) {
+				delete collector[fieldName];
 			}
 		} else if (field.type === "FOR_EACH_OBJECT") {
-			if (trackerValue && typeof trackerValue === "object" && !Array.isArray(trackerValue)) {
-				for (const key of Object.keys(trackerValue)) {
-					if (trackerValue[key] && typeof trackerValue[key] === "object") {
-						removeInternalOnlyFields(trackerValue[key], nestedFields);
+			const parentSource = sourceValue && typeof sourceValue === "object" ? sourceValue : undefined;
+			for (const key of Object.keys(trackerValue)) {
+				const item = trackerValue[key];
+				if (!item || typeof item !== "object") {
+					continue;
+				}
+
+				let itemCollector = null;
+				if (collector) {
+					const parentCollector = collector[fieldName] || (collector[fieldName] = {});
+					itemCollector = parentCollector[key] || (parentCollector[key] = {});
+				}
+
+				const sourceItem = parentSource && typeof parentSource === "object" ? parentSource[key] : undefined;
+				removeInternalOnlyFields(item, nestedFields, itemCollector, sourceItem);
+
+				if (collector && itemCollector && Object.keys(itemCollector).length === 0) {
+					delete collector[fieldName][key];
+				}
+			}
+
+			if (collector && collector[fieldName] && Object.keys(collector[fieldName]).length === 0) {
+				delete collector[fieldName];
+			}
+		} else if (field.type === "FOR_EACH_ARRAY") {
+			const parentSource = sourceValue && typeof sourceValue === "object" ? sourceValue : undefined;
+			for (const key of Object.keys(trackerValue)) {
+				const arrayItems = trackerValue[key];
+				if (!Array.isArray(arrayItems)) {
+					continue;
+				}
+
+				let arrayCollector = null;
+				if (collector) {
+					const parentCollector = collector[fieldName] || (collector[fieldName] = {});
+					arrayCollector = parentCollector[key] || (parentCollector[key] = []);
+				}
+
+				const sourceEntry = parentSource && typeof parentSource === "object" ? parentSource[key] : undefined;
+
+				arrayItems.forEach((item, index) => {
+					if (!item || typeof item !== "object") {
+						return;
+					}
+
+					let itemCollector = null;
+					if (collector) {
+						arrayCollector[index] = arrayCollector[index] || {};
+						itemCollector = arrayCollector[index];
+					}
+
+					const sourceItem = Array.isArray(sourceEntry) ? sourceEntry[index] : undefined;
+					removeInternalOnlyFields(item, nestedFields, itemCollector, sourceItem);
+
+					if (collector && itemCollector && Object.keys(itemCollector).length === 0) {
+						delete arrayCollector[index];
+					}
+				});
+
+				if (collector && Array.isArray(arrayCollector)) {
+					const cleanedArray = arrayCollector.filter((entry) => entry && Object.keys(entry).length > 0);
+					if (cleanedArray.length > 0) {
+						collector[fieldName][key] = cleanedArray;
+					} else {
+						delete collector[fieldName][key];
 					}
 				}
 			}
-		} else if (field.type === "FOR_EACH_ARRAY") {
-			if (trackerValue && typeof trackerValue === "object" && !Array.isArray(trackerValue)) {
-				for (const key of Object.keys(trackerValue)) {
-					const arrayItems = trackerValue[key];
-					if (Array.isArray(arrayItems)) {
-						arrayItems.forEach((item) => {
-							if (item && typeof item === "object") {
-								removeInternalOnlyFields(item, nestedFields);
-							}
-						});
-					}
-				}
+
+			if (collector && collector[fieldName] && Object.keys(collector[fieldName]).length === 0) {
+				delete collector[fieldName];
 			}
 		}
 	}
@@ -430,33 +527,46 @@ function logInternalStoryEvents(tracker) {
 }
 
 function handleString(field, includeFields, index = null, trackerValue = null, extraFields = null, charIndex = null, includeEphemeral = false) {
-	if (trackerValue !== null && typeof trackerValue === "string") {
-		return trackerValue;
-	} else if (trackerValue !== null) {
-		// Type mismatch
+	const hasValue = trackerValue !== null && typeof trackerValue !== "undefined";
+
+	if (hasValue) {
+		if (typeof trackerValue === "string") {
+			return trackerValue;
+		}
+
+		if (typeof trackerValue === "number" || typeof trackerValue === "boolean" || typeof trackerValue === "bigint") {
+			return String(trackerValue);
+		}
+
 		if (extraFields && typeof extraFields === "object") {
 			extraFields[field.name] = trackerValue;
 		}
+
+		return includeEphemeral ? (field.defaultValue || "Updated if Changed") : "";
 	}
 
-	// If we have exampleValues and index, try parsing
-	if (index !== null && field.exampleValues && field.exampleValues[index]) {
-		const val = field.exampleValues[index];
-		try {
-			const arr = JSON.parse(val);
-			if (Array.isArray(arr)) {
-				if (charIndex !== null && charIndex < arr.length) {
-					return arr[charIndex];
+	if (includeEphemeral) {
+		// If we have exampleValues and index, try parsing
+		if (index !== null && field.exampleValues && field.exampleValues[index]) {
+			const val = field.exampleValues[index];
+			try {
+				const arr = JSON.parse(val);
+				if (Array.isArray(arr)) {
+					if (charIndex !== null && charIndex < arr.length) {
+						return arr[charIndex];
+					}
+					return arr[0];
 				}
-				return arr[0];
+				return val;
+			} catch {
+				return val;
 			}
-			return val;
-		} catch {
-			return val;
 		}
+
+		return field.defaultValue || "Updated if Changed";
 	}
 
-	return field.defaultValue || "Updated if Changed";
+	return "";
 }
 
 function handleArray(field, includeFields, index = null, trackerValue = null, extraFields = null, charIndex = null, includeEphemeral = false) {
@@ -467,8 +577,13 @@ function handleArray(field, includeFields, index = null, trackerValue = null, ex
 		if (extraFields && typeof extraFields === "object") {
 			extraFields[field.name] = trackerValue;
 		}
+		return includeEphemeral ? buildArrayDefault(field, index, charIndex) : [];
 	}
 
+	return includeEphemeral ? buildArrayDefault(field, index, charIndex) : [];
+}
+
+function buildArrayDefault(field, index = null, charIndex = null) {
 	let value;
 	if (index !== null && field.exampleValues && field.exampleValues[index]) {
 		try {
@@ -477,11 +592,9 @@ function handleArray(field, includeFields, index = null, trackerValue = null, ex
 				if (charIndex !== null && charIndex < arr.length) {
 					return arr[charIndex];
 				}
-				// If no charIndex or out of range, return the whole array or first element
 				return arr;
-			} else {
-				value = arr;
 			}
+			value = arr;
 		} catch {
 			value = field.exampleValues[index];
 		}
@@ -494,6 +607,24 @@ function handleArray(field, includeFields, index = null, trackerValue = null, ex
 		}
 	}
 	return value;
+}
+
+function resolveForEachKeys(field, index = null) {
+	if (index !== null && field.exampleValues && field.exampleValues[index]) {
+		try {
+			const parsed = JSON.parse(field.exampleValues[index]);
+			if (Array.isArray(parsed)) {
+				return parsed;
+			}
+			if (typeof parsed === "string") {
+				return [parsed];
+			}
+		} catch {
+			return [field.exampleValues[index]];
+		}
+	}
+
+	return [field.defaultValue || "default"];
 }
 
 function handleObject(field, includeFields, index = null, trackerValue = null, extraFields = null, charIndex = null, includeEphemeral = false) {
@@ -522,6 +653,9 @@ function handleObject(field, includeFields, index = null, trackerValue = null, e
 		if (trackerValue !== null && typeof extraFields === "object") {
 			extraFields[field.name] = trackerValue;
 		}
+		if (!includeEphemeral) {
+			return {};
+		}
 		// Use default values
 		for (const nestedField of Object.values(nestedFields)) {
 			if (!shouldIncludeField(nestedField, includeFields, includeEphemeral)) continue;
@@ -535,20 +669,7 @@ function handleObject(field, includeFields, index = null, trackerValue = null, e
 
 function handleForEachObject(field, includeFields, index = null, trackerValue = null, extraFields = null, charIndex = null, includeEphemeral = false) {
 	const nestedFields = field.nestedFields || {};
-	let keys = [];
 
-	// Parse the main field's example values into keys
-	if (index !== null && field.exampleValues && field.exampleValues[index]) {
-		try {
-			keys = JSON.parse(field.exampleValues[index]);
-		} catch {
-			keys = [field.defaultValue || "default"];
-		}
-	} else {
-		keys = [field.defaultValue || "default"];
-	}
-
-	// If trackerValue is correct structure, reconcile it. Otherwise, build defaults.
 	if (trackerValue !== null && typeof trackerValue === "object" && !Array.isArray(trackerValue)) {
 		// Process existing trackerValue
 		const result = {};
@@ -556,19 +677,20 @@ function handleForEachObject(field, includeFields, index = null, trackerValue = 
 			const obj = {};
 			let extraNestedFields = null;
 
+			const nestedSource = value && typeof value === "object" ? value : {};
 			for (const nestedField of Object.values(nestedFields)) {
 				if (!shouldIncludeField(nestedField, includeFields, includeEphemeral)) continue;
 				const handler = FIELD_TYPES_HANDLERS[nestedField.type] || handleString;
-				const nestedValue = value[nestedField.name];
+				const nestedValue = nestedSource[nestedField.name];
 				obj[nestedField.name] = handler(nestedField, includeFields, null, nestedValue, extraNestedFields, null, includeEphemeral);
 			}
 
 			// Handle extra fields in the nested object
-			for (const nestedKey in value) {
+			for (const nestedKey in nestedSource) {
 				if (!Object.prototype.hasOwnProperty.call(obj, nestedKey)) {
 					if (extraFields && typeof extraFields === "object") {
 						extraNestedFields = extraNestedFields || {};
-						extraNestedFields[nestedKey] = value[nestedKey];
+						extraNestedFields[nestedKey] = nestedSource[nestedKey];
 					}
 				}
 			}
@@ -581,26 +703,38 @@ function handleForEachObject(field, includeFields, index = null, trackerValue = 
 			result[key] = obj;
 		}
 		return result;
-	} else {
-		if (trackerValue !== null && typeof extraFields === "object" && typeof trackerValue !== "object") {
-			// Type mismatch: place the original trackerValue into extraFields
+	}
+
+	const hasValue = trackerValue !== null && typeof trackerValue !== "undefined";
+	if (hasValue) {
+		if (typeof trackerValue === "string") {
+			const normalized = trackerValue.trim();
+			if (!normalized || normalized.toLowerCase() === "none") {
+				return {};
+			}
+		} else if (extraFields && typeof extraFields === "object") {
 			extraFields[field.name] = trackerValue;
 		}
-
-		const result = {};
-		// For each key, build an object of nested fields
-		for (let cIndex = 0; cIndex < keys.length; cIndex++) {
-			const characterName = keys[cIndex];
-			const obj = {};
-			for (const nestedField of Object.values(nestedFields)) {
-				if (!shouldIncludeField(nestedField, includeFields, includeEphemeral)) continue;
-				const handler = FIELD_TYPES_HANDLERS[nestedField.type] || handleString;
-				obj[nestedField.name] = handler(nestedField, includeFields, index, null, extraFields, cIndex, includeEphemeral);
-			}
-			result[characterName] = obj;
-		}
-		return result;
 	}
+
+	if (!includeEphemeral) {
+		return {};
+	}
+
+	const keys = resolveForEachKeys(field, index);
+	const result = {};
+	// For each key, build an object of nested fields
+	for (let cIndex = 0; cIndex < keys.length; cIndex++) {
+		const characterName = keys[cIndex];
+		const obj = {};
+		for (const nestedField of Object.values(nestedFields)) {
+			if (!shouldIncludeField(nestedField, includeFields, includeEphemeral)) continue;
+			const handler = FIELD_TYPES_HANDLERS[nestedField.type] || handleString;
+			obj[nestedField.name] = handler(nestedField, includeFields, index, null, extraFields, cIndex, includeEphemeral);
+		}
+		result[characterName] = obj;
+	}
+	return result;
 }
 
 function handleForEachArray(field, includeFields, index = null, trackerValue = null, extraFields = null, charIndex = null, includeEphemeral = false) {
@@ -608,17 +742,6 @@ function handleForEachArray(field, includeFields, index = null, trackerValue = n
 
 	const nestedFieldArray = Object.values(nestedFields);
 	const singleStringField = nestedFieldArray.length === 1 && nestedFieldArray[0].type === "STRING";
-
-	let keys = [];
-	if (index !== null && field.exampleValues && field.exampleValues[index]) {
-		try {
-			keys = JSON.parse(field.exampleValues[index]);
-		} catch {
-			keys = [field.defaultValue || "default"];
-		}
-	} else {
-		keys = [field.defaultValue || "default"];
-	}
 
 	if (trackerValue !== null && typeof trackerValue === "object" && !Array.isArray(trackerValue)) {
 		const result = {};
@@ -637,12 +760,10 @@ function handleForEachArray(field, includeFields, index = null, trackerValue = n
 				for (const v of value) {
 					if (typeof v === "string") {
 						filteredValues.push(v);
-					} else {
-						if (extraFields && typeof extraFields === "object") {
-							extraFields[field.name] = extraFields[field.name] || {};
-							extraFields[field.name][key] = extraFields[field.name][key] || [];
-							extraFields[field.name][key].push(v);
-						}
+					} else if (extraFields && typeof extraFields === "object") {
+						extraFields[field.name] = extraFields[field.name] || {};
+						extraFields[field.name][key] = extraFields[field.name][key] || [];
+						extraFields[field.name][key].push(v);
 					}
 				}
 				result[key] = filteredValues;
@@ -673,75 +794,82 @@ function handleForEachArray(field, includeFields, index = null, trackerValue = n
 						}
 
 						arrayOfObjects.push(obj);
-					} else {
-						if (extraFields && typeof extraFields === "object") {
-							extraFields[field.name] = extraFields[field.name] || {};
-							extraFields[field.name][key] = extraFields[field.name][key] || [];
-							extraFields[field.name][key].push(arrItem);
-						}
+					} else if (extraFields && typeof extraFields === "object") {
+						extraFields[field.name] = extraFields[field.name] || {};
+						extraFields[field.name][key] = extraFields[field.name][key] || [];
+						extraFields[field.name][key].push(arrItem);
 					}
 				}
 				result[key] = arrayOfObjects;
 			}
 		}
 		return result;
-	} else {
-		if (trackerValue !== null && (typeof trackerValue !== "object" || Array.isArray(trackerValue))) {
-			if (extraFields && typeof extraFields === "object") {
-				extraFields[field.name] = trackerValue;
-			}
-		}
-
-		const result = {};
-		for (let cIndex = 0; cIndex < keys.length; cIndex++) {
-			const characterName = keys[cIndex];
-
-			if (singleStringField) {
-				const nf = nestedFieldArray[0];
-				const handler = FIELD_TYPES_HANDLERS[nf.type] || handleString;
-
-				let defaultArray = [];
-				if (index !== null && nf.exampleValues && nf.exampleValues[index]) {
-					try {
-						const val = nf.exampleValues[index];
-						const parsed = JSON.parse(val);
-						if (Array.isArray(parsed)) {
-							defaultArray = parsed.map((item) => (typeof item === "string" ? item : String(item)));
-						} else {
-							defaultArray = [String(val)];
-						}
-					} catch {
-						defaultArray = [nf.exampleValues[index]];
-					}
-				} else if (nf.defaultValue) {
-					try {
-						const parsed = JSON.parse(nf.defaultValue);
-						if (Array.isArray(parsed)) {
-							defaultArray = parsed.map((item) => (typeof item === "string" ? item : String(item)));
-						} else {
-							defaultArray = [String(nf.defaultValue)];
-						}
-					} catch {
-						defaultArray = [nf.defaultValue];
-					}
-				} else {
-					defaultArray = ["Updated if Changed"];
-				}
-
-				result[characterName] = defaultArray;
-			} else {
-				const arrItem = {};
-				for (const nf of nestedFieldArray) {
-					if (!shouldIncludeField(nf, includeFields, includeEphemeral)) continue;
-					const handler = FIELD_TYPES_HANDLERS[nf.type] || handleString;
-					arrItem[nf.name] = handler(nf, includeFields, index, null, extraFields, cIndex, includeEphemeral);
-				}
-				result[characterName] = [arrItem];
-			}
-		}
-
-		return result;
 	}
+
+	const hasValue = trackerValue !== null && typeof trackerValue !== "undefined";
+	if (hasValue) {
+		if (typeof trackerValue === "string") {
+			const normalized = trackerValue.trim();
+			if (!normalized || normalized.toLowerCase() === "none") {
+				return {};
+			}
+		} else if (extraFields && typeof extraFields === "object") {
+			extraFields[field.name] = trackerValue;
+		}
+	}
+
+	if (!includeEphemeral) {
+		return {};
+	}
+
+	const keys = resolveForEachKeys(field, index);
+	const result = {};
+	for (let cIndex = 0; cIndex < keys.length; cIndex++) {
+		const characterName = keys[cIndex];
+
+		if (singleStringField) {
+			const nf = nestedFieldArray[0];
+			let defaultArray = [];
+			if (index !== null && nf.exampleValues && nf.exampleValues[index]) {
+				try {
+					const val = nf.exampleValues[index];
+					const parsed = JSON.parse(val);
+					if (Array.isArray(parsed)) {
+						defaultArray = parsed.map((item) => (typeof item === "string" ? item : String(item)));
+					} else {
+						defaultArray = [String(val)];
+					}
+				} catch {
+					defaultArray = [nf.exampleValues[index]];
+				}
+			} else if (nf.defaultValue) {
+				try {
+					const parsed = JSON.parse(nf.defaultValue);
+					if (Array.isArray(parsed)) {
+						defaultArray = parsed.map((item) => (typeof item === "string" ? item : String(item)));
+					} else {
+						defaultArray = [String(nf.defaultValue)];
+					}
+				} catch {
+					defaultArray = [nf.defaultValue];
+				}
+			} else {
+				defaultArray = ["Updated if Changed"];
+			}
+
+			result[characterName] = defaultArray;
+		} else {
+			const arrItem = {};
+			for (const nf of nestedFieldArray) {
+				if (!shouldIncludeField(nf, includeFields, includeEphemeral)) continue;
+				const handler = FIELD_TYPES_HANDLERS[nf.type] || handleString;
+				arrItem[nf.name] = handler(nf, includeFields, index, null, extraFields, cIndex, includeEphemeral);
+			}
+			result[characterName] = [arrItem];
+		}
+	}
+
+	return result;
 }
 
 function buildPrompt(backendObj, includeFields, indentLevel, lines, includeEphemeral = false) {

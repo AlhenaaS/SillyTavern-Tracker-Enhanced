@@ -24,10 +24,10 @@ export async function generateTrackerCommand(args, value){
     const previousMesId = getPreviousNonSystemMessageIndex(mesId);
     if (previousMesId !== -1) {
         debug("Generating tracker for message " + mesId + " from command");
-        const tracker = await generateTracker(previousMesId, FIELD_INCLUDE_OPTIONS[include]);
+        const generationResult = await generateTracker(previousMesId, FIELD_INCLUDE_OPTIONS[include]);
         
-        if (tracker) {
-            return JSON.stringify(tracker);
+        if (generationResult && generationResult.tracker) {
+            return JSON.stringify(generationResult.tracker);
         } else {
             throw new Error(`Invalid response from tracker generation.`);
         }
@@ -69,6 +69,7 @@ export async function saveTrackerToMessageCommand(args, value){
     }
 
     chat[mesId].tracker = tracker;
+    delete chat[mesId].trackerInternal;
     await saveChatConditional();
     TrackerPreviewManager.updatePreview(mesId);
 
