@@ -32,7 +32,7 @@
   "settings.presets.export.button.title": "Export current tracker enhanced preset",
   "settings.presets.summary": "Preset Settings",
   "settings.context.label": "Context Template",
-  "settings.context.help": "Define the template for generating the tracker. Use macros like:<br>{{trackerSystemPrompt}}, {{characterDescriptions}}, {{recentMessages}}, {{currentTracker}}, {{trackerFormat}}, {{trackerFieldPrompt}}.",
+  "settings.context.help": "Define the template for generating the tracker. Use macros like:<br>{{participantGuidance}}, {{trackerSystemPrompt}}, {{characterDescriptions}}, {{recentMessages}}, {{currentTracker}}, {{trackerFormat}}, {{trackerFieldPrompt}}.",
   "settings.system.label": "System Prompt",
   "settings.system.help": "Define the system-level prompt for tracker generation. Use macros like:<br>{{charNames}}, {{defaultTracker}}, {{trackerFormat}}.",
   "settings.request.label": "Request Prompt",
@@ -66,5 +66,8 @@
   "settings.response_length.help": "Set a response token limit for tracker prompts. Leave blank or set to 0 to use the default response token limit.",
   "settings.toolbar_indicator.label": "Show toolbar injection indicator",
   "settings.debug.label": "Enable Debug Logging",
-  "settings.reset_presets.button": "Reset Default Presets"
+  "settings.reset_presets.button": "Reset Default Presets",
+  "prompts.participant_guidance.header": "### Participant Policy",
+  "prompts.participant_guidance.body": "Always include the following participants in CharactersPresent and Characters: {{participants}}.",
+  "prompts.participant_guidance.fields": "Never remove these participants; infer their state even if they are temporarily off-screen."
 }

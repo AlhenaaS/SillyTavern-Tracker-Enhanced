@@ -3,7 +3,9 @@ import { getContext } from '../../../../../../scripts/extensions.js';
 
 import { groups, selected_group } from "../../../../../scripts/group-chats.js";
 import { log, warn, debug, error, unescapeJsonString, getLastMessageWithTracker } from "../lib/utils.js";
-import { yamlToJSON } from "../lib/ymlParser.js";
+import { yamlToJSON, jsonToYAML } from "../lib/ymlParser.js";
+import { buildParticipantGuidance, collectParticipantNames } from "../lib/participantGuidance.js";
+import { getCurrentLocale } from "../lib/i18n.js";
 import { extensionSettings } from "../index.js";
 import { FIELD_INCLUDE_OPTIONS, getDefaultTracker, getTracker, getTrackerPrompt, OUTPUT_FORMATS, updateTracker } from "./trackerDataHandler.js";
 import { trackerFormat } from "./settings/defaultSettings.js";
@@ -230,6 +232,19 @@ function buildPresetOverridePayload(apiType, preset) {
 	return overrides;
 }
 
+function getParticipantPolicy() {
+	const locale = getCurrentLocale?.() ?? "en";
+	const names = collectParticipantNames();
+	const policy = buildParticipantGuidance(extensionSettings.generationTarget, names, locale);
+
+	return {
+		locale,
+		names,
+		guidance: policy.guidance,
+		participants: policy.participants,
+	};
+}
+
 
 /**
  * Replaces `{{key}}` placeholders in a template string with provided values.
@@ -392,9 +407,12 @@ export async function generateTracker(mesNum, includedFields = FIELD_INCLUDE_OPT
 
 		if (!tracker) return null;
 
+		const participantSeeds = getParticipantPolicy().participants;
 		const lastMesWithTrackerIndex = getLastMessageWithTracker(mesNum);
 		const lastMesWithTracker = chat[lastMesWithTrackerIndex];
-		let lastTracker = lastMesWithTracker ? lastMesWithTracker.tracker : getDefaultTracker(extensionSettings.trackerDef, FIELD_INCLUDE_OPTIONS.ALL, OUTPUT_FORMATS.JSON);
+		let lastTracker = lastMesWithTracker
+			? lastMesWithTracker.tracker
+			: getDefaultTracker(extensionSettings.trackerDef, FIELD_INCLUDE_OPTIONS.ALL, OUTPUT_FORMATS.JSON, participantSeeds);
 		const internalOutput = {};
 		const result = updateTracker(lastTracker, tracker, extensionSettings.trackerDef, FIELD_INCLUDE_OPTIONS.ALL, OUTPUT_FORMATS.JSON, true, internalOutput);
 		
@@ -493,10 +511,11 @@ async function sendGenerateTrackerRequest(systemPrompt, requestPrompt, responseL
  * @returns {string} The system prompt.
  */
 function getGenerateSystemPrompt(mesNum, includedFields = FIELD_INCLUDE_OPTIONS.ALL) {
-	const trackerSystemPrompt = getSystemPrompt(extensionSettings.generateSystemPrompt, includedFields);
+	const participantPolicy = getParticipantPolicy();
+	const trackerSystemPrompt = getSystemPrompt(extensionSettings.generateSystemPrompt, includedFields, participantPolicy);
 	const characterDescriptions = getCharacterDescriptions();
 	const recentMessages = getRecentMessages(extensionSettings.generateRecentMessagesTemplate, mesNum, includedFields);
-	const currentTracker = getCurrentTracker(mesNum, includedFields);
+	const currentTracker = getCurrentTracker(mesNum, includedFields, participantPolicy.participants);
 	const trackerFormat = extensionSettings.trackerFormat;
 	const trackerFieldPrompt = getTrackerPrompt(extensionSettings.trackerDef, includedFields);
 
@@ -507,37 +526,62 @@ function getGenerateSystemPrompt(mesNum, includedFields = FIELD_INCLUDE_OPTIONS.
 		currentTracker,
 		trackerFormat,
 		trackerFieldPrompt,
+		participantGuidance: participantPolicy.guidance || "",
 	};
 
 	debug("Generated Tracker Generation System Prompt:", vars);
 	return formatTemplate(extensionSettings.generateContextTemplate, vars);
 }
 
-function getSystemPrompt(template, includedFields) {
-	let charNames = [name1];
+function getSystemPrompt(template, includedFields, participantPolicy = null) {
+	const namesContext = participantPolicy?.names || collectParticipantNames();
+	const charNames = [];
 
-	// Add group members if in a group
-	if (selected_group) {
-		const group = groups.find((g) => g.id == selected_group);
-		const active = group.members.filter((m) => !group.disabled_members.includes(m));
-		active.forEach((m) => {
-			const char = characters.find((c) => c.avatar == m);
-			charNames.push(char.name);
-		});
-	} else if (this_chid) {
-		const char = characters[this_chid];
-		charNames.push(char.name);
+	const baseUserName = typeof namesContext.user === "string" ? namesContext.user : name1;
+	if (typeof baseUserName === "string") {
+		const trimmedUser = baseUserName.trim();
+		if (trimmedUser) {
+			charNames.push(trimmedUser);
+		} else {
+			charNames.push(baseUserName);
+		}
 	}
 
-	// Join character names
+	const unique = new Set(charNames);
+	const characterEntries = Array.isArray(namesContext.characters) ? namesContext.characters : [];
+	for (const characterName of characterEntries) {
+		if (typeof characterName === "string") {
+			const trimmed = characterName.trim();
+			if (trimmed && !unique.has(trimmed)) {
+				unique.add(trimmed);
+				charNames.push(trimmed);
+			}
+		}
+	}
+
+	if (charNames.length === 0 && typeof name1 === "string" && name1.trim()) {
+		charNames.push(name1.trim());
+	}
+
 	let namesJoined;
 	if (charNames.length === 1) namesJoined = charNames[0];
 	else if (charNames.length === 2) namesJoined = charNames.join(" and ");
-	else namesJoined = charNames.slice(0, -1).join(", ") + ", and " + charNames.slice(-1);
+	else if (charNames.length > 2) namesJoined = `${charNames.slice(0, -1).join(", ")}, and ${charNames.slice(-1)}`;
+	else namesJoined = "";
 
-	let defaultTrackerVal = getDefaultTracker(extensionSettings.trackerDef, includedFields, OUTPUT_FORMATS[extensionSettings.trackerFormat]);
-	if (extensionSettings.trackerFormat == trackerFormat.JSON) {
-		defaultTrackerVal = JSON.stringify(defaultTrackerVal, null, 2);
+	const participantSeeds = Array.isArray(participantPolicy?.participants) ? participantPolicy.participants : [];
+	const defaultTrackerJson = getDefaultTracker(
+		extensionSettings.trackerDef,
+		includedFields,
+		OUTPUT_FORMATS.JSON,
+		participantSeeds
+	);
+
+	let defaultTrackerVal;
+	if (extensionSettings.trackerFormat === trackerFormat.JSON) {
+		defaultTrackerVal = JSON.stringify(defaultTrackerJson, null, 2);
+	} else {
+		defaultTrackerVal = jsonToYAML(defaultTrackerJson).trim();
 	}
 
 	const vars = {
@@ -634,7 +678,7 @@ function getRecentMessages(template, mesNum, includedFields) {
 /**
  * Retrieves the current tracker.
  */
-function getCurrentTracker(mesNum, includedFields) {
+function getCurrentTracker(mesNum, includedFields, participantSeeds = null) {
 	debug("Getting current tracker for message:", { mesNum });
 	const message = chat[mesNum];
 	const tracker = message.tracker;
@@ -645,7 +689,12 @@ function getCurrentTracker(mesNum, includedFields) {
 		const lastMesWithTrackerIndex = getLastMessageWithTracker(mesNum);
 		const lastMesWithTracker = chat[lastMesWithTrackerIndex];
 		if (lastMesWithTracker) returnTracker = getTracker(lastMesWithTracker.tracker, extensionSettings.trackerDef, includedFields, false, OUTPUT_FORMATS[extensionSettings.trackerFormat]);
-		else returnTracker = getDefaultTracker(extensionSettings.trackerDef, includedFields, OUTPUT_FORMATS[extensionSettings.trackerFormat]);
+		else returnTracker = getDefaultTracker(
+			extensionSettings.trackerDef,
+			includedFields,
+			OUTPUT_FORMATS[extensionSettings.trackerFormat],
+			participantSeeds
+		);
 	}
 
 	if (extensionSettings.trackerFormat == trackerFormat.JSON) {

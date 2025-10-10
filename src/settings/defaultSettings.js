@@ -313,6 +313,8 @@ const generateContextTemplate = t("prompts.generateContextTemplate", `<|begin_of
 
 {{trackerSystemPrompt}}
 
+{{participantGuidance}}
+
 <!-- Start of Context -->
 
 {{characterDescriptions}}

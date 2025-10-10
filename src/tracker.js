@@ -10,6 +10,8 @@ import { FIELD_INCLUDE_OPTIONS, getDefaultTracker, OUTPUT_FORMATS, getTracker as
 import { TrackerEditorModal } from "./ui/trackerEditorModal.js";
 import { TrackerPreviewManager } from "./ui/trackerPreviewManager.js";
 import { jsonToYAML } from "../lib/ymlParser.js";
+import { buildParticipantGuidance, collectParticipantNames } from "../lib/participantGuidance.js";
+import { getCurrentLocale } from "../lib/i18n.js";
 
 // Constants
 const ACTION_TYPES = {
@@ -44,6 +46,13 @@ const SYSTEM_MESSAGE_TYPES = {
 	ASSISTANT_NOTE: system_message_types.ASSISTANT_NOTE,
 };
 
+function resolveParticipantSeeds() {
+	const locale = getCurrentLocale?.() ?? "en";
+	const names = collectParticipantNames();
+	const policy = buildParticipantGuidance(extensionSettings.generationTarget, names, locale);
+	return policy.participants;
+}
+
 //#region Tracker Functions
 
 /**
@@ -55,7 +64,8 @@ export function getTracker(mesNum) {
 	let tracker = chat[mesNum]?.tracker;
 
 	if (!tracker) {
-		tracker = getDefaultTracker(extensionSettings.trackerDef, FIELD_INCLUDE_OPTIONS.ALL, OUTPUT_FORMATS.JSON);
+		const participantSeeds = resolveParticipantSeeds();
+		tracker = getDefaultTracker(extensionSettings.trackerDef, FIELD_INCLUDE_OPTIONS.ALL, OUTPUT_FORMATS.JSON, participantSeeds);
 	}
 
 	return tracker;
@@ -249,7 +259,8 @@ async function showManualTrackerPopup(mesId = null) {
 	if (lastMesWithTracker) {
 		manualTracker = getCleanTracker(lastMesWithTracker.tracker, extensionSettings.trackerDef, FIELD_INCLUDE_OPTIONS.ALL, true, OUTPUT_FORMATS.JSON);
 	} else {
-		manualTracker = getDefaultTracker(extensionSettings.trackerDef, FIELD_INCLUDE_OPTIONS.ALL, OUTPUT_FORMATS.JSON);
+		const participantSeeds = resolveParticipantSeeds();
+		manualTracker = getDefaultTracker(extensionSettings.trackerDef, FIELD_INCLUDE_OPTIONS.ALL, OUTPUT_FORMATS.JSON, participantSeeds);
 	}
 
 	const trackerEditor = new TrackerEditorModal(mesId);

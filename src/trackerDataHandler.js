@@ -75,10 +75,11 @@ export function saveTracker(tracker, backendObj, mesId, useUpdatedExtraFieldsAsS
  * @param {string} outputFormat - The desired output format ('json' or 'yaml').
  * @returns {Object|string} - The default tracker in the specified format.
  */
-export function getDefaultTracker(backendObject, includeFields = FIELD_INCLUDE_OPTIONS.DYNAMIC, outputFormat = OUTPUT_FORMATS.JSON) {
+export function getDefaultTracker(backendObject, includeFields = FIELD_INCLUDE_OPTIONS.DYNAMIC, outputFormat = OUTPUT_FORMATS.JSON, participantSeeds = null) {
 	const tracker = {};
 	processFieldDefaults(backendObject, tracker, includeFields);
-	return formatOutput(tracker, outputFormat);
+	const seededTracker = seedTrackerParticipants(tracker, backendObject, includeFields, participantSeeds);
+	return formatOutput(seededTracker, outputFormat);
 }
 
 /**
@@ -248,6 +249,68 @@ function processFieldDefaults(backendObj, trackerObj, includeFields) {
 		const handler = FIELD_TYPES_HANDLERS[field.type] || handleString;
 		trackerObj[field.name] = handler(field, includeFields, null, null, null, null, true);
 	}
+}
+
+function seedTrackerParticipants(trackerObj, backendObj, includeFields, participantSeeds) {
+	const participants = sanitizeParticipantSeeds(participantSeeds);
+	if (participants.length === 0) {
+		return trackerObj;
+	}
+
+	const charactersPresentField = findFieldByName(backendObj, "CharactersPresent");
+	if (charactersPresentField && shouldIncludeField(charactersPresentField, includeFields, true)) {
+		trackerObj.CharactersPresent = participants;
+	}
+
+	const charactersField = findFieldByName(backendObj, "Characters");
+	if (charactersField && shouldIncludeField(charactersField, includeFields, true)) {
+		const nestedFields = charactersField.nestedFields || {};
+		const characterEntries = {};
+
+		participants.forEach((participantName, index) => {
+			const entry = {};
+			for (const nestedField of Object.values(nestedFields)) {
+				if (!shouldIncludeField(nestedField, includeFields, true)) continue;
+				const handler = FIELD_TYPES_HANDLERS[nestedField.type] || handleString;
+				entry[nestedField.name] = handler(nestedField, includeFields, null, null, null, index, true);
+			}
+			characterEntries[participantName] = entry;
+		});
+
+		trackerObj.Characters = characterEntries;
+	}
+
+	return trackerObj;
+}
+
+function sanitizeParticipantSeeds(participantSeeds) {
+	if (!Array.isArray(participantSeeds)) {
+		return [];
+	}
+
+	const normalized = [];
+	const seen = new Set();
+	for (const rawName of participantSeeds) {
+		if (typeof rawName !== "string") continue;
+		const trimmed = rawName.trim();
+		if (!trimmed || seen.has(trimmed)) continue;
+		seen.add(trimmed);
+		normalized.push(trimmed);
+	}
+	return normalized;
+}
+
+function findFieldByName(backendObj, fieldName) {
+	if (!backendObj || typeof backendObj !== "object") {
+		return null;
+	}
+
+	for (const field of Object.values(backendObj)) {
+		if (field?.name === fieldName) {
+			return field;
+		}
+	}
+	return null;
 }
 
 function reconcileTracker(trackerInput, backendObj, reconciledObj, extraFields, includeFields) {
