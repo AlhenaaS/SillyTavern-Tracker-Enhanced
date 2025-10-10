@@ -1,4 +1,4 @@
-import { generateRaw, chat, characters, this_chid, getCharacterCardFields, name1 } from "../../../../../script.js";
+import { generateRaw, chat, characters, this_chid, getCharacterCardFields, name1, baseChatReplace } from "../../../../../script.js";
 import { getContext } from '../../../../../../scripts/extensions.js';
 
 import { groups, selected_group } from "../../../../../scripts/group-chats.js";
@@ -567,11 +567,23 @@ function getCharacterDescriptions() {
 		const active = group.members.filter((m) => !group.disabled_members.includes(m));
 		active.forEach((m) => {
 			const char = characters.find((c) => c.avatar == m);
-			characterDescriptions.push({ name: char.name, description: char.description });
+			if (!char?.name) {
+				return;
+			}
+
+			const resolvedDescription = baseChatReplace(char.description?.trim(), name1, char.name)?.trim();
+			if (resolvedDescription) {
+				characterDescriptions.push({ name: char.name, description: resolvedDescription });
+			}
 		});
-	} else if (this_chid) {
+	} else if (this_chid !== undefined && this_chid !== null) {
 		const char = characters[this_chid];
-		characterDescriptions.push({ name: char.name, description: char.description });
+		if (char?.name) {
+			const resolvedDescription = baseChatReplace(char.description?.trim(), name1, char.name)?.trim();
+			if (resolvedDescription) {
+				characterDescriptions.push({ name: char.name, description: resolvedDescription });
+			}
+		}
 	}
 
 	let charDescriptionString = "";
