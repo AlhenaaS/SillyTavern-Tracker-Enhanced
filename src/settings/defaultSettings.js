@@ -552,7 +552,7 @@ const characterDescriptionTemplate = t("prompts.characterDescriptionTemplate", `
 const mesTrackerTemplate = `<div class="tracker_default_mes_template">
     <table>
         <tr>
-            <td style="white-space: nowrap;">Local Time:</td>
+            <td>LocalTime:</td>
             <td>{{LocalTime}}</td>
         </tr>
         <tr>
