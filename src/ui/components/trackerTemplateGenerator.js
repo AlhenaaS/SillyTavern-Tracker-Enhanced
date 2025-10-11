@@ -55,6 +55,10 @@ export class TrackerTemplateGenerator {
             const fieldType = this.normalizeFieldType(fieldData.type);
             const isNested = fieldData.nestedFields && Object.keys(fieldData.nestedFields).length > 0;
 
+            if (this.isInternalOnlyField(fieldData)) {
+                continue;
+            }
+
             switch (fieldType) {
                 case 'String':
                     items.push(this.generateStringField(fieldName, fieldKey, indent));
@@ -88,6 +92,20 @@ export class TrackerTemplateGenerator {
         }
 
         return items.join('\n');
+    }
+
+    isInternalOnlyField(fieldData) {
+        if (!fieldData || typeof fieldData !== 'object') {
+            return false;
+        }
+        const metadata = fieldData.metadata || {};
+        if (metadata.internalOnly === true) {
+            return true;
+        }
+        if (metadata.internal === true && metadata.external === false) {
+            return true;
+        }
+        return false;
     }
 
     /**
@@ -166,6 +184,7 @@ export class TrackerTemplateGenerator {
         const nestedItems = [];
         for (const [nestedKey, nestedData] of Object.entries(nestedFields)) {
             if (!nestedData || typeof nestedData !== 'object') continue;
+            if (this.isInternalOnlyField(nestedData)) continue;
             const nestedName = nestedData.name || nestedKey;
             nestedItems.push(`${innerIndent}        <tr><td>${nestedName}:</td><td>{{item.${nestedName}}}</td></tr>`);
         }
@@ -193,6 +212,7 @@ export class TrackerTemplateGenerator {
         const nestedItems = [];
         for (const [nestedKey, nestedData] of Object.entries(nestedFields)) {
             if (!nestedData || typeof nestedData !== 'object') continue;
+            if (this.isInternalOnlyField(nestedData)) continue;
             const nestedName = nestedData.name || nestedKey;
             nestedItems.push(`${innerIndent}        <tr><td>${nestedName}:</td><td>{{item.${nestedName}}}</td></tr>`);
         }
@@ -244,6 +264,13 @@ export class TrackerTemplateGenerator {
         
         for (const [fieldKey, fieldData] of Object.entries(trackerDef)) {
             if (!fieldData || typeof fieldData !== 'object') {
+                continue;
+            }
+
+            if (this.isInternalOnlyField(fieldData)) {
+                if (typeof debug === 'function') {
+                    debug(`TrackerTemplateGenerator: Skipping internal-only field ${fieldKey}`);
+                }
                 continue;
             }
             
@@ -331,6 +358,7 @@ export class TrackerTemplateGenerator {
                 // Generate character nested fields
                 for (const [nestedKey, nestedData] of Object.entries(charactersField.nestedFields)) {
                     if (!nestedData || typeof nestedData !== 'object') continue;
+                    if (this.isInternalOnlyField(nestedData)) continue;
                     const nestedName = nestedData.name || nestedKey;
                     
                     // Special display name handling
