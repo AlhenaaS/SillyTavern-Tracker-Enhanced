@@ -278,6 +278,7 @@ const staticLocalizationBindings = [
 	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_response_length"]'), key: "settings.response_length.label" },
 	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_response_length"]')?.parentElement?.querySelector('small'), key: "settings.response_length.help", target: "html" },
 	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_toolbar_indicator"]'), key: "settings.toolbar_indicator.label" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_dev_tools"]'), key: "settings.devtools.label" },
 	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_debug"]'), key: "settings.debug.label" },
 	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_reset_presets'), key: "settings.reset_presets.button", target: "value" }
 ];
@@ -323,7 +324,7 @@ export async function initSettings() {
 	const hadMetadataSchemaVersion = Object.prototype.hasOwnProperty.call(currentSettings, "metadataSchemaVersion");
 
 	if (!currentSettings.trackerDef) {
-		const allowedKeys = ["enabled", "generateContextTemplate", "generateSystemPrompt", "generateRequestPrompt", "roleplayPrompt", "characterDescriptionTemplate", "mesTrackerTemplate", "numberOfMessages", "responseLength", "debugMode"];
+		const allowedKeys = ["enabled", "generateContextTemplate", "generateSystemPrompt", "generateRequestPrompt", "roleplayPrompt", "characterDescriptionTemplate", "mesTrackerTemplate", "numberOfMessages", "responseLength", "debugMode", "devToolsEnabled"];
 
 		const newSettings = {
 			...defaultSettings,
@@ -457,10 +458,9 @@ async function loadSettingsUI() {
 
 
 		await ensureLocalePresetsRegistered();
+		DevelopmentTestUI.init();
 		setSettingsInitialValues();
 		registerSettingsListeners();
-		// Initialize Development Test UI
-		DevelopmentTestUI.init();
 		
 		debug("Settings UI initialization completed");
 	} catch (error) {
@@ -688,6 +688,7 @@ function setSettingsInitialValues() {
 	$("#tracker_enhanced_show_popup_for").val(extensionSettings.showPopupFor);
 	$("#tracker_enhanced_format").val(extensionSettings.trackerFormat);
 	$("#tracker_enhanced_toolbar_indicator").prop("checked", extensionSettings.toolbarIndicatorEnabled !== false);
+	$("#tracker_enhanced_dev_tools").prop("checked", Boolean(extensionSettings.devToolsEnabled));
 	$("#tracker_enhanced_debug").prop("checked", extensionSettings.debugMode);
 
 	// Set other settings fields
@@ -706,6 +707,8 @@ function setSettingsInitialValues() {
 
 	// Process the tracker javascript
 	processTrackerJavascript();
+
+	DevelopmentTestUI.setEnabled(Boolean(extensionSettings.devToolsEnabled));
 }
 
 // #endregion
@@ -742,6 +745,13 @@ function registerSettingsListeners() {
 		if (typeof TrackerInterface.setIndicatorVisibility === "function") {
 			TrackerInterface.setIndicatorVisibility(enabled);
 		}
+	});
+
+	$("#tracker_enhanced_dev_tools").on("input", (event) => {
+		const enabled = $(event.currentTarget).is(":checked");
+		extensionSettings.devToolsEnabled = enabled;
+		saveSettingsDebounced();
+		DevelopmentTestUI.setEnabled(enabled);
 	});
 
 	$("#tracker_enhanced_debug").on("input", onSettingCheckboxInput("debugMode"));

@@ -65,6 +65,7 @@
   "settings.response_length.label": "回复长度",
   "settings.response_length.help": "为追踪器提示设置回复令牌上限。留空或设为 0 表示使用默认限制。",
   "settings.toolbar_indicator.label": "显示工具栏注入指示器",
+  "settings.devtools.label": "启用开发工具",
   "settings.debug.label": "启用调试日志",
   "settings.reset_presets.button": "重置默认预设",
   "prompts.participant_guidance.header": "### 参与者策略",

@@ -65,6 +65,7 @@
   "settings.response_length.label": "Response Length",
   "settings.response_length.help": "Set a response token limit for tracker prompts. Leave blank or set to 0 to use the default response token limit.",
   "settings.toolbar_indicator.label": "Show toolbar injection indicator",
+  "settings.devtools.label": "Enable Dev Tools",
   "settings.debug.label": "Enable Debug Logging",
   "settings.reset_presets.button": "Reset Default Presets",
   "prompts.participant_guidance.header": "### Participant Policy",

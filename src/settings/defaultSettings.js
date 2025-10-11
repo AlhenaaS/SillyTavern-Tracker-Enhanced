@@ -1338,6 +1338,7 @@ export const defaultSettings = {
 			trackerDef: trackerDef,
 		},
 	},
+	devToolsEnabled: false,
 	debugMode: false,
 	trackerInjectionEnabled: true,
 	toolbarIndicatorEnabled: false,

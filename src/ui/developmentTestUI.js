@@ -10,19 +10,42 @@ import { callGenericPopup, POPUP_TYPE } from '../../../../../popup.js';
 // toastr is available globally in SillyTavern
 const toastr = window.toastr;
 
+const DEV_SECTION_ID = "tracker_enhanced_dev_section";
+
 export class DevelopmentTestUI {
     static init() {
-        // Add collapsible section to settings panel
-        // The settings container ID is 'tracker_enhanced_settings' not 'tracker-enhanced_settings'
-        const settingsContainer = document.querySelector('#tracker_enhanced_settings .inline-drawer-content');
-        if (!settingsContainer) {
+        // Cache the settings container for reuse
+        const container = document.querySelector('#tracker_enhanced_settings .inline-drawer-content');
+        if (!container) {
             console.warn('[tracker-enhanced] Settings container not found for development test UI');
             return;
         }
+        this.settingsContainer = container;
+    }
 
-        // Create development test section
-        const devSection = this.createDevSection();
-        settingsContainer.appendChild(devSection);
+    static setEnabled(enabled) {
+        if (!this.settingsContainer || !this.settingsContainer.isConnected) {
+            this.init();
+        }
+
+        if (!this.settingsContainer) {
+            return;
+        }
+
+        const existingSection = document.getElementById(DEV_SECTION_ID);
+        if (enabled) {
+            if (existingSection) {
+                return;
+            }
+            const devSection = this.createDevSection();
+            devSection.id = DEV_SECTION_ID;
+            this.settingsContainer.appendChild(devSection);
+            return;
+        }
+
+        if (existingSection) {
+            existingSection.remove();
+        }
     }
 
     static createDevSection() {
