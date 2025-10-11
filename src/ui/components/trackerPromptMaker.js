@@ -1,3 +1,4 @@
+import { t } from "../../../lib/i18n.js";
 import { debug, error, warn } from "../../../lib/utils.js";
 import { TrackerTemplateGenerator } from "./trackerTemplateGenerator.js";
 
@@ -71,10 +72,11 @@ export class TrackerPromptMaker {
 		const internalToggleWrapper = $('<div class="internal-toggle-wrapper"></div>');
 		const internalToggleLabel = $(`
 			<label class="show-internal-toggle">
-				<span>Show internal keys</span>
+				<span></span>
 				<input type="checkbox" />
 			</label>
 		`);
+		internalToggleLabel.find("span").text(t("trackerPromptMaker.toggle.showInternal", "Show internal keys"));
 		this.internalToggleInput = internalToggleLabel.find("input");
 		this.internalToggleInput.prop("checked", this.showInternalFields);
 		this.internalToggleInput.on("change", (event) => {
@@ -91,7 +93,9 @@ export class TrackerPromptMaker {
 		const buttonsWrapper = $('<div class="buttons-wrapper"></div>');
 
 		// Button to add a new field.
-		const addFieldBtn = $('<button class="menu_button interactable">Add Field</button>').on("click", () => {
+		const addFieldBtn = $('<button class="menu_button interactable"></button>')
+			.text(t("trackerPromptMaker.buttons.addField", "Add Field"))
+			.on("click", () => {
 			this.addField(); // Add field without specifying parent (top-level)
 			this.rebuildBackendObjectFromDOM(); // Rebuild keys after adding a new field.
 		});
@@ -338,19 +342,19 @@ export class TrackerPromptMaker {
 
 		if (hasInternal || hasExternal) {
 			const badgeRow = $('<div class="field-metadata-row field-metadata-row--flags"></div>');
-			badgeRow.append('<span class="field-meta-label">Meta:</span>');
+			badgeRow.append(`<span class="field-meta-label">${t("trackerPromptMaker.metadata.metaLabel", "Meta:")}</span>`);
 			if (hasInternal) {
-				badgeRow.append('<span class="field-badge field-badge--internal">Internal</span>');
+				badgeRow.append(`<span class="field-badge field-badge--internal">${t("trackerPromptMaker.metadata.internal", "Internal")}</span>`);
 			}
 			if (hasExternal) {
-				badgeRow.append('<span class="field-badge field-badge--external">External</span>');
+				badgeRow.append(`<span class="field-badge field-badge--external">${t("trackerPromptMaker.metadata.external", "External")}</span>`);
 			}
 			container.append(badgeRow);
 		}
 
 		if (hasKeyId) {
 			const idRow = $('<div class="field-metadata-row field-metadata-row--id"></div>');
-			idRow.append('<span class="field-metadata-label">internalKeyId:</span>');
+			idRow.append(`<span class="field-metadata-label">${t("trackerPromptMaker.metadata.internalKeyId", "internalKeyId:")}</span>`);
 			idRow.append(`<span class="field-badge field-badge--id">${metadata.internalKeyId}</span>`);
 			container.append(idRow);
 		}
@@ -380,8 +384,9 @@ export class TrackerPromptMaker {
 		}
 
 		if (isDualScope) {
+			const controlScope = fieldWrapper.children(".name-dynamic-type-wrapper");
 			disableSelectors.forEach((selector) => {
-				fieldWrapper.find(selector).prop("disabled", true);
+				controlScope.find(selector).prop("disabled", true);
 			});
 
 			fieldWrapper.addClass("field-wrapper--locked-partial");
@@ -412,6 +417,40 @@ export class TrackerPromptMaker {
 		const metadata = this.normalizeFieldMetadata(fieldData.metadata, isNewField);
 		fieldData.metadata = metadata;
 
+		const labels = {
+			fieldName: t("trackerPromptMaker.labels.fieldName", "Field Name:"),
+			fieldNamePlaceholder: t("trackerPromptMaker.placeholders.fieldName", "Field Name"),
+			presence: t("trackerPromptMaker.labels.presence", "Presence:"),
+			fieldType: t("trackerPromptMaker.labels.fieldType", "Field Type:"),
+			genderSpecific: t("trackerPromptMaker.labels.genderSpecific", "Gender Specific:"),
+			prompt: t("trackerPromptMaker.labels.prompt", "Prompt or Note:"),
+			promptPlaceholder: t("trackerPromptMaker.placeholders.prompt", "Prompt or Note"),
+			defaultValue: t("trackerPromptMaker.labels.defaultValue", "Default Value:"),
+			defaultValuePlaceholder: t("trackerPromptMaker.placeholders.defaultValue", "Default Value"),
+			exampleValuesHeading: t("trackerPromptMaker.labels.exampleValues", "Example Values:"),
+			addNestedField: t("trackerPromptMaker.buttons.addNestedField", "Add Nested Field"),
+			addExampleValue: t("trackerPromptMaker.buttons.addExampleValue", "Add Example Value"),
+			removeExampleValue: t("trackerPromptMaker.buttons.removeExampleValue", "Remove Example Value"),
+			removeField: t("trackerPromptMaker.buttons.removeField", "Remove Field"),
+		};
+
+		const presenceOptions = Object.entries(TrackerPromptMaker.FIELD_PRESENCE_OPTIONS).map(([key, value]) => ({
+			value: key,
+			label: t(`trackerPromptMaker.presence.${key.toLowerCase()}`, value),
+		}));
+
+		const fieldTypeOptions = Object.entries(TrackerPromptMaker.FIELD_TYPES).map(([key, value]) => ({
+			value: key,
+			label: t(`trackerPromptMaker.fieldType.${key.toLowerCase()}`, value),
+		}));
+
+		const genderSpecificOptions = [
+			{ value: "all", label: t("trackerPromptMaker.genderSpecific.all", "All Genders") },
+			{ value: "female", label: t("trackerPromptMaker.genderSpecific.female", "Female Only") },
+			{ value: "male", label: t("trackerPromptMaker.genderSpecific.male", "Male Only") },
+			{ value: "trans", label: t("trackerPromptMaker.genderSpecific.trans", "Trans Only") },
+		];
+
 		const fieldWrapper = $('<div class="field-wrapper"></div>').attr("data-field-id", fieldId);
 		fieldWrapper.data("metadata", metadata);
 		if (metadata.internal) {
@@ -429,8 +468,9 @@ export class TrackerPromptMaker {
 		nameDynamicTypeDiv.append(dragHandle);
 
 		// Field Name Input with label
-		const fieldNameLabel = $("<label>Field Name:</label>");
-		const fieldNameInput = $('<input type="text" class="text_pole" placeholder="Field Name">')
+		const fieldNameLabel = $("<label></label>").text(labels.fieldName);
+		const fieldNameInput = $('<input type="text" class="text_pole">')
+			.attr("placeholder", labels.fieldNamePlaceholder)
 			.val(fieldData.name || "")
 			.on("input", (e) => {
 				const currentFieldId = fieldWrapper.attr("data-field-id");
@@ -440,15 +480,13 @@ export class TrackerPromptMaker {
 		const fieldNameDiv = $('<div class="field-name-wrapper"></div>').append(fieldNameLabel, fieldNameInput);
 
 		// Presence Selector with label
-		const presenceLabel = $("<label>Presence:</label>");
+		const presenceLabel = $("<label></label>").text(labels.presence);
 		const presenceKey = fieldData.presence || "DYNAMIC";
-		const presenceSelector = $(`
-            <select>
-                ${Object.entries(TrackerPromptMaker.FIELD_PRESENCE_OPTIONS)
-					.map(([key, value]) => `<option value="${key}">${value}</option>`)
-					.join("")}        
-            </select>
-        `)
+		const presenceSelector = $("<select></select>");
+		presenceOptions.forEach(({ value, label }) => {
+			presenceSelector.append($("<option></option>").attr("value", value).text(label));
+		});
+		presenceSelector
 			.val(presenceKey)
 			.on("change", (e) => {
 				const currentFieldId = fieldWrapper.attr("data-field-id");
@@ -458,15 +496,13 @@ export class TrackerPromptMaker {
 		const presenceDiv = $('<div class="presence-wrapper"></div>').append(presenceLabel, presenceSelector);
 
 		// Field Type Selector with label
-		const fieldTypeLabel = $("<label>Field Type:</label>");
+		const fieldTypeLabel = $("<label></label>").text(labels.fieldType);
 		const fieldTypeKey = fieldData.type || "STRING";
-		const fieldTypeSelector = $(`
-            <select>
-                ${Object.entries(TrackerPromptMaker.FIELD_TYPES)
-					.map(([key, value]) => `<option value="${key}">${value}</option>`)
-					.join("")}        
-            </select>
-        `)
+		const fieldTypeSelector = $("<select></select>");
+		fieldTypeOptions.forEach(({ value, label }) => {
+			fieldTypeSelector.append($("<option></option>").attr("value", value).text(label));
+		});
+		fieldTypeSelector
 			.val(fieldTypeKey)
 			.on("change", (e) => {
 				const currentFieldId = fieldWrapper.attr("data-field-id");
@@ -476,16 +512,13 @@ export class TrackerPromptMaker {
 		const fieldTypeDiv = $('<div class="field-type-wrapper"></div>').append(fieldTypeLabel, fieldTypeSelector);
 
 		// Gender Specific Selector with label (only for nested character fields)
-		const genderSpecificLabel = $("<label>Gender Specific:</label>");
+		const genderSpecificLabel = $("<label></label>").text(labels.genderSpecific);
 		const genderSpecificKey = fieldData.genderSpecific || "all";
-		const genderSpecificSelector = $(`
-            <select>
-                <option value="all">All Genders</option>
-                <option value="female">Female Only</option>
-                <option value="male">Male Only</option>
-                <option value="trans">Trans Only</option>
-            </select>
-        `)
+		const genderSpecificSelector = $("<select></select>");
+		genderSpecificOptions.forEach(({ value, label }) => {
+			genderSpecificSelector.append($("<option></option>").attr("value", value).text(label));
+		});
+		genderSpecificSelector
 			.val(genderSpecificKey)
 			.on("change", (e) => {
 				const currentFieldId = fieldWrapper.attr("data-field-id");
@@ -514,8 +547,9 @@ export class TrackerPromptMaker {
 		const promptDefaultExampleWrapper = $('<div class="prompt-default-example-wrapper"></div>');
 
 		// Prompt Input with label
-		const promptLabel = $("<label>Prompt or Note:</label>");
-		const promptInput = $('<textarea type="text" class="text_pole" placeholder="Prompt or Note"></textarea>')
+		const promptLabel = $("<label></label>").text(labels.prompt);
+		const promptInput = $('<textarea type="text" class="text_pole"></textarea>')
+			.attr("placeholder", labels.promptPlaceholder)
 			.val(fieldData.prompt || "")
 			.on("input", (e) => {
 				const currentFieldId = fieldWrapper.attr("data-field-id");
@@ -528,8 +562,9 @@ export class TrackerPromptMaker {
 		const defaultExampleWrapper = $('<div class="default-example-wrapper"></div>');
 
 		// Default Value Input with label
-		const defaultValueLabel = $("<label>Default Value:</label>");
-		const defaultValueInput = $('<input type="text" class="text_pole" placeholder="Default Value">')
+		const defaultValueLabel = $("<label></label>").text(labels.defaultValue);
+		const defaultValueInput = $('<input type="text" class="text_pole">')
+			.attr("placeholder", labels.defaultValuePlaceholder)
 			.val(fieldData.defaultValue || "")
 			.on("input", (e) => {
 				const currentFieldId = fieldWrapper.attr("data-field-id");
@@ -539,7 +574,7 @@ export class TrackerPromptMaker {
 		const defaultValueDiv = $('<div class="default-value-wrapper"></div>').append(defaultValueLabel, defaultValueInput);
 
 		// Example Values Heading, Controls, and Container
-		const exampleValuesHeading = $("<h4>Example Values:</h4>");
+		const exampleValuesHeading = $("<h4></h4>").text(labels.exampleValuesHeading);
 		const exampleValuesControls = $('<div class="example-values-controls"></div>').css({
 			display: "flex",
 			justifyContent: "flex-end",
@@ -564,7 +599,8 @@ export class TrackerPromptMaker {
 		const buttonsWrapper = $('<div class="buttons-wrapper"></div>');
 
 		// Add Nested Field Button
-		const addNestedFieldBtn = $('<button class="menu_button interactable">Add Nested Field</button>')
+		const addNestedFieldBtn = $('<button class="menu_button interactable"></button>')
+			.text(labels.addNestedField)
 			.on("click", () => {
 				if (metadata.internalOnly) {
 					return;
@@ -584,7 +620,8 @@ export class TrackerPromptMaker {
 		addNestedFieldBtn.prop("disabled", metadata.internalOnly);
 
 		// Add Example Value Button (per field)
-		const addExampleValueBtn = $('<button class="menu_button interactable">Add Example Value</button>')
+		const addExampleValueBtn = $('<button class="menu_button interactable"></button>')
+			.text(labels.addExampleValue)
 			.on("click", () => {
 				if (metadata.internalOnly) {
 					return;
@@ -600,7 +637,8 @@ export class TrackerPromptMaker {
 		addExampleValueBtn.prop("disabled", metadata.internalOnly);
 
 		// Remove Example Value Button (per field)
-		const removeExampleValueBtn = $('<button class="menu_button interactable">Remove Example Value</button>')
+		const removeExampleValueBtn = $('<button class="menu_button interactable"></button>')
+			.text(labels.removeExampleValue)
 			.on("click", () => {
 				if (metadata.internalOnly) {
 					return;
@@ -618,7 +656,9 @@ export class TrackerPromptMaker {
 		buttonsWrapper.append(addNestedFieldBtn);
 
 		// Remove Field Button
-		const removeFieldBtn = $('<button class="menu_button interactable">Remove Field</button>').on("click", () => {
+		const removeFieldBtn = $('<button class="menu_button interactable"></button>')
+			.text(labels.removeField)
+			.on("click", () => {
 			this.removeField(fieldId, fieldWrapper);
 		});
 		if (metadata.internal) {
@@ -702,13 +742,13 @@ export class TrackerPromptMaker {
 		if (fieldData?.metadata?.internal) {
 			warn(`Attempted to remove internal field "${fieldData.name}" ignored.`);
 			if (typeof toastr !== "undefined") {
-				toastr.warning("Internal fields cannot be removed.");
+				toastr.warning(t("trackerPromptMaker.messages.internalFieldLocked", "Internal fields cannot be removed."));
 			}
 			return;
 		}
 
 		// Confirm before removing
-		if (confirm("Are you sure you want to remove this field?")) {
+		if (confirm(t("trackerPromptMaker.messages.confirmRemoveField", "Are you sure you want to remove this field?"))) {
 			// Remove from backend object
 			this.deleteFieldDataById(fieldId);
 			// Remove from UI
@@ -855,7 +895,8 @@ export class TrackerPromptMaker {
 		}
 
 		// Example value input
-		const exampleValueInput = $('<input class="text_pole" type="text" placeholder="Example Value">')
+		const exampleValueInput = $('<input class="text_pole" type="text">')
+			.attr("placeholder", t("trackerPromptMaker.placeholders.exampleValue", "Example Value"))
 			.val(exampleValue)
 			.on("input", (e) => {
 				const currentFieldId = fieldWrapper.attr("data-field-id");

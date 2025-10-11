@@ -3,6 +3,12 @@
 An advanced, feature-rich tracker extension for SillyTavern that provides comprehensive character and scene monitoring with intelligent automation, drag-and-drop field management, and dynamic template generation.
 
 ## Changelog
+12-10-2025
+- Added a new preset-maintenance pipeline:
+	- Built-in schemas now auto-refresh from their bundled templates to ensure they always reflect the latest defaults shipped with each update.
+	- When an outdated custom preset is detected, it is automatically renamed to ❌ Backup ….    
+	You can still load or export these backups to review their contents, but note that compatibility issues may occur.
+- Added locales for the prompt maker.
 
 11-10-2025
 - Refined time management: new `TimeAnchor` / `LocalTime` pair with automated `TimeAnalysis` to track elapsed time between turns while keeping flavour text public.

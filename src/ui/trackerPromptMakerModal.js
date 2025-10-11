@@ -1,3 +1,4 @@
+import { t } from "../../lib/i18n.js";
 import { TrackerPromptMaker } from "./components/trackerPromptMaker.js";
 
 export class TrackerPromptMakerModal {
@@ -62,7 +63,11 @@ export class TrackerPromptMakerModal {
      * Updates the modal content with the Tracker Prompt Maker interface.
      */
     updateContent() {
-        this.modalContent.innerHTML = '<h3 class="tracker-modal-title">Tracker Prompt Maker</h3>';
+        this.modalContent.innerHTML = '';
+        const title = document.createElement('h3');
+        title.className = 'tracker-modal-title';
+        title.textContent = t("trackerPromptMaker.title", "Tracker Prompt Maker");
+        this.modalContent.appendChild(title);
 
         // Initialize TrackerPromptMaker with the tracker and onSave callback
         const trackerPromptMaker = new TrackerPromptMaker(this.tracker, (updatedTracker) => {
