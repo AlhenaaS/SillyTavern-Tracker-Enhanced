@@ -349,6 +349,43 @@ const SPECIAL_FIELD_METADATA = new Map([
 function cloneDefinition(definition) {
 	return JSON.parse(JSON.stringify(definition));
 }
+
+function createFieldIdGenerator(startIndex = 0) {
+	let index = startIndex;
+	return () => `field-${index++}`;
+}
+
+function rebuildWithUniqueIds(fields, generator) {
+	if (!fields || typeof fields !== "object") {
+		return {};
+	}
+	const rebuilt = {};
+	for (const [, field] of Object.entries(fields)) {
+		if (!field || typeof field !== "object") continue;
+		const cloned = cloneDefinition(field);
+		if (cloned.nestedFields && typeof cloned.nestedFields === "object") {
+			cloned.nestedFields = rebuildWithUniqueIds(cloned.nestedFields, generator);
+		}
+		const newId = generator();
+		rebuilt[newId] = cloned;
+	}
+	return rebuilt;
+}
+
+function regenerateFieldIds(definition) {
+	if (!definition || typeof definition !== "object") {
+		return;
+	}
+	const generator = createFieldIdGenerator();
+	const rebuilt = rebuildWithUniqueIds(definition, generator);
+	for (const key of Object.keys(definition)) {
+		delete definition[key];
+	}
+	for (const [key, value] of Object.entries(rebuilt)) {
+		definition[key] = value;
+	}
+}
+
 function getNextFieldId(definition) {
 	let maxIndex = -1;
 	for (const key of Object.keys(definition)) {
@@ -386,6 +423,7 @@ export function ensureInternalDataFields(definition) {
 	for (const internalField of INTERNAL_DATA_DEFINITIONS) {
 		ensureFieldFromTemplate(definition, internalField.definition, context);
 	}
+	regenerateFieldIds(definition);
 	return context;
 }
 export function ensurePrefixDataFields(definition) {
@@ -430,6 +468,7 @@ export function ensurePrefixDataFields(definition) {
 	for (const [key, field] of Object.entries(rebuilt)) {
 		definition[key] = field;
 	}
+	regenerateFieldIds(definition);
 	return context;
 }
 function normalizeMetadata(metadata = {}) {
