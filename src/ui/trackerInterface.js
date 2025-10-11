@@ -269,21 +269,24 @@ export class TrackerInterface {
             return;
         }
 
-        try {
-            const generationResult = await generateTracker(previousMesId, fieldIncludeOption);
-            if (!generationResult || !generationResult.tracker) {
-                toastr.warning('Tracker generation returned no data. Try again after additional chat context.');
-                this.refreshContent(this.mode);
-                return;
-            }
+		try {
+			const generationResult = await generateTracker(previousMesId, fieldIncludeOption);
+			if (!generationResult || !generationResult.tracker) {
+				toastr.warning('Tracker generation returned no data. Try again after additional chat context.');
+				this.refreshContent(this.mode);
+				return;
+			}
 
-            let trackerUpdated = generationResult.tracker;
-            this.trackerInternal = generationResult.trackerInternal ?? null;
+			let trackerUpdated = generationResult.tracker;
+			this.trackerInternal = generationResult.trackerInternal ?? null;
+			if (this.trackerInternal && Number.isInteger(this.mesId) && chat[this.mesId]) {
+				chat[this.mesId].trackerInternal = this.trackerInternal;
+			}
 
-            if (this.onSave) {
-                trackerUpdated = await this.onSave(generationResult.tracker);
-                this.trackerInternal = chat[this.mesId]?.trackerInternal ?? this.trackerInternal ?? null;
-            }
+			if (this.onSave) {
+				trackerUpdated = await this.onSave(generationResult.tracker);
+				this.trackerInternal = chat[this.mesId]?.trackerInternal ?? this.trackerInternal ?? null;
+			}
             this.tracker = trackerUpdated ?? generationResult.tracker;
             if (typeof this.updateInternalToggleState === 'function') {
                 this.updateInternalToggleState();

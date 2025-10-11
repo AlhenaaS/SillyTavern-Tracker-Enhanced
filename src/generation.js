@@ -9,6 +9,7 @@ import { getCurrentLocale } from "../lib/i18n.js";
 import { extensionSettings } from "../index.js";
 import { FIELD_INCLUDE_OPTIONS, getDefaultTracker, getTracker, getTrackerPrompt, OUTPUT_FORMATS, updateTracker } from "./trackerDataHandler.js";
 import { trackerFormat } from "./settings/defaultSettings.js";
+import { buildTimeAnalysis } from "../lib/timeManager.js";
 
 // #region Utility Functions
 
@@ -415,8 +416,35 @@ export async function generateTracker(mesNum, includedFields = FIELD_INCLUDE_OPT
 			: getDefaultTracker(extensionSettings.trackerDef, FIELD_INCLUDE_OPTIONS.ALL, OUTPUT_FORMATS.JSON, participantSeeds);
 		const internalOutput = {};
 		const result = updateTracker(lastTracker, tracker, extensionSettings.trackerDef, FIELD_INCLUDE_OPTIONS.ALL, OUTPUT_FORMATS.JSON, true, internalOutput);
+		debug("[Tracker Enhanced] Internal collector after updateTracker", { internalOutput });
+
+		const previousInternal = lastMesWithTracker?.trackerInternal ?? {};
+		const internalData = (internalOutput.data && typeof internalOutput.data === "object") ? internalOutput.data : {};
+		const anchorValue = internalData.TimeAnchor ?? tracker?.TimeAnchor ?? previousInternal.TimeAnchor ?? null;
+		if (anchorValue) {
+			internalData.TimeAnchor = anchorValue;
+			const timeAnalysis = buildTimeAnalysis(anchorValue, previousInternal.TimeAnalysis ?? null);
+			if (timeAnalysis) {
+				internalData.TimeAnalysis = timeAnalysis;
+			}
+		} else if (previousInternal.TimeAnalysis) {
+			if (previousInternal.TimeAnchor) {
+				internalData.TimeAnchor = previousInternal.TimeAnchor;
+			}
+			internalData.TimeAnalysis = previousInternal.TimeAnalysis;
+		}
+
+		if (Object.keys(internalData).length > 0) {
+			internalOutput.data = internalData;
+			debug("[Tracker Enhanced] Internal data prepared for trackerInternal", { internalData });
+		}
+		if (result && typeof result === "object") {
+			delete result.TimeAnchor;
+			delete result.TimeAnalysis;
+		}
 		
 		log(`[Tracker Enhanced] ✅ Tracker generation completed successfully using independent connection`);
+		debug("[Tracker Enhanced] Returning tracker generation result", { tracker: result, trackerInternal: internalOutput.data ?? null });
 		return {
 			tracker: result,
 			trackerInternal: internalOutput.data ?? null,

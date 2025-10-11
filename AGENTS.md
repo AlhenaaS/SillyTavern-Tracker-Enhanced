@@ -35,3 +35,10 @@
 
 ## Environment Notes
 - WSL2 Ubuntu 22.04
+
+## Time System Notes
+- Time handling now uses two fields: `TimeAnchor` (internal-only ISO timestamp stored in `chat[mesId].trackerInternal`) and `LocalTime` (public flavour text for the same moment).
+- `buildTimeAnalysis` (lib/timeManager.js) records the anchor, epoch milliseconds, elapsed seconds/days relative to the previous stored analysis, and a timeline note. If no new anchor is provided, the last analysis is reused.
+- Regeneration (`TrackerInterface.regenerateTracker`) writes `generationResult.trackerInternal` back to the message before saving, so the UI’s “Show Internal Events” view reflects the latest anchor/analysis immediately.
+- Debug logging prints a single `🕒 Parsed TimeAnchor` entry whenever a fresh anchor is parsed; seeing more usually means the save path reprocessed data incorrectly.
+- Prompts instruct the LLM to advance `TimeAnchor` each turn (unless the story truly freezes time) and then describe the same moment in `LocalTime`.

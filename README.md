@@ -4,6 +4,13 @@ An advanced, feature-rich tracker extension for SillyTavern that provides compre
 
 ## Changelog
 
+11-10-2025
+- Refined time management: new `TimeAnchor` / `LocalTime` pair with automated `TimeAnalysis` to track elapsed time between turns while keeping flavour text public.
+- Tracker interface and save pipeline now preserve internal timing data, so manual edits and regenerations retain the parsed anchor instead of falling back to “No TimeAnchor provided.”
+- Separates time into `TimeAnchor` (internal ISO-8601 timestamp) and `LocalTime` (public flavour text) so the tracker can advance clocks while keeping RP-friendly descriptions.
+- Automatically tracks elapsed time via `TimeAnalysis`, storing anchor, epoch milliseconds, elapsed seconds/days, and timeline notes for downstream systems.
+- LocalTime prompts remind the model to mirror each new anchor with setting-appropriate calendars or colloquial timekeeping, keeping narrative continuity.
+
 10-10-2025
 - Tracker reconciliation now strips internal-only StoryEvents from the public payload while preserving the raw data in `chat[mesId].trackerInternal` for diagnostics and exports.
 - Added a “Show Internal Events” toggle to the tracker interface so power users can inspect captured birth/growth/death events without exposing them to the roleplay LLM.
@@ -79,6 +86,11 @@ This enhanced version significantly expands upon the original tracker with major
 - **Profile Transport Reuse**: Borrow the profile's API/model settings while keeping the main chat pipeline untouched
 - **Reliable Background Processing**: Stable tracker generation without affecting chat flow
 - **Smart Connection Management**: Automatic fallback and recovery mechanisms
+
+### 🕒 **Time Management**
+- **Immersive Local Time with Internal Accuracy** Present immersive, setting-aware time descriptions to the user while tracking a precise ISO-8601 `TimeAnchor` internally for elapsed-time math.
+- **Best of both worlds** Internal-only `TimeAnalysis` captures anchor, epoch milliseconds, elapsed seconds/days, and timeline notes so downstream systems (pregnancy, cooldowns, etc.) can react without exposing numeric clutter in roleplay.
+- **Narrative driven time advancement** When the LLM omits an anchor, the system preserves the previous one, keeping timeline-driven features stable while still prompting the model to advance time in future turns.
 
 ## 🎮 **How to Use**
 

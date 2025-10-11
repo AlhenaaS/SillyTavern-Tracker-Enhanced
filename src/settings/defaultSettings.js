@@ -1,9 +1,30 @@
 import { t } from "../../lib/i18n.js";
-
 export const DEFAULT_PRESET_NAME = "Default Built-In (EN)";
-
 export const TRACKER_METADATA_VERSION = 2;
-
+const PREFIX_DATA_DEFINITIONS = [
+	{
+		name: "TimeAnchor",
+		definition: {
+			name: "TimeAnchor",
+			type: "STRING",
+			presence: "DYNAMIC",
+			prompt: "Record the precise ISO-8601 timestamp anchoring this scene. Choose a datetime that reflects the story's own chronology (e.g., 2024-06-15T14:30:00Z), not a template placeholder.",
+			defaultValue: "<Scene ISO-8601 timestamp>",
+			exampleValues: [
+				"\"2024-06-15T14:30:00Z\"",
+				"\"1348-05-12T07:30:00Z\"",
+				"\"2325-07-22T18:05:00+02:00\""
+			],
+			nestedFields: {},
+			metadata: {
+				internal: true,
+				external: false,
+				internalKeyId: "timeAnchor",
+				internalOnly: true,
+			},
+		},
+	},
+];
 const INTERNAL_DATA_DEFINITIONS = [
 	{
 		name: "StoryEvents",
@@ -147,15 +168,165 @@ const INTERNAL_DATA_DEFINITIONS = [
 			},
 		},
 	},
+	{
+		name: "TimeAnalysis",
+		definition: {
+			name: "TimeAnalysis",
+			type: "OBJECT",
+			presence: "STATIC",
+			prompt: "Auto-generated timing diagnostics derived from TimeAnchor. Used for internal engines and auditing.",
+			defaultValue: "{}",
+			exampleValues: [
+				"{\"AnchorRaw\": \"2024-06-15T14:30:00Z\", \"IsoTimestamp\": \"2024-06-15T14:30:00.000Z\", \"ElapsedSeconds\": \"120\", \"ElapsedDays\": \"0.00139\"}"
+			],
+			nestedFields: {
+				"internal-timeanalysis-anchor": {
+					name: "AnchorRaw",
+					type: "STRING",
+					presence: "STATIC",
+					prompt: "The raw TimeAnchor value before parsing.",
+					defaultValue: "<auto-filled>",
+					exampleValues: [
+						"\"2024-06-15T14:30:00Z\""
+					],
+					metadata: {
+						internal: true,
+						external: false,
+						internalKeyId: "timeAnalysisAnchorRaw",
+						internalOnly: true,
+					},
+				},
+				"internal-timeanalysis-iso": {
+					name: "IsoTimestamp",
+					type: "STRING",
+					presence: "STATIC",
+					prompt: "Normalized ISO timestamp parsed from TimeAnchor.",
+					defaultValue: "<auto-filled>",
+					exampleValues: [
+						"\"2024-06-15T14:30:00.000Z\""
+					],
+					metadata: {
+						internal: true,
+						external: false,
+						internalKeyId: "timeAnalysisIso",
+						internalOnly: true,
+					},
+				},
+				"internal-timeanalysis-epoch": {
+					name: "EpochMillis",
+					type: "STRING",
+					presence: "STATIC",
+					prompt: "Milliseconds since Unix epoch for this anchor.",
+					defaultValue: "<auto-filled>",
+					exampleValues: [
+						"\"1718461800000\""
+					],
+					metadata: {
+						internal: true,
+						external: false,
+						internalKeyId: "timeAnalysisEpoch",
+						internalOnly: true,
+					},
+				},
+				"internal-timeanalysis-elapsed-seconds": {
+					name: "ElapsedSeconds",
+					type: "STRING",
+					presence: "STATIC",
+					prompt: "Elapsed seconds since the previous anchor, if available.",
+					defaultValue: "<auto-filled>",
+					exampleValues: [
+						"\"120\""
+					],
+					metadata: {
+						internal: true,
+						external: false,
+						internalKeyId: "timeAnalysisElapsedSeconds",
+						internalOnly: true,
+					},
+				},
+				"internal-timeanalysis-elapsed-days": {
+					name: "ElapsedDays",
+					type: "STRING",
+					presence: "STATIC",
+					prompt: "Elapsed days (decimal) since the previous anchor.",
+					defaultValue: "<auto-filled>",
+					exampleValues: [
+						"\"0.00139\""
+					],
+					metadata: {
+						internal: true,
+						external: false,
+						internalKeyId: "timeAnalysisElapsedDays",
+						internalOnly: true,
+					},
+				},
+				"internal-timeanalysis-note": {
+					name: "TimelineNote",
+					type: "STRING",
+					presence: "STATIC",
+					prompt: "Any warnings or notes about the timeline (e.g., invalid or regressing anchors).",
+					defaultValue: "<auto-filled>",
+					exampleValues: [
+						"\"TimeAnchor parsed successfully.\""
+					],
+					metadata: {
+						internal: true,
+						external: false,
+						internalKeyId: "timeAnalysisNote",
+						internalOnly: true,
+					},
+				},
+				"internal-timeanalysis-parsed-at": {
+					name: "ParsedAt",
+					type: "STRING",
+					presence: "STATIC",
+					prompt: "ISO timestamp when the tracker parsed this anchor.",
+					defaultValue: "<auto-filled>",
+					exampleValues: [
+						"\"2024-06-15T14:30:01.200Z\""
+					],
+					metadata: {
+						internal: true,
+						external: false,
+						internalKeyId: "timeAnalysisParsedAt",
+						internalOnly: true,
+					},
+				},
+			},
+			metadata: {
+				internal: true,
+				external: false,
+				internalKeyId: "timeAnalysis",
+				internalOnly: true,
+			},
+		},
+	},
 ];
-
 const SPECIAL_FIELD_METADATA = new Map([
 	[
-		"Time",
+		"TimeAnchor",
+		{
+			internal: true,
+			external: false,
+			internalKeyId: "timeAnchor",
+			internalOnly: true,
+		},
+	],
+	[
+		"LocalTime",
 		{
 			internal: true,
 			external: true,
-			internalKeyId: "time",
+			internalKeyId: "localTime",
+		},
+	],
+	[
+		"TimeAnalysis",
+		{
+			internal: true,
+			external: false,
+			internalKeyId: "timeAnalysis",
+			internalOnly: true,
 		},
 	],
 	[
@@ -175,11 +346,9 @@ const SPECIAL_FIELD_METADATA = new Map([
 		},
 	],
 ]);
-
 function cloneDefinition(definition) {
 	return JSON.parse(JSON.stringify(definition));
 }
-
 function getNextFieldId(definition) {
 	let maxIndex = -1;
 	for (const key of Object.keys(definition)) {
@@ -190,22 +359,18 @@ function getNextFieldId(definition) {
 	}
 	return `field-${maxIndex + 1}`;
 }
-
 function ensureFieldFromTemplate(container, template, context) {
 	if (!container || typeof container !== "object") {
 		return;
 	}
-
 	const entries = Object.entries(container);
 	const found = entries.find(([, field]) => field?.name === template.name);
-
 	if (!found) {
 		const fieldId = getNextFieldId(container);
 		container[fieldId] = cloneDefinition(template);
 		context.changed = true;
 		return;
 	}
-
 	const [fieldId] = found;
 	const templClone = cloneDefinition(template);
 	if (!_.isEqual(container[fieldId], templClone)) {
@@ -213,123 +378,137 @@ function ensureFieldFromTemplate(container, template, context) {
 		context.changed = true;
 	}
 }
-
 export function ensureInternalDataFields(definition) {
 	const context = { changed: false };
 	if (!definition || typeof definition !== "object") {
 		return context;
 	}
-
 	for (const internalField of INTERNAL_DATA_DEFINITIONS) {
 		ensureFieldFromTemplate(definition, internalField.definition, context);
 	}
-
 	return context;
 }
-
+export function ensurePrefixDataFields(definition) {
+	const context = { changed: false };
+	if (!definition || typeof definition !== "object") {
+		return context;
+	}
+	const existingEntries = Object.entries(definition);
+	const nameToEntry = new Map();
+	for (const [fieldId, field] of existingEntries) {
+		if (field && typeof field === "object" && field.name) {
+			nameToEntry.set(field.name, { fieldId, field });
+		}
+	}
+	const rebuilt = {};
+	let index = 0;
+	const assignField = (field) => {
+		const newId = `field-${index++}`;
+		rebuilt[newId] = field;
+	};
+	for (const prefix of PREFIX_DATA_DEFINITIONS) {
+		const existing = nameToEntry.get(prefix.name);
+		let fieldToInsert;
+		if (existing) {
+			fieldToInsert = cloneDefinition(existing.field);
+			nameToEntry.delete(prefix.name);
+		} else {
+			fieldToInsert = cloneDefinition(prefix.definition);
+			context.changed = true;
+		}
+		assignField(fieldToInsert);
+	}
+	for (const [fieldId, field] of existingEntries) {
+		if (!field || typeof field !== "object" || !field.name) continue;
+		if (rebuilt && Object.values(rebuilt).some((existingField) => existingField.name === field.name)) continue;
+		assignField(cloneDefinition(field));
+	}
+	const originalKeys = Object.keys(definition);
+	for (const key of originalKeys) {
+		delete definition[key];
+	}
+	for (const [key, field] of Object.entries(rebuilt)) {
+		definition[key] = field;
+	}
+	return context;
+}
 function normalizeMetadata(metadata = {}) {
 	const normalized = {
 		internal: metadata.internal === true,
 		external: metadata.external !== false,
 		internalKeyId: metadata.internalKeyId || null,
 	};
-
 	if (Object.prototype.hasOwnProperty.call(metadata, "internalOnly")) {
 		normalized.internalOnly = Boolean(metadata.internalOnly);
 	} else {
 		normalized.internalOnly = normalized.internal && !normalized.external;
 	}
-
 	return normalized;
 }
-
 function applyMetadataRecursive(fields, path = [], context = { changed: false, legacyDetected: false }) {
 	for (const field of Object.values(fields || {})) {
 		if (!field || typeof field !== "object") continue;
-
 		const currentPath = [...path, field.name || ""];
 		const pathKey = currentPath.join(">");
-
 		const providedMetadata = field.metadata;
 		if (!providedMetadata || typeof providedMetadata !== "object") {
 			context.legacyDetected = true;
 		}
-
 		const specialMetadata = SPECIAL_FIELD_METADATA.get(pathKey);
 		const normalizedMetadata = normalizeMetadata({
 			...providedMetadata,
 			...(specialMetadata ? cloneDefinition(specialMetadata) : {}),
 		});
-
 		if (!providedMetadata || !_.isEqual(providedMetadata, normalizedMetadata)) {
 			context.changed = true;
 			field.metadata = normalizedMetadata;
 		} else {
 			field.metadata = normalizedMetadata;
 		}
-
 		if (field.nestedFields && Object.keys(field.nestedFields).length > 0) {
 			applyMetadataRecursive(field.nestedFields, currentPath, context);
 		}
 	}
-
 	return context;
 }
-
 export function ensureTrackerMetadata(definition) {
 	if (!definition || typeof definition !== "object") {
 		return { changed: false, legacyDetected: false };
 	}
-
 	return applyMetadataRecursive(definition, []);
 }
-
 //#region Setting Enums
-
 export const generationTargets = {
 	BOTH: "both",
 	USER: "user",
 	CHARACTER: "character",
 	NONE: "none",
 };
-
 export const trackerFormat = {
 	JSON: "JSON",
 	YAML: "YAML",
 };
-
 export const PREVIEW_PLACEMENT = {
 	BEFORE: "before",
 	AFTER: "after",
 	APPEND: "append",
 	PREPEND: "prepend",
 };
-
 //#endregion
-
 //#region Shared
-
 const generateContextTemplate = t("prompts.generateContextTemplate", `<|begin_of_text|><|start_header_id|>system<|end_header_id|>
-
 {{trackerSystemPrompt}}
-
 {{participantGuidance}}
-
 <!-- Start of Context -->
-
 {{characterDescriptions}}
-
 ### Recent Messages with Trackers
 {{recentMessages}}
-
 ### Current Tracker
 <tracker>
 {{currentTracker}}
 </tracker>
-
 <!-- End of Context --><|eot_id|>`);
 const generateSystemPrompt = t("prompts.generateSystemPrompt", `You are a Scene Tracker Assistant, tasked with providing clear, consistent, and structured updates to a scene tracker for a roleplay. Use the latest message, previous tracker details, and context from recent messages to accurately update the tracker. Your response must follow the specified {{trackerFormat}} structure exactly, ensuring that each field is filled and complete. If specific information is not provided, make reasonable assumptions based on prior descriptions, logical inferences, or default character details.
-
 ### Key Instructions:
 1. **Tracker Format**: Always respond with a complete tracker in {{trackerFormat}} format. Every field must be present in the response, even if unchanged. Do not omit fields or change the {{trackerFormat}} structure.
 2. **Default Assumptions for Missing Information**: 
@@ -337,8 +516,9 @@ const generateSystemPrompt = t("prompts.generateSystemPrompt", `You are a Scene 
    - **Outfit**: Describe the complete outfit for each character, using specific details for color, fabric, and style (e.g., “fitted black leather jacket with silver studs on the collar”). **Underwear must always be included in the outfit description.** If underwear is intentionally missing, specify this clearly in the description (e.g., "No bra", "No panties"). If the character is undressed, list the entire outfit.
    - **StateOfDress**: Describe how put-together or disheveled the character appears, including any removed clothing. If the character is undressed, indicate where discarded items are placed.
 3. **Incremental Time Progression**: 
-   - Adjust time in small increments, ideally only a few seconds per update, to reflect realistic scene progression. Avoid large jumps unless a significant time skip (e.g., sleep, travel) is explicitly stated.
-   - Format the time as "HH:MM:SS; MM/DD/YYYY (Day Name)".
+   - Advance the scene clock in small, logical increments (seconds or minutes) unless the narrative explicitly calls for a larger skip (sleep, travel, “three days pass,” etc.).
+   - Always update TimeAnchor with the new ISO-8601 timestamp that reflects this advancement; never reuse the exact previous timestamp unless the story is frozen in the same instant.
+   - Immediately follow by updating LocalTime so it translates the same moment into the setting’s flavourful calendar, era, or colloquial timekeeping.
 4. **Context-Appropriate Times**: 
    - Ensure that the time aligns with the setting. For example, if the scene takes place in a public venue (e.g., a mall), choose an appropriate time within standard operating hours.
 5. **Location Format**: Avoid unintended reuse of specific locations from previous examples or responses. Provide specific, relevant, and detailed locations based on the context, using the format:
@@ -347,41 +527,33 @@ const generateSystemPrompt = t("prompts.generateSystemPrompt", `You are a Scene 
 7. **Topics Format**: Ensure topics are one- or two-word keywords relevant to the scene to help trigger contextual information. Avoid long phrases.
 8. **Avoid Redundancies**: Use only details provided or logically inferred from context. Do not introduce speculative or unnecessary information.
 9. **Focus and Pause**: Treat each scene update as a standalone, complete entry. Respond with the full tracker every time, even if there are only minor updates.
-
 ### Tracker Template
 Return your response in the following {{trackerFormat}} structure, following this format precisely:
-
 \`\`\`
 <tracker>
 {{defaultTracker}}
 </tracker>
 \`\`\`
-
 ### Important Reminders:
 1. **Recent Messages and Current Tracker**: Before updating, always consider the recent messages and the provided <Current Tracker> to ensure all changes are accurately represented.
 2. **Structured Response**: Do not add any extra information outside of the {{trackerFormat}} tracker structure.
 3. **Complete Entries**: Always provide the full tracker in {{trackerFormat}}, even if only minor updates are made.
-
 Your primary objective is to ensure clarity, consistency, and structured responses for scene tracking in {{trackerFormat}} format, providing complete details even when specifics are not explicitly stated.`);
 const generateRequestPrompt = t("prompts.generateRequestPrompt", `[Analyze the previous message along with the recent messages provided below and update the current scene tracker based on logical inferences and explicit details. Pause and ensure only the tracked data is provided, formatted in {{trackerFormat}}. Avoid adding, omitting, or rearranging fields unless specified. Respond with the full tracker every time.
-
 ### Response Rules:
 {{trackerFieldPrompt}}
-
 Ensure the response remains consistent, strictly follows this structure in {{trackerFormat}}, and omits any extra data or deviations. You MUST enclose the tracker in <tracker></tracker> tags]`);
 const generateRecentMessagesTemplate = t("prompts.generateRecentMessagesTemplate", `{{#if tracker}}Tracker: <tracker>
 {{tracker}}
 </tracker>
 {{/if}}{{char}}: {{message}}`);
-
 const characterDescriptionTemplate = t("prompts.characterDescriptionTemplate", `### {{char}}'s Description
 {{charDescription}}`);
-
 const mesTrackerTemplate = `<div class="tracker_default_mes_template">
     <table>
         <tr>
-            <td>Time:</td>
-            <td>{{Time}}</td>
+            <td style="white-space: nowrap;">Local Time:</td>
+            <td>{{LocalTime}}</td>
         </tr>
         <tr>
             <td>Location:</td>
@@ -467,9 +639,7 @@ const mesTrackerTemplate = `<div class="tracker_default_mes_template">
     </details>
 </div>
 <hr>`;
-
 // Replace the mesTrackerJavascript around line 361
-
 const mesTrackerJavascript = `()=>{
 const hideFields=(mesId,element)=>{
 const sections=element.querySelectorAll('.mes_tracker_characters strong');
@@ -535,24 +705,25 @@ if(style)style.remove();
 };
 return{init,cleanup,hideGenderSpecificFields:hideFields};
 }`;
-
 const trackerDef = {
 	"field-0": {
-		"name": "Time",
+		"name": "LocalTime",
 		"type": "STRING",
 		"presence": "DYNAMIC",
-		"prompt": "Adjust time in small increments for natural progression unless explicit directives (fast forward, skip ahead, advance X time) or narrative cues (3 days passed, next morning, after a week) indicate larger changes. For initial setup, prioritize any time context from character or lore narratives. Scan context for time changes and apply precisely. Format: HH:MM:SS; MM/DD/YYYY (Day Name).",
-		"defaultValue": "<Updated time if changed>",
+		"prompt": "Describe how the anchored moment reads inside the story world. Use the setting’s own calendars, watches, suns, bells, or metaphors, ensuring it aligns with the culture and location established in the scene.",
+		"defaultValue": "<Local timekeeping description if changed>",
 		"exampleValues": [
-			"09:15:30; 10/16/2024 (Wednesday)",
-			"18:45:50; 10/16/2024 (Wednesday)",
-			"15:10:20; 10/16/2024 (Wednesday)"
+			"Morning rush on 10/16/2024 (Wednesday), Midtown Manhattan",
+			"Third watch before dawn, Year of the Plague, Canterbury countryside",
+			"Jingkang Era, third month eighteenth day, Mao hour in Bianliang (Song dynasty)",
+			"Stardate 45231.5, orbital dusk above Epsilon Eridani",
+			"Embermoon 18, Crystal Era VI, Temple of Lumen"
 		],
 		"nestedFields": {},
 		"metadata": {
 			"internal": true,
 			"external": true,
-			"internalKeyId": "time"
+			"internalKeyId": "localTime"
 		}
 	},
 	"field-1": {
@@ -1072,118 +1243,67 @@ const trackerDef = {
 		}
 	}
 };
-
+ensurePrefixDataFields(trackerDef);
 ensureInternalDataFields(trackerDef);
 ensureTrackerMetadata(trackerDef);
-
 const trackerPreviewSelector = ".mes_block .mes_text";
 const trackerPreviewPlacement = "before";
-
 const numberOfMessages = 5;
 const generateFromMessage = 3;
 const minimumDepth = 0;
-
 const responseLength = 0;
-
 const roleplayPrompt = t("prompts.roleplayPrompt", "Treat the tracker block as backstage notes. Never include <tracker> tags or describe tracker updates in your reply. Stay fully in character and respond only with the dialogue or actions the character would naturally deliver, using the tracker information purely as reference.");
-
 //#endregion
-
 export const defaultSettings = {
-
 	enabled: true,
-
 	languageOverride: "auto",
-
 	selectedProfile: "current",
-
 	selectedCompletionPreset: "current",
-
 	generationTarget: generationTargets.BOTH,
-
 	showPopupFor: generationTargets.NONE,
-
 	trackerFormat: trackerFormat.YAML,
 
-
 	generateContextTemplate: generateContextTemplate,
-
 	generateSystemPrompt: generateSystemPrompt,
-
 	generateRequestPrompt: generateRequestPrompt,
-
 	generateRecentMessagesTemplate: generateRecentMessagesTemplate,
-
-
 
 	characterDescriptionTemplate: characterDescriptionTemplate,
 
-
-
 	mesTrackerTemplate: mesTrackerTemplate,
-
 	mesTrackerJavascript: mesTrackerJavascript,
-
 	trackerDef: trackerDef,
 
-
-
 	trackerPreviewSelector: trackerPreviewSelector,
-
 	trackerPreviewPlacement: trackerPreviewPlacement,
 
-
-
 	numberOfMessages: numberOfMessages,
-
 	generateFromMessage: generateFromMessage,
-
 	minimumDepth: minimumDepth,
-
 	responseLength: responseLength,
-
 	roleplayPrompt: roleplayPrompt,
-
 	selectedPreset: DEFAULT_PRESET_NAME,
-
 	presets: {
 		[DEFAULT_PRESET_NAME]: {
 
-
 			generateContextTemplate: generateContextTemplate,
-
 			generateSystemPrompt: generateSystemPrompt,
-
 			generateRequestPrompt: generateRequestPrompt,
-
 			generateRecentMessagesTemplate: generateRecentMessagesTemplate,
-
 			roleplayPrompt: roleplayPrompt,
-
-
 
 			characterDescriptionTemplate: characterDescriptionTemplate,
 
-
-
 			mesTrackerTemplate: mesTrackerTemplate,
-
 			mesTrackerJavascript: mesTrackerJavascript,
-
 			trackerDef: trackerDef,
-
 		},
 	},
-
 	debugMode: false,
-
 	trackerInjectionEnabled: true,
 	toolbarIndicatorEnabled: false,
-
 	metadataSchemaVersion: TRACKER_METADATA_VERSION,
-
 };
-
 // Default test data for development
 export const testTavernCardV2 = {
 	spec: 'chara_card_v2',
@@ -1223,7 +1343,6 @@ export const testTavernCardV2 = {
 		}
 	}
 };
-
 export const testGroupData = {
 	name: 'Test Adventure Party',
 	members: [], // Will be populated with actual character avatars during testing

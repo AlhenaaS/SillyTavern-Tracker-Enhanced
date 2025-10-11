@@ -1,5 +1,6 @@
 import { chat, saveChatDebounced } from "../../../../../script.js";
 import { debug, warn } from "../lib/utils.js";
+import { buildTimeAnalysis } from "../lib/timeManager.js";
 
 import { jsonToYAML, yamlToJSON } from "../lib/ymlParser.js";
 import { TrackerPreviewManager } from "./ui/trackerPreviewManager.js";
@@ -45,6 +46,8 @@ export function saveTracker(tracker, backendObj, mesId, useUpdatedExtraFieldsAsS
 	}
 
 	const originalTracker = getTracker(chat[mesId].tracker, backendObj, FIELD_INCLUDE_OPTIONS.ALL, true, OUTPUT_FORMATS.JSON);
+	const existingInternal = chat[mesId].trackerInternal ?? {};
+	const previousAnalysis = existingInternal.TimeAnalysis ?? null;
 	const internalOutput = {};
 	const updatedTracker = updateTracker(
 		originalTracker,
@@ -55,9 +58,47 @@ export function saveTracker(tracker, backendObj, mesId, useUpdatedExtraFieldsAsS
 		useUpdatedExtraFieldsAsSource,
 		internalOutput
 	);
+
+	const internalData = (internalOutput.data && typeof internalOutput.data === "object") ? internalOutput.data : {};
+	debug("saveTracker internal collector before adjustments", { internalData, existingInternal });
+	let anchorFromExisting = false;
+	if (!internalData.TimeAnchor && existingInternal.TimeAnchor) {
+		internalData.TimeAnchor = existingInternal.TimeAnchor;
+		anchorFromExisting = true;
+	}
+
+	const anchorValue = internalData.TimeAnchor ?? existingInternal.TimeAnchor ?? updatedTracker?.TimeAnchor ?? null;
+	let timeAnalysis = null;
+	if (anchorValue) {
+		if (anchorFromExisting && previousAnalysis) {
+			timeAnalysis = previousAnalysis;
+		} else {
+			timeAnalysis = buildTimeAnalysis(anchorValue, previousAnalysis);
+		}
+	} else if (previousAnalysis) {
+		timeAnalysis = previousAnalysis;
+	}
+
+	if (timeAnalysis) {
+		internalData.TimeAnalysis = timeAnalysis;
+	}
+
+	if (Object.keys(internalData).length > 0) {
+		internalOutput.data = internalData;
+		debug("saveTracker internal data prepared for storage", { internalData });
+	} else {
+		delete internalOutput.data;
+	}
+
+	if (updatedTracker && typeof updatedTracker === "object") {
+		delete updatedTracker.TimeAnchor;
+		delete updatedTracker.TimeAnalysis;
+	}
+
 	chat[mesId].tracker = updatedTracker;
 	if (internalOutput.data && Object.keys(internalOutput.data).length > 0) {
 		chat[mesId].trackerInternal = internalOutput.data;
+		debug("saveTracker stored trackerInternal", { trackerInternal: chat[mesId].trackerInternal });
 	} else {
 		delete chat[mesId].trackerInternal;
 	}
