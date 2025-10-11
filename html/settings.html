@@ -16,7 +16,7 @@
 
 			<!-- Language Override -->
 			<div class="tracker-block m-b-1 m-t-1">
-				<label for="tracker_enhanced_language_override" data-i18n-key="settings.language.label">Language Override</label><br />
+				<label for="tracker_enhanced_language_override" data-i18n-key="settings.language.label">🖥️ UI Language Override</label><br />
 				<small data-i18n-key="settings.language.help">Choose the tracker interface language or follow SillyTavern's global setting.</small><br />
 				<select id="tracker_enhanced_language_override" class="text_pole">
 					<option value="auto" data-i18n-key="settings.language.auto">Auto (Follow SillyTavern language)</option>
@@ -54,7 +54,7 @@
 
 			<!-- Generation Target -->
 			<div class="tracker-block m-b-1 m-t-1">
-				<label for="tracker_enhanced_generation_target">Generation Target</label><br />
+				<label for="tracker_enhanced_generation_target">👤 Generation Target</label><br />
 				<small>Specifies who the tracker should auto-generate for: User, Character, Both, or None.</small><br />
 				<select id="tracker_enhanced_generation_target" class="text_pole">
 					<option value="both">Both</option>
@@ -65,7 +65,7 @@
 			</div>
 			<!-- Show Popup For -->
 			<div class="tracker-block m-b-1 m-t-1">
-				<label for="tracker_enhanced_show_popup_for">Show Popup For</label><br />
+				<label for="tracker_enhanced_show_popup_for">🪟 Show Popup For</label><br />
 				<small>Specifies for who there should be a popup to manualy enter the tracker data: User, Character, Both, or None.</small><br />
 				<select id="tracker_enhanced_show_popup_for" class="text_pole">
 					<!-- Options will be populated dynamically -->
@@ -100,14 +100,13 @@
 						<button id="tracker_enhanced_preset_export" class="menu_button fa-solid fa-file-export interactable" title="Export current tracker enhanced preset"></button>
 					</div>
 				</div>
-			<hr class="sysHR" />
+				<hr class="sysHR" />
 
-			<details>
-				<summary>Preset Settings</summary>
-				<!-- Preset Related Fields -->
-				<div id="preset_related_fields">
-					<!-- Generation Mode -->
-					<!-- Tracker Templates -->
+				<details>
+					<!-- Preset Related Fields -->
+					<summary class="tracker-section-title" data-i18n-key="settings.sections.summary">📁 Preset Settings</summary>											
+					<!-- Tracker Prompt Templates -->
+					<h4 class="tracker-section-title" data-i18n-key="settings.sections.prompt_templates">🧠 Tracker Prompt Templates</h4>
 					<div id="generate_context_section" class="tracker-block m-b-1 m-t-1">
 						<label for="tracker_enhanced_context_prompt">Context Template</label><br />
 						<small
@@ -125,19 +124,12 @@
 						<textarea id="tracker_enhanced_system_prompt" class="text_pole" rows="5"></textarea>
 					</div>
 					<div class="tracker-block m-b-1 m-t-1">
-						<label for="tracker_enhanced_request_prompt">Request Prompt</label><br />
+						<label for="tracker_enhanced_character_description">Character Description Template</label><br />
 						<small
-							>Set the request prompt for generating the tracker. Available macros include:<br />
-							{{trackerFieldPrompt}}, {{trackerFormat}}, {{message}} (last message).</small
+							>Define the format for character descriptions in the tracker. Macros:<br />
+							{{char}}, {{charDescription}}.</small
 						><br />
-						<textarea id="tracker_enhanced_request_prompt" class="text_pole" rows="5"></textarea>
-					</div>
-					<div class="tracker-block m-b-1 m-t-1">
-						<label for="tracker_enhanced_roleplay_prompt">Roleplay Injection Prompt</label><br />
-						<small
-							>Additional guidance inserted ahead of the tracker block when we inject into SillyTavern prompts. Keep it concise and focused on diegetic knowledge boundaries.</small
-						><br />
-						<textarea id="tracker_enhanced_roleplay_prompt" class="text_pole" rows="3"></textarea>
+						<textarea id="tracker_enhanced_character_description" class="text_pole" rows="5"></textarea>
 					</div>
 					<div class="tracker-block m-b-1 m-t-1">
 						<label for="tracker_enhanced_recent_messages">Recent Messages Template</label><br />
@@ -147,14 +139,22 @@
 						><br />
 						<textarea id="tracker_enhanced_recent_messages" class="text_pole" rows="5"></textarea>
 					</div>
-					</div>
 					<div class="tracker-block m-b-1 m-t-1">
-						<label for="tracker_enhanced_character_description">Character Description Template</label><br />
+						<label for="tracker_enhanced_request_prompt">Request Prompt</label><br />
 						<small
-							>Define the format for character descriptions in the tracker. Macros:<br />
-							{{char}}, {{charDescription}}.</small
+							>Set the request prompt for generating the tracker. Available macros include:<br />
+							{{trackerFieldPrompt}}, {{trackerFormat}}, {{message}} (last message).</small
 						><br />
-						<textarea id="tracker_enhanced_character_description" class="text_pole" rows="5"></textarea>
+						<textarea id="tracker_enhanced_request_prompt" class="text_pole" rows="5"></textarea>
+					</div>
+			
+					<hr class="sysHR" />
+					<!-- Prompt Maker Buttons -->
+					<h4 class="tracker-section-title" data-i18n-key="settings.sections.prompt_maker">🛠️ Prompt Maker Tools</h4>
+					<div class="tracker-block flex-container tracker-prompt-maker-block">
+						<label for="tracker_enhanced_prompt_maker">Prompt Maker UI</label>
+						<small>This is where the tracker fields, default values, and example values are defined.</small>
+						<input id="tracker_enhanced_prompt_maker" class="menu_button" type="submit" value="Prompt Maker" />
 					</div>
 					<div class="tracker-block m-b-1 m-t-1">
 						<label for="tracker_enhanced_mes_tracker_template">Message Tracker HTML</label><br />
@@ -179,51 +179,58 @@
 						</div>
 						<textarea id="tracker_enhanced_mes_tracker_javascript" class="text_pole" rows="5"></textarea>
 					</div>
-					<!-- Prompt Maker Button -->
-					<div class="tracker-block flex-container tracker-prompt-maker-block">
-						<label for="tracker_enhanced_prompt_maker">Prompt Maker UI</label><br />
-						<small>This is where the tracker fields, default values, and example values are defined.</small><br />
-						<input id="tracker_enhanced_prompt_maker" class="menu_button" type="submit" value="Prompt Maker" />
-					</div>
-				</div>
-			</details>
+					<hr class="sysHR" />
+					<!-- Downstream SillyTavern Injection -->
+					<h4 class="tracker-section-title" data-i18n-key="settings.sections.downstream">📤 Downstream SillyTavern Injection</h4>
+					<div class="tracker-block m-b-1 m-t-1">
+						<label for="tracker_enhanced_roleplay_prompt">Roleplay Injection Prompt</label><br />
+						<small
+							>Additional guidance inserted ahead of the tracker block when we inject into SillyTavern prompts. Keep it concise and focused on diegetic knowledge boundaries.</small
+						><br />
+						<textarea id="tracker_enhanced_roleplay_prompt" class="text_pole" rows="3"></textarea>
+					</div>				
+				</details>
+			</div>
 			<hr class="sysHR" />
 
 			<!-- Other Settings -->
-			<div class="tracker-block m-b-1 m-t-1">
-				<label for="tracker_enhanced_number_of_messages">Number of Recent Messages to Include</label><br />
-				<small>Set how many recent messages are included in tracker generation prompts.</small><br />
-				<input max="99" min="1" class="text_pole" id="tracker_enhanced_number_of_messages" type="number" />
-			</div>
-			<div class="tracker-block m-b-1 m-t-1">
-				<label for="tracker_enhanced_generate_from_message">Message Number to Start Generating Tracker From</label>
-				<small>Specify which message (by number) the tracker starts generating from.</small><br />
-				<input max="99" min="1" class="text_pole" id="tracker_enhanced_generate_from_message" type="number" />
-			</div>
-			<div class="tracker-block m-b-1 m-t-1">
-				<label for="tracker_enhanced_minimum_depth">Minimum Depth</label>
-				<small>Specify the minimum depth for a tracker to be injected at.</small><br />
-				<input max="99" min="0" class="text_pole" id="tracker_enhanced_minimum_depth" type="number" />
-			</div>
-			<div class="tracker-block m-b-1 m-t-1">
-				<label for="tracker_enhanced_response_length">Response Length</label><br />
-				<small>Set a response token limit for tracker prompts. Leave blank or set to 0 to use the default response token limit.</small><br />
-				<input min="0" class="text_pole" id="tracker_enhanced_response_length" type="number" />
-			</div>
-			<hr class="sysHR" />
-			<div class="tracker-block flex-container">
-				<input id="tracker_enhanced_toolbar_indicator" type="checkbox" />
-				<label for="tracker_enhanced_toolbar_indicator">Show toolbar injection indicator</label>
-			</div>
-			<!-- Debug Mode -->
-			<div class="tracker-block flex-container">
-				<input id="tracker_enhanced_debug" type="checkbox" />
-				<label for="tracker_enhanced_debug">Enable Debug Logging</label>
-			</div>
-			<div class="tracker-block flex-container tracker-reset-container">
-				<input id="tracker_enhanced_reset_presets" class="menu_button" type="submit" value="Reset Default Presets" />
-				<label for="tracker_enhanced_reset_presets"></label>
-			</div>
+			<details>
+				<summary class="tracker-section-title" data-i18n-key="settings.sections.other">⚙️ Other Settings</summary>
+				<div class="tracker-block m-b-1 m-t-1">
+					<label for="tracker_enhanced_number_of_messages">Number of Recent Messages to Include</label><br />
+					<small>Set how many recent messages are included in tracker generation prompts.</small><br />
+					<input max="99" min="1" class="text_pole" id="tracker_enhanced_number_of_messages" type="number" />
+				</div>
+				<div class="tracker-block m-b-1 m-t-1">
+					<label for="tracker_enhanced_generate_from_message">Message Number to Start Generating Tracker From</label>
+					<small>Specify which message (by number) the tracker starts generating from.</small><br />
+					<input max="99" min="1" class="text_pole" id="tracker_enhanced_generate_from_message" type="number" />
+				</div>
+				<div class="tracker-block m-b-1 m-t-1">
+					<label for="tracker_enhanced_minimum_depth">Minimum Depth</label>
+					<small>Specify the minimum depth for a tracker to be injected at.</small><br />
+					<input max="99" min="0" class="text_pole" id="tracker_enhanced_minimum_depth" type="number" />
+				</div>
+				<div class="tracker-block m-b-1 m-t-1">
+					<label for="tracker_enhanced_response_length">Response Length</label><br />
+					<small>Set a response token limit for tracker prompts. Leave blank or set to 0 to use the default response token limit.</small><br />
+					<input min="0" class="text_pole" id="tracker_enhanced_response_length" type="number" />
+				</div>
+				<hr class="sysHR" />
+				<div class="tracker-block flex-container">
+					<input id="tracker_enhanced_toolbar_indicator" type="checkbox" />
+					<label for="tracker_enhanced_toolbar_indicator">Show toolbar injection indicator</label>
+				</div>
+				<!-- Debug Mode -->
+				<div class="tracker-block flex-container">
+					<input id="tracker_enhanced_debug" type="checkbox" />
+					<label for="tracker_enhanced_debug">Enable Debug Logging</label>
+				</div>
+				<div class="tracker-block flex-container tracker-reset-container">
+					<input id="tracker_enhanced_reset_presets" class="menu_button" type="submit" value="Reset Default Presets" />
+					<label for="tracker_enhanced_reset_presets"></label>
+				</div>
+			</details>
 			<hr class="sysHR" />
 		</div>
 	</div>

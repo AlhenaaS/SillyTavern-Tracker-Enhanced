@@ -141,6 +141,11 @@
   padding-left: 20px;
 }
 
+.extension_container .tracker-section-title {
+  font-weight: 700 !important;
+}
+
+
 .tracker-prompt-maker-modal {
   width: var(--sheldWidth) !important;
 }
@@ -339,16 +344,12 @@
   -ms-user-select: none;
   user-select: none; /* Prevents text selection when dragging */
 }
-.tracker-prompt-maker {
-  /* Placeholder styling */
-}
+
 .tracker-prompt-maker .ui-sortable-placeholder {
   border: 1px dashed #ccc; /* Dashed border */
   visibility: visible !important;
 }
-.tracker-prompt-maker {
-  /* Helper styling during dragging */
-}
+
 .tracker-prompt-maker .ui-sortable-helper {
   z-index: 1000; /* Ensure the helper appears above other elements */
   pointer-events: none; /* Prevent interaction with the helper */
@@ -361,9 +362,7 @@
   -ms-user-select: none;
   user-select: none;
 }
-.tracker-prompt-maker {
-  /* Shrink sibling fields in the same container during drag */
-}
+
 .tracker-prompt-maker .fields-container.dragging > .field-wrapper:not(.ui-sortable-helper) > .prompt-default-example-wrapper,
 .tracker-prompt-maker .fields-container.dragging > .field-wrapper:not(.ui-sortable-helper) > .buttons-wrapper,
 .tracker-prompt-maker .fields-container.dragging > .field-wrapper:not(.ui-sortable-helper) > .nested-fields-container {

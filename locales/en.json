@@ -1,6 +1,6 @@
 {
   "settings.language.auto": "Auto (Follow SillyTavern language)",
-  "settings.language.label": "UI Language Override",
+  "settings.language.label": "🖥️ UI Language Override",
   "settings.language.help": "Choose the tracker interface language or follow SillyTavern's global setting.",
   "settings.generation_target.option.both": "Both",
   "settings.generation_target.option.user": "User",
@@ -14,9 +14,9 @@
   "settings.completion_preset.label": "🎯 Dedicated Completion Preset",
   "settings.completion_preset.help": "<strong>Recommended:</strong> Create a dedicated completion preset optimized for tracker generation.<br><strong>Compatibility Indicators:</strong><br>• <strong>✅</strong> Compatible - Matches your selected profile's API<br>• <strong>⚠️</strong> May have compatibility issues - Use with caution<br>• <strong>❌</strong> Likely incompatible - Different API, may cause errors<br><em>Tip: Use settings like higher temperature for more creative tracking or lower for consistent results.</em>",
   "settings.completion_preset.option.current": "Same as current",
-  "settings.generation_target.label": "Generation Target",
+  "settings.generation_target.label": "👤 Generation Target",
   "settings.generation_target.help": "Specifies who the tracker should auto-generate for: User, Character, Both, or None.",
-  "settings.show_popup_for.label": "Show Popup For",
+  "settings.show_popup_for.label": "🪟 Show Popup For",
   "settings.show_popup_for.help": "Specifies who should receive a popup to manually enter tracker data: User, Character, Both, or None.",
   "settings.format.label": "Tracker Format",
   "settings.format.help": "Choose the format for the tracker: YAML (recommended for lower token usage) or JSON (increases token count but may work better for struggling models).",
@@ -30,7 +30,7 @@
   "settings.presets.import.input.aria": "Import tracker enhanced preset file",
   "settings.presets.import.button.title": "Import tracker enhanced preset",
   "settings.presets.export.button.title": "Export current tracker enhanced preset",
-  "settings.presets.summary": "Preset Settings",
+  "settings.presets.summary": "📁 Preset Settings",
   "settings.context.label": "Context Template",
   "settings.context.help": "Define the template for generating the tracker. Use macros like:<br>{{participantGuidance}}, {{trackerSystemPrompt}}, {{characterDescriptions}}, {{recentMessages}}, {{currentTracker}}, {{trackerFormat}}, {{trackerFieldPrompt}}.",
   "settings.system.label": "System Prompt",
@@ -106,5 +106,9 @@
   "trackerPromptMaker.genderSpecific.male": "Male Only",
   "trackerPromptMaker.genderSpecific.trans": "Trans Only",
   "trackerPromptMaker.messages.internalFieldLocked": "Internal fields cannot be removed.",
-  "trackerPromptMaker.messages.confirmRemoveField": "Are you sure you want to remove this field?"
+  "trackerPromptMaker.messages.confirmRemoveField": "Are you sure you want to remove this field?",
+  "settings.sections.prompt_templates": "🧠 Tracker Prompt Templates",
+  "settings.sections.prompt_maker": "🛠️ Prompt Maker Tools",
+  "settings.sections.downstream": "📤 Downstream SillyTavern Injection",
+  "settings.sections.other": "⚙️ Other Settings"  
 }
