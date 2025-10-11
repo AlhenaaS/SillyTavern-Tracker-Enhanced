@@ -1,6 +1,6 @@
 import { t } from "../../lib/i18n.js";
 export const DEFAULT_PRESET_NAME = "Default Built-In (EN)";
-export const TRACKER_METADATA_VERSION = 2;
+export const TRACKER_METADATA_VERSION = 3;
 const PREFIX_DATA_DEFINITIONS = [
 	{
 		name: "TimeAnchor",
