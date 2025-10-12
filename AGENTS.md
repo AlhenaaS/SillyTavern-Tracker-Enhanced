@@ -51,3 +51,7 @@
 
 ## Prompt Maker Notes (2025-12)
 - Field IDs remain stable; the prompt maker now synchronises backend order with the DOM without renumbering. This preserves metadata on nested additions/removals and avoids inheriting internal flags from unrelated parents.
+
+## Preset Behaviour Updates (2026-02)
+- Presets now store tracker runtime flags (`generationTarget`, `showPopupFor`, `trackerFormat`, `devToolsEnabled`, `debugMode`, `trackerInjectionEnabled`, `toolbarIndicatorEnabled`) so loading a preset realigns both prompts and toggles.
+- The settings reset button is labelled “Reset Extension Defaults” and simply reapplies `defaultSettings` while preserving connection/profile settings and custom presets; built-in templates refresh automatically on reload.

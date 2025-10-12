@@ -67,7 +67,7 @@
   "settings.toolbar_indicator.label": "Show toolbar injection indicator",
   "settings.devtools.label": "Enable Dev Tools",
   "settings.debug.label": "Enable Debug Logging",
-  "settings.reset_presets.button": "Reset Default Presets",
+  "settings.reset_presets.button": "Reset Extension Defaults",
   "prompts.participant_guidance.header": "### Participant Policy",
   "prompts.participant_guidance.body": "Always include the following participants in CharactersPresent and Characters: {{participants}}.",
   "prompts.participant_guidance.fields": "Never remove these participants; infer their state even if they are temporarily off-screen.",

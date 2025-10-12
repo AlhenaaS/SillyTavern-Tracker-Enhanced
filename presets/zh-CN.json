@@ -747,7 +747,14 @@
     "generateRequestPrompt": "[请分析上一条消息以及下方提供的近期消息，结合明确细节与合理推断更新当前场景追踪器。请先停顿思考，仅输出追踪数据，并使用 {{trackerFormat}} 格式。除非特别说明，不要新增、删除或重新排序字段。每次都要返回完整追踪器。\n\n### 输出规则：\n{{trackerFieldPrompt}}\n\n确保回复保持一致，严格遵循 {{trackerFormat}} 结构，并且不要出现额外内容。必须使用 <tracker></tracker> 标签包裹追踪器。]",
     "generateRecentMessagesTemplate": "{{#if tracker}}追踪器：<tracker>\n{{tracker}}\n</tracker>\n{{/if}}{{char}}：{{message}}",
     "characterDescriptionTemplate": "### {{char}} 的描述\n{{charDescription}}",
-    "roleplayPrompt": "请把追踪器区块视为幕后记录。不要在回复中包含 <tracker> 标签，也不要描述追踪器的更新。请完全保持角色扮演，只输出角色会自然说出的内容，把追踪器仅作为参考信息。"
+    "roleplayPrompt": "请把追踪器区块视为幕后记录。不要在回复中包含 <tracker> 标签，也不要描述追踪器的更新。请完全保持角色扮演，只输出角色会自然说出的内容，把追踪器仅作为参考信息。",
+    "generationTarget": "both",
+    "showPopupFor": "none",
+    "trackerFormat": "YAML",
+    "devToolsEnabled": false,
+    "debugMode": false,
+    "trackerInjectionEnabled": true,
+    "toolbarIndicatorEnabled": false
   },
   "metadataSchemaVersion": 3
 }

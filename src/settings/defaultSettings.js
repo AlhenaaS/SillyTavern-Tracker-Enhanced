@@ -1043,6 +1043,13 @@ export const defaultSettings = {
 
 			mesTrackerTemplate: mesTrackerTemplate,
 			mesTrackerJavascript: mesTrackerJavascript,
+			generationTarget: generationTargets.BOTH,
+			showPopupFor: generationTargets.NONE,
+			trackerFormat: trackerFormat.YAML,
+			devToolsEnabled: false,
+			debugMode: false,
+			trackerInjectionEnabled: true,
+			toolbarIndicatorEnabled: false,
 			trackerDef: trackerDef,
 		},
 	},

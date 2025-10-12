@@ -400,6 +400,13 @@ const PRESET_VALUE_KEYS = [
 	"mesTrackerTemplate",
 	"mesTrackerJavascript",
 	"roleplayPrompt",
+	"generationTarget",
+	"showPopupFor",
+	"trackerFormat",
+	"devToolsEnabled",
+	"debugMode",
+	"trackerInjectionEnabled",
+	"toolbarIndicatorEnabled",
 	"trackerDef",
 ];
 
@@ -817,6 +824,15 @@ function setSettingsInitialValues() {
 	processTrackerJavascript();
 
 	DevelopmentTestUI.setEnabled(Boolean(extensionSettings.devToolsEnabled));
+
+	if (typeof TrackerInterface.setIndicatorVisibility === "function") {
+		TrackerInterface.setIndicatorVisibility(extensionSettings.toolbarIndicatorEnabled !== false);
+	}
+	if (typeof TrackerInterface.syncInjectionToggle === "function") {
+		TrackerInterface.syncInjectionToggle(extensionSettings.trackerInjectionEnabled !== false);
+	} else if (typeof TrackerInterface.updateInjectionIndicator === "function") {
+		TrackerInterface.updateInjectionIndicator(extensionSettings.trackerInjectionEnabled !== false);
+	}
 }
 
 // #endregion
@@ -1391,6 +1407,13 @@ function getCurrentPresetSettings() {
 
 		mesTrackerTemplate: extensionSettings.mesTrackerTemplate,
 		mesTrackerJavascript: extensionSettings.mesTrackerJavascript,
+		generationTarget: extensionSettings.generationTarget,
+		showPopupFor: extensionSettings.showPopupFor,
+		trackerFormat: extensionSettings.trackerFormat,
+		devToolsEnabled: extensionSettings.devToolsEnabled,
+		debugMode: extensionSettings.debugMode,
+		trackerInjectionEnabled: extensionSettings.trackerInjectionEnabled,
+		toolbarIndicatorEnabled: extensionSettings.toolbarIndicatorEnabled,
 		trackerDef: extensionSettings.trackerDef,
 	};
 }
@@ -1645,7 +1668,7 @@ function onTrackerPromptResetClick() {
 	resetButton.one("click", async () => {
         clearTimeout(timeoutId); // Clear the timeout to prevent reverting behavior
 
-		debug("Resetting tracker enhanced presets to default values while preserving connection and UI settings.");
+		debug("Resetting Tracker Enhanced extension defaults while preserving connection and UI settings.");
 
 		try {
 			const defaultsClone = deepClone(defaultSettings);
@@ -1653,9 +1676,6 @@ function onTrackerPromptResetClick() {
 				enabled: extensionSettings.enabled,
 				selectedProfile: extensionSettings.selectedProfile,
 				selectedCompletionPreset: extensionSettings.selectedCompletionPreset,
-				generationTarget: extensionSettings.generationTarget,
-				showPopupFor: extensionSettings.showPopupFor,
-				trackerFormat: extensionSettings.trackerFormat,
 				languageOverride: extensionSettings.languageOverride,
 			};
 
@@ -1668,7 +1688,6 @@ function onTrackerPromptResetClick() {
 			}
 
 			Object.assign(extensionSettings, defaultsClone);
-			registerBuiltInPresetTemplate(DEFAULT_PRESET_NAME, extensionSettings.presets?.[DEFAULT_PRESET_NAME]);
 			await ensureLocalePresetsRegistered({ force: true });
 			Object.assign(extensionSettings, preservedSettings);
 			extensionSettings.presets = {

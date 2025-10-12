@@ -67,7 +67,7 @@
   "settings.toolbar_indicator.label": "显示工具栏注入指示器",
   "settings.devtools.label": "启用开发工具",
   "settings.debug.label": "启用调试日志",
-  "settings.reset_presets.button": "重置默认预设",
+  "settings.reset_presets.button": "恢复原始设置",
   "prompts.participant_guidance.header": "### 参与者策略",
   "prompts.participant_guidance.body": "请确保 CharactersPresent 与 Characters 始终包含以下参与者：{{participants}}。",
   "prompts.participant_guidance.fields": "不要移除这些参与者；即便他们暂时未出场，也要继续推断其状态。",
