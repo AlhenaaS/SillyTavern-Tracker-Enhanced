@@ -95,9 +95,9 @@ export class TrackerPromptMaker {
 		const addFieldBtn = $('<button class="menu_button interactable"></button>')
 			.text(t("trackerPromptMaker.buttons.addField", "Add Field"))
 			.on("click", () => {
-			this.addField(); // Add field without specifying parent (top-level)
-			this.rebuildBackendObjectFromDOM(); // Rebuild keys after adding a new field.
-		});
+				this.addField(); // Add field without specifying parent (top-level)
+				this.syncBackendOrderWithDOM();
+			});
 		buttonsWrapper.append(addFieldBtn);
 
 		// Button to generate template from current fields
@@ -164,15 +164,14 @@ export class TrackerPromptMaker {
                 cursorAt: { top: 10, left: 10 }, // Adjust the cursor's position relative to the dragged element
                 start: (event, ui) => {
                     this.handleSmartPositioning(dragStartInfo, container);
-                },
+			},
 				stop: () => {
 					// Remove the dragging class and reset container height
 					container.removeClass("dragging");
 					container.css("height", ""); // Remove the fixed height
 					// Reset any positioning adjustments
 					this.resetSmartPositioning(container);
-					// Rebuild backend object when drag operation ends
-					this.rebuildBackendObjectFromDOM();
+					this.syncBackendOrderWithDOM();
 					dragStartInfo = null;
 				},
             })
@@ -641,7 +640,7 @@ export class TrackerPromptMaker {
 				// After adding a nested field, make it sortable
 				const nestedFieldData = this.getFieldDataById(fieldId).nestedFields;
 				this.makeFieldsSortable(nestedFieldsContainer, nestedFieldData);
-				this.rebuildBackendObjectFromDOM();
+				this.syncBackendOrderWithDOM();
 			})
 			.hide(); // Initially hidden
 
@@ -688,7 +687,7 @@ export class TrackerPromptMaker {
 		buttonsWrapper.append(addNestedFieldBtn);
 
 		// Remove Field Button
-		const removeFieldBtn = $('<button class="menu_button interactable"></button>')
+		const removeFieldBtn = $('<button class="menu_button interactable field-remove-button"></button>')
 			.text(labels.removeField)
 			.on("click", () => {
 			this.removeField(fieldId, fieldWrapper);
@@ -786,8 +785,7 @@ export class TrackerPromptMaker {
 			// Remove from UI
 			fieldWrapper.remove();
 			debug(`Removed field with ID: ${fieldId}`);
-			this.rebuildBackendObjectFromDOM(); // Rebuild keys after removal
-			this.syncBackendObject();
+			this.syncBackendOrderWithDOM();
 		}
 	}
 
@@ -1080,78 +1078,68 @@ export class TrackerPromptMaker {
 	}
 
 	/**
-	 * Rebuilds the backend object from the current DOM order, ensuring keys match the order.
-	 * This is called after sorting or after removal of fields to ensure keys reflect new order.
+	 * Aligns backendObject order and metadata with the current DOM without renumbering field IDs.
 	 */
-	rebuildBackendObjectFromDOM() {
-		// Reset a global rebuild counter
-		let rebuildCounter = 0;
-		const previousBackendObject = this.backendObject;
-
-		const rebuildObject = (container, sourceBackend) => {
-			const newObject = {};
-			container.children(".field-wrapper").each((_, fieldEl) => {
-				const $fieldEl = $(fieldEl);
-				const originalFieldId = $fieldEl.attr("data-field-id");
-				const sourceFieldData = this.getFieldDataById(originalFieldId, sourceBackend || {});
-				const metadata = this.normalizeFieldMetadata(sourceFieldData?.metadata || {}, false);
-
-				// Use the global rebuildCounter rather than the index
-				const fieldId = `field-${rebuildCounter++}`;
-
-				const fieldName = $fieldEl.find(".field-name-wrapper input").val() || "";
-				const presence = this.normalizePresenceValue(
-					$fieldEl.attr("data-presence") ||
-					sourceFieldData?.presence ||
-					"DYNAMIC"
-				);
-				const fieldType = $fieldEl.find(".field-type-wrapper select").val() || "STRING";
-				const prompt = $fieldEl.find(".prompt-wrapper textarea").val() || "";
-				const defaultValue = $fieldEl.find(".default-value-wrapper input").val() || "";
-
-				const exampleValues = [];
-				$fieldEl.find("> .prompt-default-example-wrapper > .default-example-wrapper > .example-values-container input").each((__, inp) => {
-					exampleValues.push($(inp).val() || "");
-				});
-
-				// Rename the data-field-id attribute to maintain consistency
-				$fieldEl.attr("data-field-id", fieldId);
-				$fieldEl.data("metadata", metadata);
-				$fieldEl.toggleClass("field-wrapper--internal", metadata.internal);
-				$fieldEl.toggleClass("field-wrapper--internal-only", metadata.internalOnly);
-				this.setFieldPresenceOnWrapper($fieldEl, presence);
-
-				// Rebuild nested fields recursively
-				const $nestedContainer = $fieldEl.find("> .nested-fields-container");
-				let nestedFields = {};
-				if ($nestedContainer.length > 0 && $nestedContainer.children(".field-wrapper").length > 0) {
-					nestedFields = rebuildObject($nestedContainer, sourceFieldData?.nestedFields || {});
-				}
-
-				newObject[fieldId] = {
-					name: fieldName,
-					type: fieldType,
-					presence: presence,
-					prompt: prompt,
-					defaultValue: defaultValue,
-					exampleValues: exampleValues,
-					nestedFields: nestedFields,
-					metadata: metadata,
-					presence: presence,
-				};
-
-				this.applyReadOnlyState($fieldEl, metadata);
-			});
-			return newObject;
+	syncBackendOrderWithDOM() {
+		const restoreInteractivity = (fieldWrapper) => {
+			fieldWrapper
+				.removeClass("field-wrapper--internal field-wrapper--internal-only field-wrapper--locked field-wrapper--locked-partial");
+			fieldWrapper.find("input, textarea, select").prop("disabled", false);
+			fieldWrapper.find(".menu_button").prop("disabled", false).removeClass("disabled");
+			fieldWrapper.find(".drag-handle").removeClass("drag-handle--disabled").css("pointer-events", "");
 		};
 
-		// Rebuild the entire backend object using the global counter
-		this.backendObject = rebuildObject(this.fieldsContainer, previousBackendObject);
+		const synchronize = (container, backendRef = {}) => {
+			const orderedBackend = {};
 
-		// Update fieldCounter to one plus the highest index found
-		this.fieldCounter = rebuildCounter;
+			container.children(".field-wrapper").each((_, element) => {
+				const fieldWrapper = $(element);
+				const fieldId = fieldWrapper.attr("data-field-id");
+				if (!fieldId) {
+					return;
+				}
 
-		debug("Rebuilt backend object from DOM.", { backendObject: this.backendObject });
+				let fieldData = backendRef[fieldId];
+				if (!fieldData) {
+					fieldData = this.getFieldDataById(fieldId) || {};
+				}
+
+				fieldData.metadata = this.normalizeFieldMetadata(fieldData.metadata || {}, false);
+				fieldWrapper.data("metadata", fieldData.metadata);
+
+				restoreInteractivity(fieldWrapper);
+
+				fieldWrapper.toggleClass("field-wrapper--internal", fieldData.metadata.internal === true);
+				fieldWrapper.toggleClass("field-wrapper--internal-only", fieldData.metadata.internalOnly === true);
+
+				this.applyReadOnlyState(fieldWrapper, fieldData.metadata);
+				this.setFieldPresenceOnWrapper(fieldWrapper, fieldData.presence || "DYNAMIC");
+
+				const removeFieldBtn = fieldWrapper.find("> .buttons-wrapper > .field-remove-button");
+				if (removeFieldBtn.length) {
+					if (fieldData.metadata.internal) {
+						removeFieldBtn.hide();
+					} else {
+						removeFieldBtn.show();
+					}
+				}
+
+				const nestedContainer = fieldWrapper.find("> .nested-fields-container");
+				if (nestedContainer.length) {
+					fieldData.nestedFields = synchronize(nestedContainer, fieldData.nestedFields || {});
+				} else {
+					fieldData.nestedFields = {};
+				}
+
+				orderedBackend[fieldId] = fieldData;
+			});
+
+			return orderedBackend;
+		};
+
+		this.backendObject = synchronize(this.fieldsContainer, this.backendObject || {});
+
+		debug("Synchronized backend object with DOM.", { backendObject: this.backendObject });
 
 		this.updateInternalFieldVisibility();
 		this.syncBackendObject();
