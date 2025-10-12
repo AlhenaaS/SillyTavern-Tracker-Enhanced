@@ -262,6 +262,13 @@ export class TrackerTemplateGenerator {
         let charactersField = null; // Special handling for Characters field
         let charactersName = 'Characters'; // Default name for characters field
         
+        const buildRowAttributes = (fieldId, metadata = {}) => {
+            const attributes = [];
+            if (fieldId) attributes.push(`data-field-id="${fieldId}"`);
+            if (metadata.internalKeyId) attributes.push(`data-internal-key-id="${metadata.internalKeyId}"`);
+            return attributes.length > 0 ? ` ${attributes.join(' ')}` : '';
+        };
+        
         for (const [fieldKey, fieldData] of Object.entries(trackerDef)) {
             if (!fieldData || typeof fieldData !== 'object') {
                 continue;
@@ -292,20 +299,20 @@ export class TrackerTemplateGenerator {
             }
             // Basic string fields go to top-level table
             else if (fieldType === 'String' && !isNested) {
-                topLevelFields.push([fieldName, fieldKey]);
+                topLevelFields.push([fieldName, fieldKey, fieldData]);
             }
             // Array fields and array objects go to tracker section
             else if (fieldType === 'Array' || fieldType === 'Array Object') {
                 // Handle special case for Topics - if it's an array object, treat as join
                 if (fieldName.toLowerCase().includes('topic') && fieldType === 'Array Object') {
-                    trackerSectionFields.push([fieldName, fieldKey, 'join']);
+                    trackerSectionFields.push([fieldName, fieldKey, 'join', fieldData]);
                 } else {
-                    trackerSectionFields.push([fieldName, fieldKey, 'join']);
+                    trackerSectionFields.push([fieldName, fieldKey, 'join', fieldData]);
                 }
             }
             // Other complex fields
             else {
-                trackerSectionFields.push([fieldName, fieldKey, 'complex']);
+                trackerSectionFields.push([fieldName, fieldKey, 'complex', fieldData]);
             }
         }
         
@@ -318,8 +325,10 @@ export class TrackerTemplateGenerator {
         // Generate top-level table for basic string fields
         if (topLevelFields.length > 0) {
             parts.push(`${indent}<table>`);
-            for (const [fieldName, fieldKey] of topLevelFields) {
-                parts.push(`${indent}    <tr>`);
+            for (const [fieldName, fieldKey, fieldData] of topLevelFields) {
+                const metadata = (fieldData && fieldData.metadata) || {};
+                const rowAttributes = buildRowAttributes(fieldKey, metadata);
+                parts.push(`${indent}    <tr${rowAttributes}>`);
                 parts.push(`${indent}        <td>${fieldName}:</td>`);
                 parts.push(`${indent}        <td>{{${fieldName}}}</td>`);
                 parts.push(`${indent}    </tr>`);
@@ -335,8 +344,10 @@ export class TrackerTemplateGenerator {
             // Generate table for tracker section fields
             if (trackerSectionFields.length > 0) {
                 parts.push(`${indent}    <table>`);
-                for (const [fieldName, fieldKey, type] of trackerSectionFields) {
-                    parts.push(`${indent}        <tr>`);
+                for (const [fieldName, fieldKey, type, fieldData] of trackerSectionFields) {
+                    const metadata = (fieldData && fieldData.metadata) || {};
+                    const rowAttributes = buildRowAttributes(fieldKey, metadata);
+                    parts.push(`${indent}        <tr${rowAttributes}>`);
                     // Special handling for CharactersPresent -> "Present:"
                     const displayName = fieldName === 'CharactersPresent' ? 'Present' : 
                                        fieldName === 'Topics' ? 'Topics' : fieldName;
@@ -369,7 +380,9 @@ export class TrackerTemplateGenerator {
                         displayName = 'Position';
                     }
                     
-                    parts.push(`${indent}            <tr>`);
+                    const metadata = (nestedData && nestedData.metadata) || {};
+                    const rowAttributes = buildRowAttributes(nestedKey, metadata);
+                    parts.push(`${indent}            <tr${rowAttributes}>`);
                     parts.push(`${indent}                <td>${displayName}:</td>`);
                     parts.push(`${indent}                <td>{{character.${nestedName}}}</td>`);
                     parts.push(`${indent}            </tr>`);

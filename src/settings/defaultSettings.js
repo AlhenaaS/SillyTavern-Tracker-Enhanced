@@ -590,15 +590,15 @@ const characterDescriptionTemplate = t("prompts.characterDescriptionTemplate", `
 {{charDescription}}`);
 const mesTrackerTemplate = `<div class="tracker_default_mes_template">
     <table>
-        <tr>
+        <tr data-field-id="field-1" data-internal-key-id="localTime">
             <td>LocalTime:</td>
             <td>{{LocalTime}}</td>
         </tr>
-        <tr>
+        <tr data-field-id="field-2">
             <td>Location:</td>
             <td>{{Location}}</td>
         </tr>
-        <tr>
+        <tr data-field-id="field-3">
             <td>Weather:</td>
             <td>{{Weather}}</td>
         </tr>
@@ -606,11 +606,11 @@ const mesTrackerTemplate = `<div class="tracker_default_mes_template">
     <details>
         <summary><span>Tracker</span></summary>
         <table>
-            <tr>
+            <tr data-field-id="field-7">
                 <td>Topics:</td>
                 <td>{{#join "; " Topics}}</td>
             </tr>
-            <tr>
+            <tr data-field-id="field-8">
                 <td>Present:</td>
                 <td>{{#join "; " CharactersPresent}}</td>
             </tr>
@@ -620,55 +620,55 @@ const mesTrackerTemplate = `<div class="tracker_default_mes_template">
             <hr>
             <strong>{{character}}:</strong><br />
             <table>
-				<tr>
+                <tr data-field-id="field-9" data-internal-key-id="characterGender">
                     <td>Gender:</td>
                     <td>{{character.Gender}}</td>
                 </tr>
-				<tr>
+                <tr data-field-id="field-10">
                     <td>Age:</td>
                     <td>{{character.Age}}</td>
                 </tr>
-                <tr>
+                <tr data-field-id="field-11">
                     <td>Hair:</td>
                     <td>{{character.Hair}}</td>
                 </tr>
-                <tr>
+                <tr data-field-id="field-12">
                     <td>Makeup:</td>
                     <td>{{character.Makeup}}</td>
                 </tr>
-                <tr>
+                <tr data-field-id="field-13">
                     <td>Outfit:</td>
                     <td>{{character.Outfit}}</td>
                 </tr>
-                <tr>
+                <tr data-field-id="field-14">
                     <td>State:</td>
                     <td>{{character.StateOfDress}}</td>
                 </tr>
-                <tr>
+                <tr data-field-id="field-15">
                     <td>Position:</td>
                     <td>{{character.PostureAndInteraction}}</td>
                 </tr>
-				<tr>
-					<td>BustWaistHip:</td>
-					<td>{{character.BustWaistHip}}</td>
-				</tr>
-				<tr>
+                <tr data-field-id="field-16">
+                    <td>BustWaistHip:</td>
+                    <td>{{character.BustWaistHip}}</td>
+                </tr>
+                <tr data-field-id="field-17">
                     <td>FertilityCycle:</td>
                     <td>{{character.FertilityCycle}}</td>
                 </tr>
-				<tr>
+                <tr data-field-id="field-18">
                     <td>Pregnancy:</td>
                     <td>{{character.Pregnancy}}</td>
                 </tr>
-				<tr>
+                <tr data-field-id="field-19">
                     <td>Virginity:</td>
                     <td>{{character.Virginity}}</td>
                 </tr>
-				<tr>
+                <tr data-field-id="field-20">
                     <td>Traits:</td>
                     <td>{{character.Traits}}</td>
                 </tr>
-				<tr>
+                <tr data-field-id="field-21">
                     <td>Children:</td>
                     <td>{{character.Children}}</td>
                 </tr>
@@ -680,6 +680,12 @@ const mesTrackerTemplate = `<div class="tracker_default_mes_template">
 <hr>`;
 // Replace the mesTrackerJavascript around line 361
 const mesTrackerJavascript = `()=>{
+const GENDER_FIELD_KEY="characterGender";
+const GENDER_SYMBOLS={
+male:["\u2642","\u2642\uFE0F"],
+female:["\u2640","\u2640\uFE0F"],
+trans:["\u26A7","\u26A7\uFE0F"]
+};
 const hideFields=(mesId,element)=>{
 const sections=element.querySelectorAll('.mes_tracker_characters strong');
 const addStyle=()=>{
@@ -701,18 +707,48 @@ table=next;break;
 next=next.nextElementSibling;
 }
 if(table){
-const genderRow=Array.from(table.rows).find(row=>row.cells[0]&&row.cells[0].textContent.trim()==='Gender:');
-if(genderRow&&genderRow.cells[1]){
-const gender=genderRow.cells[1].textContent.trim().toLowerCase();
-if(!gender.includes('female')){
-const toHide=['FertilityCycle:','Pregnancy:','BustWaistHip:'];
-Array.from(table.rows).forEach(row=>{
-if(row.cells[0]&&toHide.includes(row.cells[0].textContent.trim())){
+const rows=Array.from(table.rows);
+const genderRow=rows.find(row=>{
+const dataKey=row.dataset&&row.dataset.internalKeyId;
+if(dataKey===GENDER_FIELD_KEY)return true;
+const firstCell=row.cells[0];
+if(!dataKey&&firstCell){
+return firstCell.textContent.trim()==='Gender:';
+}
+return false;
+});
+if(!genderRow||!genderRow.cells[1])return;
+const genderText=genderRow.cells[1].textContent.trim();
+const containsSymbol=(text,symbols)=>symbols.some(symbol=>text.includes(symbol));
+const isFemale=containsSymbol(genderText,GENDER_SYMBOLS.female);
+const isMale=containsSymbol(genderText,GENDER_SYMBOLS.male);
+const isTrans=containsSymbol(genderText,GENDER_SYMBOLS.trans);
+const fieldsToHide=[];
+if(!isFemale){
+fieldsToHide.push(...[{label:'BustWaistHip:',key:null,fieldId:'field-16'},{label:'FertilityCycle:',key:null,fieldId:'field-17'},{label:'Pregnancy:',key:null,fieldId:'field-18'}]);
+}
+if(!isMale){
+fieldsToHide.push(...[]);
+}
+if(!isTrans){
+fieldsToHide.push(...[]);
+}
+if(fieldsToHide.length===0)return;
+rows.forEach(row=>{
+if(!row.cells[0])return;
+const label=row.cells[0].textContent.trim();
+const dataKey=row.dataset?row.dataset.internalKeyId:null;
+const fieldId=row.dataset?row.dataset.fieldId:null;
+const matches=fieldsToHide.some(spec=>{
+if(spec.key&&dataKey===spec.key)return true;
+if(spec.fieldId&&fieldId===spec.fieldId)return true;
+if(spec.label&&label===spec.label)return true;
+return false;
+});
+if(matches){
 row.style.display='none';
 }
 });
-}
-}
 }
 });
 };
@@ -902,7 +938,7 @@ const trackerDef = {
 			"type": "STRING",
 			"presence": "DYNAMIC",
 			"genderSpecific": "all",
-			"prompt": "A single world and an emoji for Character gender. ",
+			"prompt": "A single word and an emoji (♂️ / ♀️ / ⚧️/ ❓) for Character gender. ",
 			"defaultValue": "<Current gender if no update is needed>",
 			"exampleValues": [
 				"\"Male ♂️\"",

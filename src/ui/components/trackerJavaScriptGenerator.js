@@ -54,6 +54,18 @@ export class TrackerJavaScriptGenerator {
             'all': []
         };
 
+        const normalizeDisplayName = (rawName) => {
+            if (!rawName) return "";
+            switch (rawName) {
+                case "StateOfDress":
+                    return "State";
+                case "PostureAndInteraction":
+                    return "Position";
+                default:
+                    return rawName;
+            }
+        };
+
         // Look for the Characters field (FOR_EACH_OBJECT type)
         for (const [fieldKey, fieldData] of Object.entries(trackerDef)) {
             if (!fieldData || typeof fieldData !== 'object') continue;
@@ -71,14 +83,21 @@ export class TrackerJavaScriptGenerator {
                     if (!nestedData || typeof nestedData !== 'object') continue;
                     
                     const fieldName = nestedData.name || nestedKey;
+                    const displayName = normalizeDisplayName(fieldName);
                     const genderSpecific = nestedData.genderSpecific || 'all'; // Default to 'all'
+                    const metadata = nestedData.metadata || {};
+                    const internalKeyId = metadata.internalKeyId || null;
                     
                     if (typeof debug === 'function') {
                         debug(`TrackerJavaScriptGenerator: Processing field ${fieldName} with genderSpecific: ${genderSpecific}`);
                     }
                     
                     if (genderFields[genderSpecific]) {
-                        genderFields[genderSpecific].push(fieldName);
+                        genderFields[genderSpecific].push({
+                            fieldId: nestedKey,
+                            internalKeyId,
+                            label: `${displayName}:`
+                        });
                     }
                 }
                 break; // Only process the first Characters field found
@@ -98,18 +117,36 @@ export class TrackerJavaScriptGenerator {
         const femaleOnlyFields = genderFields.female || [];
         const maleOnlyFields = genderFields.male || [];  
         const transOnlyFields = genderFields.trans || [];
-        
-        // Generate field arrays for the JavaScript
-        const generateFieldArray = (fields, suffix = ':') => {
-            if (fields.length === 0) return '[]';
-            return '[' + fields.map(field => `'${field}${suffix}'`).join(',') + ']';
+
+        const escapeString = (value) => {
+            if (typeof value !== "string") return "";
+            return value.replace(/\\/g, "\\\\").replace(/'/g, "\\'");
         };
 
-        const femaleOnlyArray = generateFieldArray(femaleOnlyFields);
-        const maleOnlyArray = generateFieldArray(maleOnlyFields);
-        const transOnlyArray = generateFieldArray(transOnlyFields);
+        const serializeFieldArray = (fields) => {
+            if (!Array.isArray(fields) || fields.length === 0) {
+                return "[]";
+            }
+            const serialized = fields.map((field) => {
+                const label = field.label ? `'${escapeString(field.label)}'` : "null";
+                const internalKeyId = field.internalKeyId ? `'${escapeString(field.internalKeyId)}'` : "null";
+                const fieldId = field.fieldId ? `'${escapeString(field.fieldId)}'` : "null";
+                return `{label:${label},key:${internalKeyId},fieldId:${fieldId}}`;
+            });
+            return `[${serialized.join(",")}]`;
+        };
+
+        const femaleOnlyArray = serializeFieldArray(femaleOnlyFields);
+        const maleOnlyArray = serializeFieldArray(maleOnlyFields);
+        const transOnlyArray = serializeFieldArray(transOnlyFields);
 
         return `()=>{
+const GENDER_FIELD_KEY="characterGender";
+const GENDER_SYMBOLS={
+male:["\u2642","\u2642\uFE0F"],
+female:["\u2640","\u2640\uFE0F"],
+trans:["\u26A7","\u26A7\uFE0F"]
+};
 const hideFields=(mesId,element)=>{
 const sections=element.querySelectorAll('.mes_tracker_characters strong');
 const addStyle=()=>{
@@ -131,25 +168,48 @@ table=next;break;
 next=next.nextElementSibling;
 }
 if(table){
-const genderRow=Array.from(table.rows).find(row=>row.cells[0]&&row.cells[0].textContent.trim()==='Gender:');
-if(genderRow&&genderRow.cells[1]){
-const gender=genderRow.cells[1].textContent.trim().toLowerCase();
-let fieldsToHide=[];
-if(!gender.includes('female')){
-fieldsToHide=fieldsToHide.concat(${femaleOnlyArray});
+const rows=Array.from(table.rows);
+const genderRow=rows.find(row=>{
+const dataKey=row.dataset&&row.dataset.internalKeyId;
+if(dataKey===GENDER_FIELD_KEY)return true;
+const firstCell=row.cells[0];
+if(!dataKey&&firstCell){
+return firstCell.textContent.trim()==='Gender:';
 }
-if(!gender.includes('male')&&!gender.includes('female')){
-fieldsToHide=fieldsToHide.concat(${maleOnlyArray});
+return false;
+});
+if(!genderRow||!genderRow.cells[1])return;
+const genderText=genderRow.cells[1].textContent.trim();
+const containsSymbol=(text,symbols)=>symbols.some(symbol=>text.includes(symbol));
+const isFemale=containsSymbol(genderText,GENDER_SYMBOLS.female);
+const isMale=containsSymbol(genderText,GENDER_SYMBOLS.male);
+const isTrans=containsSymbol(genderText,GENDER_SYMBOLS.trans);
+const fieldsToHide=[];
+if(!isFemale){
+fieldsToHide.push(...${femaleOnlyArray});
 }
-if(!gender.includes('trans')){
-fieldsToHide=fieldsToHide.concat(${transOnlyArray});
+if(!isMale){
+fieldsToHide.push(...${maleOnlyArray});
 }
-Array.from(table.rows).forEach(row=>{
-if(row.cells[0]&&fieldsToHide.includes(row.cells[0].textContent.trim())){
+if(!isTrans){
+fieldsToHide.push(...${transOnlyArray});
+}
+if(fieldsToHide.length===0)return;
+rows.forEach(row=>{
+if(!row.cells[0])return;
+const label=row.cells[0].textContent.trim();
+const dataKey=row.dataset?row.dataset.internalKeyId:null;
+const fieldId=row.dataset?row.dataset.fieldId:null;
+const matches=fieldsToHide.some(spec=>{
+if(spec.key&&dataKey===spec.key)return true;
+if(spec.fieldId&&fieldId===spec.fieldId)return true;
+if(spec.label&&label===spec.label)return true;
+return false;
+});
+if(matches){
 row.style.display='none';
 }
 });
-}
 }
 });
 };
