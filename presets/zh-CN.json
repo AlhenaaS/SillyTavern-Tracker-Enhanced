@@ -5,7 +5,7 @@
     "mesTrackerTemplate": "<div class=\"tracker_default_mes_template\">\n    <table>\n        <tr data-field-id=\"field-1\" data-internal-key-id=\"localTime\">\n            <td>LocalTime:</td>\n            <td>{{LocalTime}}</td>\n        </tr>\n        <tr data-field-id=\"field-2\">\n            <td>Location:</td>\n            <td>{{Location}}</td>\n        </tr>\n        <tr data-field-id=\"field-3\">\n            <td>Weather:</td>\n            <td>{{Weather}}</td>\n        </tr>\n  </table>\n    <details>\n        <summary><span>Tracker</span></summary>\n        <table>\n            <tr data-field-id=\"field-7\">\n                <td>Topics:</td>\n                <td>{{#join \"; \" Topics}}</td>\n            </tr>\n            <tr data-field-id=\"field-8\">\n                <td>Present:</td>\n                <td>{{#join \"; \" CharactersPresent}}</td>\n            </tr>\n        </table>\n        <div class=\"mes_tracker_characters\">\n            {{#foreach Characters character}}\n            <hr>\n            <strong>{{character}}:</strong><br />\n            <table>\n                <tr data-field-id=\"field-9\" data-internal-key-id=\"characterGender\">\n                    <td>Gender:</td>\n                    <td>{{character.Gender}}</td>\n                </tr>\n                <tr data-field-id=\"field-10\">\n                    <td>Age:</td>\n                    <td>{{character.Age}}</td>\n                </tr>\n                <tr data-field-id=\"field-11\">\n                    <td>Hair:</td>\n                    <td>{{character.Hair}}</td>\n                </tr>\n                <tr data-field-id=\"field-12\">\n                    <td>Makeup:</td>\n                    <td>{{character.Makeup}}</td>\n                </tr>\n                <tr data-field-id=\"field-13\">\n                    <td>Outfit:</td>\n                    <td>{{character.Outfit}}</td>\n                </tr>\n                <tr data-field-id=\"field-14\">\n                    <td>State:</td>\n                    <td>{{character.StateOfDress}}</td>\n                </tr>\n                <tr data-field-id=\"field-15\">\n                    <td>Position:</td>\n                    <td>{{character.PostureAndInteraction}}</td>\n                </tr>\n                <tr data-field-id=\"field-16\">\n                    <td>BustWaistHip:</td>\n                    <td>{{character.BustWaistHip}}</td>\n                </tr>\n                <tr data-field-id=\"field-17\">\n                    <td>FertilityCycle:</td>\n                    <td>{{character.FertilityCycle}}</td>\n                </tr>\n                <tr data-field-id=\"field-18\">\n                    <td>Pregnancy:</td>\n                    <td>{{character.Pregnancy}}</td>\n                </tr>\n                <tr data-field-id=\"field-19\">\n                    <td>Virginity:</td>\n                    <td>{{character.Virginity}}</td>\n                </tr>\n                <tr data-field-id=\"field-20\">\n                    <td>Traits:</td>\n                    <td>{{character.Traits}}</td>\n                </tr>\n                <tr data-field-id=\"field-21\">\n                    <td>Children:</td>\n                    <td>{{character.Children}}</td>\n                </tr>\n            </table>\n            {{/foreach}}\n        </div>\n    </details>\n</div>\n<hr>",
     "mesTrackerJavascript": "()=>{\nconst GENDER_FIELD_KEY=\"characterGender\";\nconst GENDER_SYMBOLS={\nmale:[\"\\u2642\",\"\\u2642\\uFE0F\"],\nfemale:[\"\\u2640\",\"\\u2640\\uFE0F\"],\ntrans:[\"\\u26A7\",\"\\u26A7\\uFE0F\"]\n};\nconst hideFields=(mesId,element)=>{\nconst sections=element.querySelectorAll('.mes_tracker_characters strong');\nconst addStyle=()=>{\nif(document.querySelector('style[data-tracker-alignment]'))return;\nconst style=document.createElement('style');\nstyle.textContent='.mes_tracker_characters{display:flex;flex-direction:column;}.mes_tracker_characters table{table-layout:fixed!important;width:100%!important;border-spacing:0!important;}.mes_tracker_characters table td:first-child{width:120px!important;min-width:120px!important;max-width:120px!important;text-align:left!important;vertical-align:top!important;padding:2px 5px!important;}.mes_tracker_characters table td:last-child{width:calc(100% - 125px)!important;text-align:left!important;vertical-align:top!important;padding:2px 5px!important;word-wrap:break-word!important;}';\nstyle.setAttribute('data-tracker-alignment','true');\ndocument.head.appendChild(style);\n};\naddStyle();\nsections.forEach((header,index)=>{\nconst name=header.textContent.replace(':','').trim();\nlet next=header.nextElementSibling;\nlet table=null;\nwhile(next){\nif(next.tagName==='TABLE'){\ntable=next;break;\n}\nnext=next.nextElementSibling;\n}\nif(table){\nconst rows=Array.from(table.rows);\nconst genderRow=rows.find(row=>{\nconst dataKey=row.dataset&&row.dataset.internalKeyId;\nif(dataKey===GENDER_FIELD_KEY)return true;\nconst firstCell=row.cells[0];\nif(!dataKey&&firstCell){\nreturn firstCell.textContent.trim()==='Gender:';\n}\nreturn false;\n});\nif(!genderRow||!genderRow.cells[1])return;\nconst genderText=genderRow.cells[1].textContent.trim();\nconst containsSymbol=(text,symbols)=>symbols.some(symbol=>text.includes(symbol));\nconst isFemale=containsSymbol(genderText,GENDER_SYMBOLS.female);\nconst isMale=containsSymbol(genderText,GENDER_SYMBOLS.male);\nconst isTrans=containsSymbol(genderText,GENDER_SYMBOLS.trans);\nconst fieldsToHide=[];\nif(!isFemale){\nfieldsToHide.push(...[{label:'BustWaistHip:',key:null,fieldId:'field-16'},{label:'FertilityCycle:',key:null,fieldId:'field-17'},{label:'Pregnancy:',key:null,fieldId:'field-18'}]);\n}\nif(!isMale){\nfieldsToHide.push(...[]);\n}\nif(!isTrans){\nfieldsToHide.push(...[]);\n}\nif(fieldsToHide.length===0)return;\nrows.forEach(row=>{\nif(!row.cells[0])return;\nconst label=row.cells[0].textContent.trim();\nconst dataKey=row.dataset?row.dataset.internalKeyId:null;\nconst fieldId=row.dataset?row.dataset.fieldId:null;\nconst matches=fieldsToHide.some(spec=>{\nif(spec.key&&dataKey===spec.key)return true;\nif(spec.fieldId&&fieldId===spec.fieldId)return true;\nif(spec.label&&label===spec.label)return true;\nreturn false;\n});\nif(matches){\nrow.style.display='none';\n}\n});\n}\n});\n};\nconst init=()=>{\ntry{\nconst ctx=SillyTavern.getContext();\nif(ctx&&ctx.eventSource){\nctx.eventSource.on(\"TRACKER_ENHANCED_PREVIEW_ADDED\",hideFields);\nctx.eventSource.on(\"TRACKER_ENHANCED_PREVIEW_UPDATED\",hideFields);\n}\n}catch(e){\nconsole.warn('[tracker-enhanced] Init failed, SillyTavern context not available:',e.message);\n}\n};\nconst cleanup=()=>{\ntry{\nconst ctx=SillyTavern.getContext();\nif(ctx&&ctx.eventSource&&typeof ctx.eventSource.off==='function'){\nctx.eventSource.off(\"TRACKER_ENHANCED_PREVIEW_ADDED\",hideFields);\nctx.eventSource.off(\"TRACKER_ENHANCED_PREVIEW_UPDATED\",hideFields);\n}\nconst style=document.querySelector('style[data-tracker-alignment]');\nif(style)style.remove();\n}catch(e){\nconsole.warn('[tracker-enhanced] Cleanup failed, SillyTavern context not available:',e.message);\nconst style=document.querySelector('style[data-tracker-alignment]');\nif(style)style.remove();\n}\n};\nreturn{init,cleanup,hideGenderSpecificFields:hideFields};\n}",
     "trackerDef": {
-      "timeAnchor": {
+      "field-0": {
         "name": "TimeAnchor",
         "type": "STRING",
         "presence": "DYNAMIC",
@@ -24,7 +24,7 @@
           "internalOnly": true
         }
       },
-      "field-0": {
+      "field-1": {
         "name": "LocalTime",
         "type": "STRING",
         "presence": "DYNAMIC",
@@ -45,7 +45,7 @@
           "internalOnly": false
         }
       },
-      "field-1": {
+      "field-2": {
         "name": "Location",
         "type": "STRING",
         "presence": "DYNAMIC",
@@ -60,10 +60,11 @@
         "metadata": {
           "internal": false,
           "external": true,
+          "internalKeyId": null,
           "internalOnly": false
         }
       },
-      "field-2": {
+      "field-3": {
         "name": "Weather",
         "type": "STRING",
         "presence": "DYNAMIC",
@@ -78,10 +79,11 @@
         "metadata": {
           "internal": false,
           "external": true,
+          "internalKeyId": null,
           "internalOnly": false
         }
       },
-      "field-3": {
+      "field-7": {
         "name": "Topics",
         "type": "ARRAY_OBJECT",
         "presence": "DYNAMIC",
@@ -108,6 +110,7 @@
             "metadata": {
               "internal": false,
               "external": true,
+              "internalKeyId": null,
               "internalOnly": false
             }
           },
@@ -126,6 +129,7 @@
             "metadata": {
               "internal": false,
               "external": true,
+              "internalKeyId": null,
               "internalOnly": false
             }
           },
@@ -144,6 +148,7 @@
             "metadata": {
               "internal": false,
               "external": true,
+              "internalKeyId": null,
               "internalOnly": false
             }
           }
@@ -151,10 +156,11 @@
         "metadata": {
           "internal": false,
           "external": true,
+          "internalKeyId": null,
           "internalOnly": false
         }
       },
-      "field-7": {
+      "field-8": {
         "name": "CharactersPresent",
         "type": "ARRAY",
         "presence": "DYNAMIC",
@@ -169,10 +175,11 @@
         "metadata": {
           "internal": false,
           "external": true,
+          "internalKeyId": null,
           "internalOnly": false
         }
       },
-      "field-8": {
+      "field-22": {
         "name": "Characters",
         "type": "FOR_EACH_OBJECT",
         "presence": "DYNAMIC",
@@ -221,6 +228,7 @@
             "metadata": {
               "internal": false,
               "external": true,
+              "internalKeyId": null,
               "internalOnly": false
             }
           },
@@ -240,6 +248,7 @@
             "metadata": {
               "internal": false,
               "external": true,
+              "internalKeyId": null,
               "internalOnly": false
             }
           },
@@ -259,6 +268,7 @@
             "metadata": {
               "internal": false,
               "external": true,
+              "internalKeyId": null,
               "internalOnly": false
             }
           },
@@ -278,6 +288,7 @@
             "metadata": {
               "internal": false,
               "external": true,
+              "internalKeyId": null,
               "internalOnly": false
             }
           },
@@ -297,6 +308,7 @@
             "metadata": {
               "internal": false,
               "external": true,
+              "internalKeyId": null,
               "internalOnly": false
             }
           },
@@ -316,6 +328,7 @@
             "metadata": {
               "internal": false,
               "external": true,
+              "internalKeyId": null,
               "internalOnly": false
             }
           },
@@ -335,6 +348,7 @@
             "metadata": {
               "internal": false,
               "external": true,
+              "internalKeyId": null,
               "internalOnly": false
             }
           },
@@ -348,7 +362,7 @@
             "exampleValues": [
               "\"Menstrual 🩸 (Safe)\"",
               "\"Follicular 🌱 (Low Risk)\"",
-              "\"Ovulating 🌸 (High Risk!)\"", 
+              "\"Ovulating 🌸 (High Risk!)\"",
               "\"Luteal 🌙 (Moderate Risk)\"",
               "\"Pregnant 👶\""
             ],
@@ -356,6 +370,7 @@
             "metadata": {
               "internal": false,
               "external": true,
+              "internalKeyId": null,
               "internalOnly": false
             }
           },
@@ -375,6 +390,7 @@
             "metadata": {
               "internal": false,
               "external": true,
+              "internalKeyId": null,
               "internalOnly": false
             }
           },
@@ -394,6 +410,7 @@
             "metadata": {
               "internal": false,
               "external": true,
+              "internalKeyId": null,
               "internalOnly": false
             }
           },
@@ -413,6 +430,7 @@
             "metadata": {
               "internal": false,
               "external": true,
+              "internalKeyId": null,
               "internalOnly": false
             }
           },
@@ -432,6 +450,7 @@
             "metadata": {
               "internal": false,
               "external": true,
+              "internalKeyId": null,
               "internalOnly": false
             }
           }
@@ -443,7 +462,7 @@
           "internalOnly": false
         }
       },
-      "field-9": {
+      "field-29": {
         "name": "StoryEvents",
         "type": "OBJECT",
         "presence": "DYNAMIC",
@@ -454,7 +473,7 @@
           "{\"BirthEvents\": {\"Mira\": {\"NewBornDescription\": \"Mira, the newborn of Harry and Monika, female — she sleeps in short bursts, cries softly when hungry, and cannot yet focus her bright blue eyes on anything distant.\"}}, \"GrowthEvents\": {\"Molly Thompson\": {\"GrowthDescription\": \"Molly Thompson has grown into an energetic teenager with her father Jack's athletic build and her mother Rose's quick wit.\"}}, \"DeathEvents\": {\"Sir Alden\": {\"DeathCauseDescription\": \"Sir Alden fell defending the northern gate, struck down by the dragon's final burst of flame.\"}}}"
         ],
         "nestedFields": {
-          "internal-story-birth-events": {
+          "field-24": {
             "name": "BirthEvents",
             "type": "FOR_EACH_OBJECT",
             "presence": "DYNAMIC",
@@ -467,7 +486,7 @@
               "[\"Unnamed baby of Alice\"]"
             ],
             "nestedFields": {
-              "internal-story-birth-description": {
+              "field-23": {
                 "name": "NewBornDescription",
                 "type": "STRING",
                 "presence": "DYNAMIC",
@@ -479,6 +498,7 @@
                   "Molly, the newborn of Jack and Rose, female — she clenches her tiny fists, reacts to her parents' voices, and only communicates with soft whimpers.",
                   "Arwen, the newborn of Elrond and Celebrían, female — she has luminous eyes, slightly pointed ears, and can only express herself through gentle coos."
                 ],
+                "nestedFields": {},
                 "metadata": {
                   "internal": true,
                   "external": false,
@@ -494,7 +514,7 @@
               "internalOnly": true
             }
           },
-          "internal-story-growth-events": {
+          "field-26": {
             "name": "GrowthEvents",
             "type": "FOR_EACH_OBJECT",
             "presence": "DYNAMIC",
@@ -507,7 +527,7 @@
               "[\"Arwen Half-elven\"]"
             ],
             "nestedFields": {
-              "internal-story-growth-description": {
+              "field-25": {
                 "name": "GrowthDescription",
                 "type": "STRING",
                 "presence": "DYNAMIC",
@@ -519,6 +539,7 @@
                   "Molly Johnson has grown into an energetic teenager with her father Jack's athletic build and her mother Rose's quick wit. She balances school with competitive swimming, and her confidence is tempered by a fierce loyalty to her family.",
                   "Arwen Half-elven now stands as a poised young adult, carrying the wisdom of her father Elrond and the grace of her mother Celebrían. Her luminous eyes reflect centuries of elven memory, and she moves through Rivendell as a calming presence and diplomat."
                 ],
+                "nestedFields": {},
                 "metadata": {
                   "internal": true,
                   "external": false,
@@ -534,7 +555,7 @@
               "internalOnly": true
             }
           },
-          "internal-story-death-events": {
+          "field-28": {
             "name": "DeathEvents",
             "type": "FOR_EACH_OBJECT",
             "presence": "DYNAMIC",
@@ -547,7 +568,7 @@
               "[\"Unnamed soldier\"]"
             ],
             "nestedFields": {
-              "internal-story-death-description": {
+              "field-27": {
                 "name": "DeathCauseDescription",
                 "type": "STRING",
                 "presence": "DYNAMIC",
@@ -559,6 +580,7 @@
                   "Mira Thompson passed peacefully at the age of 84, surrounded by family after a lifetime of pioneering research.",
                   "The unnamed soldier perished during the midnight ambush, triggering the retreat of the remaining scouts."
                 ],
+                "nestedFields": {},
                 "metadata": {
                   "internal": true,
                   "external": false,
@@ -579,6 +601,143 @@
           "internal": true,
           "external": false,
           "internalKeyId": "storyEvents",
+          "internalOnly": true
+        }
+      },
+      "field-37": {
+        "name": "TimeAnalysis",
+        "type": "OBJECT",
+        "presence": "STATIC",
+        "prompt": "基于 TimeAnchor 自动生成的时间诊断数据，用于内部引擎与审计。",
+        "defaultValue": "{}",
+        "exampleValues": [
+          "{\"AnchorRaw\": \"2024-06-15T14:30:00Z\", \"IsoTimestamp\": \"2024-06-15T14:30:00.000Z\", \"ElapsedSeconds\": \"120\", \"ElapsedDays\": \"0.00139\"}"
+        ],
+        "nestedFields": {
+          "field-30": {
+            "name": "AnchorRaw",
+            "type": "STRING",
+            "presence": "STATIC",
+            "prompt": "解析前的 TimeAnchor 原始值。",
+            "defaultValue": "<auto-filled>",
+            "exampleValues": [
+              "\"2024-06-15T14:30:00Z\""
+            ],
+            "nestedFields": {},
+            "metadata": {
+              "internal": true,
+              "external": false,
+              "internalKeyId": "timeAnalysisAnchorRaw",
+              "internalOnly": true
+            }
+          },
+          "field-31": {
+            "name": "IsoTimestamp",
+            "type": "STRING",
+            "presence": "STATIC",
+            "prompt": "根据 TimeAnchor 解析出的标准化 ISO 时间戳。",
+            "defaultValue": "<auto-filled>",
+            "exampleValues": [
+              "\"2024-06-15T14:30:00.000Z\""
+            ],
+            "nestedFields": {},
+            "metadata": {
+              "internal": true,
+              "external": false,
+              "internalKeyId": "timeAnalysisIso",
+              "internalOnly": true
+            }
+          },
+          "field-32": {
+            "name": "EpochMillis",
+            "type": "STRING",
+            "presence": "STATIC",
+            "prompt": "该锚点对应的 Unix 纪元毫秒数。",
+            "defaultValue": "<auto-filled>",
+            "exampleValues": [
+              "\"1718461800000\""
+            ],
+            "nestedFields": {},
+            "metadata": {
+              "internal": true,
+              "external": false,
+              "internalKeyId": "timeAnalysisEpoch",
+              "internalOnly": true
+            }
+          },
+          "field-33": {
+            "name": "ElapsedSeconds",
+            "type": "STRING",
+            "presence": "STATIC",
+            "prompt": "距上一锚点经过的秒数（如有）。",
+            "defaultValue": "<auto-filled>",
+            "exampleValues": [
+              "\"120\""
+            ],
+            "nestedFields": {},
+            "metadata": {
+              "internal": true,
+              "external": false,
+              "internalKeyId": "timeAnalysisElapsedSeconds",
+              "internalOnly": true
+            }
+          },
+          "field-34": {
+            "name": "ElapsedDays",
+            "type": "STRING",
+            "presence": "STATIC",
+            "prompt": "距上一锚点经过的天数（小数）。",
+            "defaultValue": "<auto-filled>",
+            "exampleValues": [
+              "\"0.00139\""
+            ],
+            "nestedFields": {},
+            "metadata": {
+              "internal": true,
+              "external": false,
+              "internalKeyId": "timeAnalysisElapsedDays",
+              "internalOnly": true
+            }
+          },
+          "field-35": {
+            "name": "TimelineNote",
+            "type": "STRING",
+            "presence": "STATIC",
+            "prompt": "时间线的提示或备注（例如锚点无效或出现回退）。",
+            "defaultValue": "<auto-filled>",
+            "exampleValues": [
+              "\"TimeAnchor parsed successfully.\""
+            ],
+            "nestedFields": {},
+            "metadata": {
+              "internal": true,
+              "external": false,
+              "internalKeyId": "timeAnalysisNote",
+              "internalOnly": true
+            }
+          },
+          "field-36": {
+            "name": "ParsedAt",
+            "type": "STRING",
+            "presence": "STATIC",
+            "prompt": "追踪器解析该锚点时的 ISO 时间戳。",
+            "defaultValue": "<auto-filled>",
+            "exampleValues": [
+              "\"2024-06-15T14:30:01.200Z\""
+            ],
+            "nestedFields": {},
+            "metadata": {
+              "internal": true,
+              "external": false,
+              "internalKeyId": "timeAnalysisParsedAt",
+              "internalOnly": true
+            }
+          }
+        },
+        "metadata": {
+          "internal": true,
+          "external": false,
+          "internalKeyId": "timeAnalysis",
           "internalOnly": true
         }
       }

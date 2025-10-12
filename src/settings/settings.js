@@ -4,7 +4,7 @@ import { getContext } from '../../../../../../scripts/extensions.js';
 import { extensionFolderPath, extensionSettings } from "../../index.js";
 import { error, debug, warn, toTitleCase } from "../../lib/utils.js";
 import { getSupportedLocales, setLocale, t, translateHtml, onLocaleChange, getCurrentLocale } from "../../lib/i18n.js";
-import { DEFAULT_PRESET_NAME, TRACKER_METADATA_VERSION, defaultSettings, ensureInternalDataFields, ensurePrefixDataFields, ensureTrackerMetadata, generationTargets } from "./defaultSettings.js";
+import { DEFAULT_PRESET_NAME, TRACKER_METADATA_VERSION, defaultSettings, generationTargets } from "./defaultSettings.js";
 import { generationCaptured } from "../../lib/interconnection.js";
 import { TrackerPromptMakerModal } from "../ui/trackerPromptMakerModal.js";
 import { TrackerTemplateGenerator } from "../ui/components/trackerTemplateGenerator.js";
@@ -21,6 +21,99 @@ const BUILTIN_PRESET_NAMES = new Set([DEFAULT_PRESET_NAME]);
 const BUILTIN_PRESET_TEMPLATES = new Map();
 const BACKUP_PRESET_PREFIX = "❌ Backup";
 const legacyPresetNames = new Set();
+const CANONICAL_FIELD_MAP = buildCanonicalFieldMap(defaultSettings.trackerDef);
+
+function normalizeMetadata(metadata = {}) {
+	const normalized = {
+		internal: metadata.internal === true,
+		external: metadata.external !== false,
+		internalKeyId: typeof metadata.internalKeyId === "string" ? metadata.internalKeyId : null,
+	};
+	if (Object.prototype.hasOwnProperty.call(metadata, "internalOnly")) {
+		normalized.internalOnly = Boolean(metadata.internalOnly);
+	} else {
+		normalized.internalOnly = normalized.internal && !normalized.external;
+	}
+	return normalized;
+}
+
+function metadataEquals(a = {}, b = {}) {
+	return (
+		a.internal === b.internal &&
+		a.external === b.external &&
+		(a.internalKeyId || null) === (b.internalKeyId || null) &&
+		a.internalOnly === b.internalOnly
+	);
+}
+
+function buildCanonicalFieldMap(definition) {
+	const map = new Map();
+	if (!definition || typeof definition !== "object") {
+		return map;
+	}
+	for (const [fieldId, field] of Object.entries(definition)) {
+		if (!field || typeof field !== "object") {
+			continue;
+		}
+		map.set(fieldId, {
+			metadata: normalizeMetadata(field.metadata || {}),
+			nested: buildCanonicalFieldMap(field.nestedFields || {}),
+		});
+	}
+	return map;
+}
+
+function alignTrackerFields(fields, canonicalMap, context) {
+	if (!fields || typeof fields !== "object") {
+		if (canonicalMap && canonicalMap.size > 0) {
+			context.legacyDetected = true;
+		}
+		return;
+	}
+
+	for (const [fieldId, canonicalField] of canonicalMap.entries()) {
+		const field = fields[fieldId];
+		if (!field || typeof field !== "object") {
+			context.legacyDetected = true;
+			continue;
+		}
+
+		const canonicalMetadata = canonicalField.metadata;
+		const normalized = normalizeMetadata(field.metadata || {});
+		if (!metadataEquals(normalized, canonicalMetadata)) {
+			field.metadata = { ...canonicalMetadata };
+			context.changed = true;
+		} else if (!metadataEquals(field.metadata || {}, normalized)) {
+			field.metadata = normalized;
+			context.changed = true;
+		}
+
+		if (canonicalField.nested.size > 0) {
+			if (!field.nestedFields || typeof field.nestedFields !== "object") {
+				context.legacyDetected = true;
+			} else {
+				alignTrackerFields(field.nestedFields, canonicalField.nested, context);
+			}
+		}
+	}
+
+	for (const [fieldId, field] of Object.entries(fields)) {
+		if (!field || typeof field !== "object") {
+			continue;
+		}
+		const canonicalField = canonicalMap.get(fieldId);
+		if (!canonicalField) {
+			const normalized = normalizeMetadata(field.metadata || {});
+			if (!metadataEquals(field.metadata || {}, normalized)) {
+				field.metadata = normalized;
+				context.changed = true;
+			}
+			if (field.nestedFields && typeof field.nestedFields === "object") {
+				alignTrackerFields(field.nestedFields, new Map(), context);
+			}
+		}
+	}
+}
 
 function registerBuiltInPresetTemplate(name, presetValues) {
 	if (!name || typeof name !== "string" || !presetValues) {
@@ -68,13 +161,12 @@ function buildBackupPresetName(originalName, existingPresets = {}) {
 
 function sanitizeTrackerDefinition(definition) {
 	const clone = deepClone(definition);
-	const prefixResult = ensurePrefixDataFields(clone || {});
-	const internalResult = ensureInternalDataFields(clone || {});
-	const metadataResult = ensureTrackerMetadata(clone || {});
+	const context = { changed: false, legacyDetected: false };
+	alignTrackerFields(clone, CANONICAL_FIELD_MAP, context);
 	return {
 		definition: clone,
-		changed: Boolean(prefixResult?.changed || internalResult?.changed || metadataResult?.changed),
-		legacyDetected: Boolean(metadataResult?.legacyDetected),
+		changed: Boolean(context.changed),
+		legacyDetected: Boolean(context.legacyDetected),
 	};
 }
 
@@ -622,9 +714,8 @@ function sanitizePresetValues(values = {}) {
 		}
 	}
 	if (sanitized.trackerDef) {
-		ensurePrefixDataFields(sanitized.trackerDef);
-		ensureInternalDataFields(sanitized.trackerDef);
-		ensureTrackerMetadata(sanitized.trackerDef);
+		const analysis = sanitizeTrackerDefinition(sanitized.trackerDef);
+		sanitized.trackerDef = analysis.definition;
 	}
 	return sanitized;
 }

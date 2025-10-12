@@ -109,6 +109,40 @@
 				<details>
 					<!-- Preset Related Fields -->
 					<summary class="tracker-section-title" data-i18n-key="settings.sections.summary">📁 Preset Settings</summary>											
+
+					<hr class="sysHR" />
+					<!-- Prompt Maker Buttons -->
+					<h4 class="tracker-section-title" data-i18n-key="settings.sections.prompt_maker">🛠️ Prompt Maker Tools</h4>
+					<div class="tracker-block flex-container tracker-prompt-maker-block">
+						<label for="tracker_enhanced_prompt_maker">Prompt Maker UI</label>
+						<small>This is where the tracker fields, default values, and example values are defined.</small>
+						<input id="tracker_enhanced_prompt_maker" class="menu_button" type="submit" value="Prompt Maker" />
+					</div>
+					<div class="tracker-block m-b-1 m-t-1">
+						<label for="tracker_enhanced_mes_tracker_template">Message Tracker HTML</label><br />
+						<small
+							>Define the HTML for the tracker preview displayed with each message. Use macros like:<br />
+							{{key.subkey}}, {{#join "delimiter" arrayKey}}, {{#foreach objectOrArrayKey itemName}}...{{itemName.subKey}}...{{/foreach}}, {{#if key.subkey}}...{{/if}}.</small
+						><br />
+						<div class="tracker-template-controls flex-container">
+							<input id="tracker_enhanced_generate_template" class="menu_button" type="submit" value="Generate Template" title="Generate HTML template based on current Prompt Maker fields" />
+							<small class="tracker-template-controls-hint">Click to auto-generate template from your Prompt Maker fields</small>
+						</div>
+						<textarea id="tracker_enhanced_mes_tracker_template" class="text_pole" rows="5"></textarea>
+					</div>
+					<div class="tracker-block m-b-1 m-t-1">
+						<label for="tracker_enhanced_mes_tracker_javascript">Message Tracker JavaScript</label><br />
+						<small
+							>Define any custom javascript to be used in the tracker preview. The javascript should return an object with all the functions that can be accessed through SillyTavern.trackerEnhanced</small
+						><br />
+						<div class="tracker-template-controls flex-container">
+							<input id="tracker_enhanced_generate_javascript" class="menu_button" type="submit" value="Generate JavaScript" title="Generate JavaScript for gender-specific field hiding based on current Prompt Maker fields" />
+							<small class="tracker-template-controls-hint">Click to auto-generate JavaScript with gender-specific field hiding</small>
+						</div>
+						<textarea id="tracker_enhanced_mes_tracker_javascript" class="text_pole" rows="5"></textarea>
+					</div>
+
+					<hr class="sysHR" />
 					<!-- Tracker Prompt Templates -->
 					<h4 class="tracker-section-title" data-i18n-key="settings.sections.prompt_templates">🧠 Tracker Prompt Templates</h4>
 					<div id="generate_context_section" class="tracker-block m-b-1 m-t-1">
@@ -150,39 +184,8 @@
 							{{trackerFieldPrompt}}, {{trackerFormat}}, {{message}} (last message).</small
 						><br />
 						<textarea id="tracker_enhanced_request_prompt" class="text_pole" rows="5"></textarea>
-					</div>
-			
-					<hr class="sysHR" />
-					<!-- Prompt Maker Buttons -->
-					<h4 class="tracker-section-title" data-i18n-key="settings.sections.prompt_maker">🛠️ Prompt Maker Tools</h4>
-					<div class="tracker-block flex-container tracker-prompt-maker-block">
-						<label for="tracker_enhanced_prompt_maker">Prompt Maker UI</label>
-						<small>This is where the tracker fields, default values, and example values are defined.</small>
-						<input id="tracker_enhanced_prompt_maker" class="menu_button" type="submit" value="Prompt Maker" />
-					</div>
-					<div class="tracker-block m-b-1 m-t-1">
-						<label for="tracker_enhanced_mes_tracker_template">Message Tracker HTML</label><br />
-						<small
-							>Define the HTML for the tracker preview displayed with each message. Use macros like:<br />
-							{{key.subkey}}, {{#join "delimiter" arrayKey}}, {{#foreach objectOrArrayKey itemName}}...{{itemName.subKey}}...{{/foreach}}, {{#if key.subkey}}...{{/if}}.</small
-						><br />
-						<div class="tracker-template-controls flex-container">
-							<input id="tracker_enhanced_generate_template" class="menu_button" type="submit" value="Generate Template" title="Generate HTML template based on current Prompt Maker fields" />
-							<small class="tracker-template-controls-hint">Click to auto-generate template from your Prompt Maker fields</small>
-						</div>
-						<textarea id="tracker_enhanced_mes_tracker_template" class="text_pole" rows="5"></textarea>
-					</div>
-					<div class="tracker-block m-b-1 m-t-1">
-						<label for="tracker_enhanced_mes_tracker_javascript">Message Tracker JavaScript</label><br />
-						<small
-							>Define any custom javascript to be used in the tracker preview. The javascript should return an object with all the functions that can be accessed through SillyTavern.trackerEnhanced</small
-						><br />
-						<div class="tracker-template-controls flex-container">
-							<input id="tracker_enhanced_generate_javascript" class="menu_button" type="submit" value="Generate JavaScript" title="Generate JavaScript for gender-specific field hiding based on current Prompt Maker fields" />
-							<small class="tracker-template-controls-hint">Click to auto-generate JavaScript with gender-specific field hiding</small>
-						</div>
-						<textarea id="tracker_enhanced_mes_tracker_javascript" class="text_pole" rows="5"></textarea>
-					</div>
+					</div>		
+
 					<hr class="sysHR" />
 					<!-- Downstream SillyTavern Injection -->
 					<h4 class="tracker-section-title" data-i18n-key="settings.sections.downstream">📤 Downstream SillyTavern Injection</h4>

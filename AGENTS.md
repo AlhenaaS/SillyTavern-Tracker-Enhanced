@@ -42,3 +42,8 @@
 - Regeneration (`TrackerInterface.regenerateTracker`) writes `generationResult.trackerInternal` back to the message before saving, so the UI’s “Show Internal Events” view reflects the latest anchor/analysis immediately.
 - Debug logging prints a single `🕒 Parsed TimeAnchor` entry whenever a fresh anchor is parsed; seeing more usually means the save path reprocessed data incorrectly.
 - Prompts instruct the LLM to advance `TimeAnchor` each turn (unless the story truly freezes time) and then describe the same moment in `LocalTime`.
+
+## Tracker Schema Maintenance (2025-12)
+- The canonical tracker schema now lives entirely in `src/settings/defaultSettings.js` as an explicit `trackerDef`. We removed the old prefix/metadata auto-upgrade helpers, so update that structure directly when fields change.
+- Locale presets must mirror the canonical field IDs/metadata. When adjusting defaults, copy the same structure into JSON presets (e.g. `presets/zh-CN.json`) and translate prompts there.
+- `sanitizeTrackerDefinition` now only normalises metadata against the canonical map. It no longer injects missing fields, so missing required keys are treated as legacy presets and routed to the auto-backup flow.
