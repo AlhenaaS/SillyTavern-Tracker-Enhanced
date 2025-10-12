@@ -72,11 +72,6 @@ export class TrackerInterface {
                 <button id="trackerInterfaceViewButton" class="menu_button menu_button_default interactable" tabindex="0">View</button>
                 <button id="trackerInterfaceEditButton" class="menu_button menu_button_default interactable" tabindex="0">Edit</button>
                 <button id="trackerInterfaceRegenerateTracker" class="menu_button menu_button_default interactable" tabindex="0">Regenerate</button>
-                <select id="trackerInterfaceRegenOptions" class="tracker-regen-options">
-                    <option value="no-static" selected>No Static Fields</option>
-                    <option value="all-fields">All Fields</option>
-                    <option value="static-only">Static Only</option>
-                </select>
             </div>
         </div>`;
 
@@ -104,7 +99,6 @@ export class TrackerInterface {
         this.viewButton = newElement.find('#trackerInterfaceViewButton');
         this.editButton = newElement.find('#trackerInterfaceEditButton');
         this.regenerateButton = newElement.find('#trackerInterfaceRegenerateTracker');
-        this.regenOptions = newElement.find('#trackerInterfaceRegenOptions');
         this.injectionToggle = newElement.find('#trackerInterfaceInjectionToggle');
         this.injectionToggleLabel = newElement.find('#trackerInterfaceInjectionToggleLabel');
         this.internalToggle = newElement.find('#trackerInterfaceInternalToggle');
@@ -229,22 +223,6 @@ export class TrackerInterface {
      * Regenerates the tracker data based on selected options.
      */
     async regenerateTracker() {
-        const option = this.regenOptions.val();
-        let fieldIncludeOption = FIELD_INCLUDE_OPTIONS.DYNAMIC;
-
-        switch (option) {
-            case 'static-only':
-                fieldIncludeOption = FIELD_INCLUDE_OPTIONS.STATIC;
-                // Additional logic for static-only if needed
-                break;
-            case 'all-fields':
-                fieldIncludeOption = FIELD_INCLUDE_OPTIONS.ALL;
-                break;
-            case 'no-static':
-            default:
-                fieldIncludeOption = FIELD_INCLUDE_OPTIONS.DYNAMIC;
-        }
-
         // Show loading indicator
         this.contentArea.empty();
         const loadingIndicator = $('<div class="tracker-loading">Regenerating Tracker...</div>');
@@ -270,7 +248,7 @@ export class TrackerInterface {
         }
 
 		try {
-			const generationResult = await generateTracker(previousMesId, fieldIncludeOption);
+			const generationResult = await generateTracker(previousMesId, FIELD_INCLUDE_OPTIONS.DYNAMIC);
 			if (!generationResult || !generationResult.tracker) {
 				toastr.warning('Tracker generation returned no data. Try again after additional chat context.');
 				this.refreshContent(this.mode);
@@ -309,7 +287,6 @@ export class TrackerInterface {
         this.viewButton.prop('disabled', disable);
         this.editButton.prop('disabled', disable);
         this.regenerateButton.prop('disabled', disable);
-        this.regenOptions.prop('disabled', disable);
     }
 
     /**

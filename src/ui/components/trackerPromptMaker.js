@@ -35,7 +35,6 @@ export class TrackerPromptMaker {
 	static get FIELD_PRESENCE_OPTIONS() {
 		return {
 			DYNAMIC: "Dynamic",
-			EPHEMERAL: "Ephemeral",
 			STATIC: "Static",
 		};
 	}
@@ -362,6 +361,55 @@ export class TrackerPromptMaker {
 		return container;
 	}
 
+	normalizePresenceValue(presence) {
+		const upper = typeof presence === "string" ? presence.toUpperCase() : "";
+		return upper === "STATIC" ? "STATIC" : "DYNAMIC";
+	}
+
+	getPresenceLabel(presence) {
+		const normalized = this.normalizePresenceValue(presence);
+		const rawLabel = TrackerPromptMaker.FIELD_PRESENCE_OPTIONS[normalized] || TrackerPromptMaker.FIELD_PRESENCE_OPTIONS.DYNAMIC;
+		return t(`trackerPromptMaker.presence.${normalized.toLowerCase()}`, rawLabel);
+	}
+
+	createPresenceBadge(presence) {
+		const badge = $('<span class="field-badge field-badge--presence"></span>');
+		this.applyPresenceBadgeState(badge, presence);
+		return badge;
+	}
+
+	applyPresenceBadgeState(badge, presence) {
+		if (!badge || badge.length === 0) {
+			return;
+		}
+		const normalized = this.normalizePresenceValue(presence);
+		badge
+			.removeClass("field-badge--presence-dynamic field-badge--presence-static")
+			.addClass(`field-badge--presence-${normalized.toLowerCase()}`)
+			.text(this.getPresenceLabel(normalized));
+	}
+
+	setFieldPresenceOnWrapper(fieldWrapper, presence) {
+		const normalized = this.normalizePresenceValue(presence);
+		if (!fieldWrapper || fieldWrapper.length === 0) {
+			return normalized;
+		}
+
+		fieldWrapper.attr("data-presence", normalized);
+		const presenceContainer = fieldWrapper.find("> .name-dynamic-type-wrapper > .presence-wrapper");
+		if (presenceContainer.length) {
+			presenceContainer.attr("data-presence", normalized);
+			let badge = presenceContainer.find(".field-badge--presence");
+			if (badge.length === 0) {
+				badge = this.createPresenceBadge(normalized);
+				presenceContainer.append(badge);
+			} else {
+				this.applyPresenceBadgeState(badge, normalized);
+			}
+		}
+		return normalized;
+	}
+
 	applyReadOnlyState(fieldWrapper, metadata) {
 		const isDualScope = metadata.internal === true && metadata.external === true;
 
@@ -370,7 +418,6 @@ export class TrackerPromptMaker {
 		}
 
 		const disableSelectors = [
-			'.presence-wrapper select',
 			'.field-type-wrapper select',
 			'.field-gender-specific select'
 		];
@@ -434,11 +481,6 @@ export class TrackerPromptMaker {
 			removeField: t("trackerPromptMaker.buttons.removeField", "Remove Field"),
 		};
 
-		const presenceOptions = Object.entries(TrackerPromptMaker.FIELD_PRESENCE_OPTIONS).map(([key, value]) => ({
-			value: key,
-			label: t(`trackerPromptMaker.presence.${key.toLowerCase()}`, value),
-		}));
-
 		const fieldTypeOptions = Object.entries(TrackerPromptMaker.FIELD_TYPES).map(([key, value]) => ({
 			value: key,
 			label: t(`trackerPromptMaker.fieldType.${key.toLowerCase()}`, value),
@@ -479,21 +521,10 @@ export class TrackerPromptMaker {
 			});
 		const fieldNameDiv = $('<div class="field-name-wrapper"></div>').append(fieldNameLabel, fieldNameInput);
 
-		// Presence Selector with label
-		const presenceLabel = $("<label></label>").text(labels.presence);
-		const presenceKey = fieldData.presence || "DYNAMIC";
-		const presenceSelector = $("<select></select>");
-		presenceOptions.forEach(({ value, label }) => {
-			presenceSelector.append($("<option></option>").attr("value", value).text(label));
-		});
-		presenceSelector
-			.val(presenceKey)
-			.on("change", (e) => {
-				const currentFieldId = fieldWrapper.attr("data-field-id");
-				this.selectPresence(e.target.value, currentFieldId);
-				this.syncBackendObject();
-			});
-		const presenceDiv = $('<div class="presence-wrapper"></div>').append(presenceLabel, presenceSelector);
+		// Presence Indicator with badge
+		const presenceLabel = $("<span></span>").addClass("presence-label").text(labels.presence);
+		const presenceDiv = $('<div class="presence-wrapper"></div>').append(presenceLabel);
+		const presenceKey = this.normalizePresenceValue(fieldData.presence);
 
 		// Field Type Selector with label
 		const fieldTypeLabel = $("<label></label>").text(labels.fieldType);
@@ -542,6 +573,7 @@ export class TrackerPromptMaker {
 
 		// Append the combined div to fieldWrapper
 		fieldWrapper.append(nameDynamicTypeDiv);
+		fieldData.presence = this.setFieldPresenceOnWrapper(fieldWrapper, presenceKey);
 
 		// Prompt, Default Value, and Example Values Wrapper
 		const promptDefaultExampleWrapper = $('<div class="prompt-default-example-wrapper"></div>');
@@ -827,12 +859,17 @@ export class TrackerPromptMaker {
 	 * @param {string} fieldId - The ID of the field being updated.
 	 */
 	selectPresence(presence, fieldId) {
+		const normalized = this.normalizePresenceValue(presence);
 		const fieldData = this.getFieldDataById(fieldId);
 		if (fieldData) {
-			fieldData.presence = presence || "DYNAMIC";
-			debug(`Selected presence: ${presence} for field ID: ${fieldId}`);
+			fieldData.presence = normalized;
+			debug(`Selected presence: ${normalized} for field ID: ${fieldId}`);
 		} else {
 			error(`Field with ID ${fieldId} not found during presence selection.`);
+		}
+		const fieldWrapper = this.fieldsContainer.find(`.field-wrapper[data-field-id="${fieldId}"]`);
+		if (fieldWrapper.length) {
+			this.setFieldPresenceOnWrapper(fieldWrapper, normalized);
 		}
 	}
 
@@ -1063,7 +1100,11 @@ export class TrackerPromptMaker {
 				const fieldId = `field-${rebuildCounter++}`;
 
 				const fieldName = $fieldEl.find(".field-name-wrapper input").val() || "";
-				const presence = $fieldEl.find(".presence-wrapper select").val() || "DYNAMIC";
+				const presence = this.normalizePresenceValue(
+					$fieldEl.attr("data-presence") ||
+					sourceFieldData?.presence ||
+					"DYNAMIC"
+				);
 				const fieldType = $fieldEl.find(".field-type-wrapper select").val() || "STRING";
 				const prompt = $fieldEl.find(".prompt-wrapper textarea").val() || "";
 				const defaultValue = $fieldEl.find(".default-value-wrapper input").val() || "";
@@ -1078,6 +1119,7 @@ export class TrackerPromptMaker {
 				$fieldEl.data("metadata", metadata);
 				$fieldEl.toggleClass("field-wrapper--internal", metadata.internal);
 				$fieldEl.toggleClass("field-wrapper--internal-only", metadata.internalOnly);
+				this.setFieldPresenceOnWrapper($fieldEl, presence);
 
 				// Rebuild nested fields recursively
 				const $nestedContainer = $fieldEl.find("> .nested-fields-container");
@@ -1095,6 +1137,7 @@ export class TrackerPromptMaker {
 					exampleValues: exampleValues,
 					nestedFields: nestedFields,
 					metadata: metadata,
+					presence: presence,
 				};
 
 				this.applyReadOnlyState($fieldEl, metadata);

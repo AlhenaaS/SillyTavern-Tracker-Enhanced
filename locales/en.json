@@ -94,7 +94,6 @@
   "trackerPromptMaker.placeholders.defaultValue": "Default Value",
   "trackerPromptMaker.placeholders.exampleValue": "Example Value",
   "trackerPromptMaker.presence.dynamic": "Dynamic",
-  "trackerPromptMaker.presence.ephemeral": "Ephemeral",
   "trackerPromptMaker.presence.static": "Static",
   "trackerPromptMaker.fieldType.string": "String",
   "trackerPromptMaker.fieldType.array": "Array",

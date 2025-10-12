@@ -63,6 +63,21 @@ function buildCanonicalFieldMap(definition) {
 	return map;
 }
 
+function normalizeFieldPresence(field, context) {
+	if (!field || typeof field !== "object") {
+		return;
+	}
+
+	const rawPresence = typeof field.presence === "string" ? field.presence.toUpperCase() : null;
+	const normalizedPresence = rawPresence === "STATIC" ? "STATIC" : "DYNAMIC";
+	if (field.presence !== normalizedPresence) {
+		field.presence = normalizedPresence;
+		if (context) {
+			context.changed = true;
+		}
+	}
+}
+
 function alignTrackerFields(fields, canonicalMap, context) {
 	if (!fields || typeof fields !== "object") {
 		if (canonicalMap && canonicalMap.size > 0) {
@@ -78,6 +93,7 @@ function alignTrackerFields(fields, canonicalMap, context) {
 			continue;
 		}
 
+		normalizeFieldPresence(field, context);
 		const canonicalMetadata = canonicalField.metadata;
 		const normalized = normalizeMetadata(field.metadata || {});
 		if (!metadataEquals(normalized, canonicalMetadata)) {
@@ -102,6 +118,7 @@ function alignTrackerFields(fields, canonicalMap, context) {
 			continue;
 		}
 		const canonicalField = canonicalMap.get(fieldId);
+		normalizeFieldPresence(field, context);
 		if (!canonicalField) {
 			const normalized = normalizeMetadata(field.metadata || {});
 			if (!metadataEquals(field.metadata || {}, normalized)) {

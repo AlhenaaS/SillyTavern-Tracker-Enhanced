@@ -47,3 +47,4 @@
 - The canonical tracker schema now lives entirely in `src/settings/defaultSettings.js` as an explicit `trackerDef`. We removed the old prefix/metadata auto-upgrade helpers, so update that structure directly when fields change.
 - Locale presets must mirror the canonical field IDs/metadata. When adjusting defaults, copy the same structure into JSON presets (e.g. `presets/zh-CN.json`) and translate prompts there.
 - `sanitizeTrackerDefinition` now only normalises metadata against the canonical map. It no longer injects missing fields, so missing required keys are treated as legacy presets and routed to the auto-backup flow.
+- Tracker field presence is now a read-only attribute: `DYNAMIC` fields are generated each turn, while `STATIC` fields are reserved for engine-managed state. The prompt maker shows this as a badge instead of an editable dropdown, and the deprecated `EPHEMERAL` presence automatically maps to `DYNAMIC` during schema sanitisation.
