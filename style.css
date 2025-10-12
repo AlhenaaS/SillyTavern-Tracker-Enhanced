@@ -69,6 +69,10 @@
   gap: 5px;
 }
 
+.extension_container .tracker-section-title {
+  font-weight: 700 !important;
+}
+
 .tracker-editor-container,
 .tracker-view-container {
   text-align: start;
@@ -140,11 +144,6 @@
 .mes_tracker .tracker_default_mes_template details .mes_tracker_characters {
   padding-left: 20px;
 }
-
-.extension_container .tracker-section-title {
-  font-weight: 700 !important;
-}
-
 
 .tracker-prompt-maker-modal {
   width: var(--sheldWidth) !important;
@@ -253,13 +252,40 @@
   border-color: rgba(255, 193, 7, 0.4);
   text-transform: none;
 }
+.tracker-prompt-maker .field-wrapper .name-dynamic-type-wrapper .field-badge--presence {
+  text-transform: uppercase;
+}
+.tracker-prompt-maker .field-wrapper .name-dynamic-type-wrapper .field-badge--presence-dynamic {
+  background-color: rgba(168, 85, 247, 0.12);
+  border-color: rgba(124, 58, 237, 0.4);
+  color: var(--SmartThemeTextColor);
+}
+.tracker-prompt-maker .field-wrapper .name-dynamic-type-wrapper .field-badge--presence-static {
+  background-color: rgba(158, 158, 158, 0.12);
+  border-color: rgba(117, 117, 117, 0.35);
+  color: var(--SmartThemeTextColor);
+}
 .tracker-prompt-maker .field-wrapper .name-dynamic-type-wrapper .field-name-wrapper {
   flex-grow: 1;
   flex-shrink: 1 !important;
 }
-.tracker-prompt-maker .field-wrapper .name-dynamic-type-wrapper .field-name-wrapper,
-.tracker-prompt-maker .field-wrapper .name-dynamic-type-wrapper .field-type-wrapper,
 .tracker-prompt-maker .field-wrapper .name-dynamic-type-wrapper .presence-wrapper {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: nowrap;
+  flex-shrink: 0;
+  min-width: 140px;
+}
+.tracker-prompt-maker .field-wrapper .name-dynamic-type-wrapper .presence-label {
+  font-size: 12px;
+  color: var(--SmartThemeTextColor);
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.tracker-prompt-maker .field-wrapper .name-dynamic-type-wrapper .field-name-wrapper,
+.tracker-prompt-maker .field-wrapper .name-dynamic-type-wrapper .field-type-wrapper {
   display: flex;
   flex-wrap: nowrap;
   gap: 5px;
@@ -267,8 +293,7 @@
   align-items: center;
 }
 .tracker-prompt-maker .field-wrapper .name-dynamic-type-wrapper .field-name-wrapper label,
-.tracker-prompt-maker .field-wrapper .name-dynamic-type-wrapper .field-type-wrapper label,
-.tracker-prompt-maker .field-wrapper .name-dynamic-type-wrapper .presence-wrapper label {
+.tracker-prompt-maker .field-wrapper .name-dynamic-type-wrapper .field-type-wrapper label {
   white-space: nowrap;
   overflow: hidden;
   flex-shrink: 0;
@@ -344,12 +369,10 @@
   -ms-user-select: none;
   user-select: none; /* Prevents text selection when dragging */
 }
-
 .tracker-prompt-maker .ui-sortable-placeholder {
   border: 1px dashed #ccc; /* Dashed border */
   visibility: visible !important;
 }
-
 .tracker-prompt-maker .ui-sortable-helper {
   z-index: 1000; /* Ensure the helper appears above other elements */
   pointer-events: none; /* Prevent interaction with the helper */
@@ -362,7 +385,6 @@
   -ms-user-select: none;
   user-select: none;
 }
-
 .tracker-prompt-maker .fields-container.dragging > .field-wrapper:not(.ui-sortable-helper) > .prompt-default-example-wrapper,
 .tracker-prompt-maker .fields-container.dragging > .field-wrapper:not(.ui-sortable-helper) > .buttons-wrapper,
 .tracker-prompt-maker .fields-container.dragging > .field-wrapper:not(.ui-sortable-helper) > .nested-fields-container {
