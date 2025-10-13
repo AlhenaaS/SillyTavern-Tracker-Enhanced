@@ -88,7 +88,7 @@
 					</div>
 					<details class="tracker-section-collapsible tracker-collapsible">
 						<summary class="tracker-collapsible-summary">
-							<label class="tracker-section-title" for="tracker_enhanced_mes_tracker_template" data-i18n-key="settings.message_tracker_html.label">🌐 Message Tracker HTML</label>
+							<span id="tracker_enhanced_mes_tracker_template_heading" class="tracker-section-title" data-i18n-key="settings.message_tracker_html.label">🌐 Message Tracker HTML</span>
 						</summary>
 						<div class="tracker-collapsible-content">
 							<small data-i18n-key="settings.message_tracker_html.help"
@@ -99,13 +99,13 @@
 								<input id="tracker_enhanced_generate_template" class="menu_button" type="submit" value="Generate Template" title="Generate HTML template based on current Prompt Maker fields" data-i18n-key="settings.message_tracker_html.generate_button.value" data-i18n-target="attr:value" data-i18n-key-title="settings.message_tracker_html.generate_button.title" data-i18n-target-title="attr:title" />
 								<small class="tracker-template-controls-hint" data-i18n-key="settings.message_tracker_html.generate_hint">Click to auto-generate template from your Prompt Maker fields</small>
 							</div>
-							<textarea id="tracker_enhanced_mes_tracker_template" class="text_pole" rows="5"></textarea>
+							<textarea id="tracker_enhanced_mes_tracker_template" class="text_pole" rows="5" aria-labelledby="tracker_enhanced_mes_tracker_template_heading"></textarea>
 						</div>
 					</details>
 					<hr class="sysHR" />
 					<details class="tracker-section-collapsible tracker-collapsible">
 						<summary class="tracker-collapsible-summary">
-							<label class="tracker-section-title" for="tracker_enhanced_mes_tracker_javascript" data-i18n-key="settings.message_tracker_script.label">✨‌ Message Tracker JavaScript</label>
+							<span id="tracker_enhanced_mes_tracker_javascript_heading" class="tracker-section-title" data-i18n-key="settings.message_tracker_script.label">✨‌ Message Tracker JavaScript</span>
 						</summary>
 						<div class="tracker-collapsible-content">
 							<small data-i18n-key="settings.message_tracker_script.help"
@@ -115,7 +115,7 @@
 								<input id="tracker_enhanced_generate_javascript" class="menu_button" type="submit" value="Generate JavaScript" title="Generate JavaScript for gender-specific field hiding based on current Prompt Maker fields" data-i18n-key="settings.message_tracker_script.generate_button.value" data-i18n-target="attr:value" data-i18n-key-title="settings.message_tracker_script.generate_button.title" data-i18n-target-title="attr:title" />
 								<small class="tracker-template-controls-hint" data-i18n-key="settings.message_tracker_script.generate_hint">Click to auto-generate JavaScript with gender-specific field hiding</small>
 							</div>
-							<textarea id="tracker_enhanced_mes_tracker_javascript" class="text_pole" rows="5"></textarea>
+							<textarea id="tracker_enhanced_mes_tracker_javascript" class="text_pole" rows="5" aria-labelledby="tracker_enhanced_mes_tracker_javascript_heading"></textarea>
 						</div>
 					</details>
 					
@@ -224,7 +224,7 @@
 						</summary>
 						<div class="tracker-collapsible-content">
 							<div class="tracker-block m-b-1 m-t-1">
-								<label for="tracker_enhanced_roleplay_prompt" data-i18n-key="settings.roleplay.label">Roleplay Injection Prompt</label><br />
+								<label for="tracker_enhanced_roleplay_prompt" data-i18n-key="settings.roleplay.label">🎬 Roleplay Injection Prompt</label><br />
 								<small data-i18n-key="settings.roleplay.help" data-i18n-target="html"
 									>Additional guidance inserted ahead of the tracker block when we inject into SillyTavern prompts. Keep it concise and focused on diegetic knowledge boundaries.</small
 								><br />
@@ -237,22 +237,22 @@
 					<details class="tracker-section-collapsible tracker-collapsible">
 						<summary class="tracker-section-title" data-i18n-key="settings.sections.other">🪛 Other Settings</summary>
 						<div class="tracker-block m-b-1 m-t-1">
-							<label for="tracker_enhanced_number_of_messages" data-i18n-key="settings.number_of_messages.label">Number of Recent Messages to Include</label><br />
+							<label for="tracker_enhanced_number_of_messages" data-i18n-key="settings.number_of_messages.label">💬 Number of Recent Messages to Include</label><br />
 							<small data-i18n-key="settings.number_of_messages.help">Set how many recent messages are included in tracker generation prompts.</small><br />
 							<input max="99" min="1" class="text_pole" id="tracker_enhanced_number_of_messages" type="number" />
 						</div>
 						<div class="tracker-block m-b-1 m-t-1">
-							<label for="tracker_enhanced_generate_from_message" data-i18n-key="settings.generate_from_message.label">Message Number to Start Generating Tracker From</label><br />
+							<label for="tracker_enhanced_generate_from_message" data-i18n-key="settings.generate_from_message.label">🔜 Message Number to Start Generating Tracker From</label><br />
 							<small data-i18n-key="settings.generate_from_message.help">Specify which message (by number) the tracker starts generating from.</small><br />
 							<input max="99" min="1" class="text_pole" id="tracker_enhanced_generate_from_message" type="number" />
 						</div>
 						<div class="tracker-block m-b-1 m-t-1">
-							<label for="tracker_enhanced_minimum_depth" data-i18n-key="settings.minimum_depth.label">Minimum Depth</label><br />
+							<label for="tracker_enhanced_minimum_depth" data-i18n-key="settings.minimum_depth.label">📍 Minimum Depth</label><br />
 							<small data-i18n-key="settings.minimum_depth.help">Specify the minimum depth for a tracker to be injected at.</small><br />
 							<input max="99" min="0" class="text_pole" id="tracker_enhanced_minimum_depth" type="number" />
 						</div>
 						<div class="tracker-block m-b-1 m-t-1">
-							<label for="tracker_enhanced_response_length" data-i18n-key="settings.response_length.label">Response Length</label><br />
+							<label for="tracker_enhanced_response_length" data-i18n-key="settings.response_length.label">📏 Response Length</label><br />
 							<small data-i18n-key="settings.response_length.help">Set a response token limit for tracker prompts. Leave blank or set to 0 to use the default response token limit.</small><br />
 							<input min="0" class="text_pole" id="tracker_enhanced_response_length" type="number" />
 						</div>
