@@ -16,7 +16,13 @@
 - Naming: PascalCase classes, camelCase functions/vars, SCREAMING_SNAKE_CASE constants, DOM IDs prefixed with `tracker_enhanced_`.
 - Use provided `debug/log/warn/error` helpers for console output so debug mode can silence them globally.
 
-## Tracker Behaviour Notes (2025-09)
+## UI Localization
+- Settings and modal markup use `data-i18n-key` for every translatable string; avoid mixing in legacy `for`-selector lookups.
+- Attribute translations piggyback on `data-i18n-target="attr:foo"` (or `attr:title`, `attr:value`, etc.), and multiple attributes can be hooked with dedicated `data-i18n-key-*`/`data-i18n-target-*` pairs.
+- When labels need to control inputs, keep `for`/`aria-labelledby` in place for accessibility—the localization hook lives alongside those attributes.
+- Locale bundles (`locales/en.json`, `locales/zh-CN.json`) stay in identical key order to simplify diffs and reduce merge errors; update both together whenever strings change.
+
+## Tracker Behaviour Notes
 - Tracker auto-generation hooks fire from `onGenerateAfterCommands`, `onMessageSent/Received`, and render callbacks. SillyTavern emits a `generation_after_commands` dry-run immediately after `chat_id_changed`; we now bail early and log `GENERATION_AFTER_COMMANDS dry run skip { type: "normal", dryRun: true, ... }` to confirm no request is sent.
 - The first real turn after a reload still fires a second `generation_after_commands` with `dryRun: false`. Look for the log payload `(3) [undefined, options, false]` before tracker generation starts. If that never appears, reload the extension to clear stale `chat_metadata`.
 - `addTrackerToMessage` writes tracker data before the DOM exists; previews/interface updates must run in `onUserMessageRendered`/`onCharacterMessageRendered`. Skipping those handlers after a tracker exists hides UI updates.
@@ -45,15 +51,15 @@
 - Debug logging prints a single `🕒 Parsed TimeAnchor` entry whenever a fresh anchor is parsed; seeing more usually means the save path reprocessed data incorrectly.
 - Prompts instruct the LLM to advance `TimeAnchor` each turn (unless the story truly freezes time) and then describe the same moment in `LocalTime`.
 
-## Tracker Schema Maintenance (2025-12)
+## Tracker Schema Maintenance
 - The canonical tracker schema now lives entirely in `src/settings/defaultSettings.js` as an explicit `trackerDef`. We removed the old prefix/metadata auto-upgrade helpers, so update that structure directly when fields change.
 - Locale presets must mirror the canonical field IDs/metadata. When adjusting defaults, copy the same structure into JSON presets (e.g. `presets/zh-CN.json`) and translate prompts there.
 - `sanitizeTrackerDefinition` now only normalises metadata against the canonical map. It no longer injects missing fields, so missing required keys are treated as legacy presets and routed to the auto-backup flow.
 - Tracker field presence is now a read-only attribute: `DYNAMIC` fields are generated each turn, while `STATIC` fields are reserved for engine-managed state. The prompt maker shows this as a badge instead of an editable dropdown, and the deprecated `EPHEMERAL` presence automatically maps to `DYNAMIC` during schema sanitisation.
 
-## Prompt Maker Notes (2025-12)
+## Prompt Maker Notes
 - Field IDs remain stable; the prompt maker now synchronises backend order with the DOM without renumbering. This preserves metadata on nested additions/removals and avoids inheriting internal flags from unrelated parents.
 
-## Preset Behaviour Updates (2026-02)
+## Preset Behaviour Updates
  - Presets now store tracker runtime flags (`automationTarget`, `participantTarget`, `showPopupFor`, `trackerFormat`, `devToolsEnabled`, `debugMode`, `trackerInjectionEnabled`, `toolbarIndicatorEnabled`) so loading a preset realigns both prompts and toggles.
 - The settings reset button is labelled “Reset Extension Defaults” and simply reapplies `defaultSettings` while preserving connection/profile settings and custom presets; built-in templates refresh automatically on reload.
