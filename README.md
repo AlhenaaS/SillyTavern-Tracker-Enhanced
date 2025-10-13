@@ -10,6 +10,8 @@ An advanced, feature-rich tracker extension for SillyTavern that provides compre
 	You can still load or export these backups to review their contents, but note that compatibility issues may occur.
 - Added locales for the prompt maker.
 - Replaced the legacy schema prefix/upgrade helpers with a single canonical `trackerDef` in `defaultSettings.js`; bundled presets (including zh-CN) now ship with the same field IDs and metadata as the default.
+- Added a configurable “Participant Guidance” template so you can edit the guidance snippet injected alongside seeded participant lists (supports the `{{participants}}` placeholder).
+- Split the old “Generation Target” into `Automation Target` (gates automatic runs and manual popup availability) and `Participant Focus` (controls prompt seeding guidance).
 
 11-10-2025
 - Refined time management: new `TimeAnchor` / `LocalTime` pair with automated `TimeAnalysis` to track elapsed time between turns while keeping flavour text public.

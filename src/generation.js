@@ -8,7 +8,7 @@ import { buildParticipantGuidance, collectParticipantNames } from "../lib/partic
 import { getCurrentLocale } from "../lib/i18n.js";
 import { extensionSettings } from "../index.js";
 import { FIELD_INCLUDE_OPTIONS, getDefaultTracker, getTracker, getTrackerPrompt, OUTPUT_FORMATS, updateTracker } from "./trackerDataHandler.js";
-import { trackerFormat } from "./settings/defaultSettings.js";
+import { trackerFormat, participantTargets } from "./settings/defaultSettings.js";
 import { buildTimeAnalysis } from "../lib/timeManager.js";
 
 // #region Utility Functions
@@ -236,7 +236,9 @@ function buildPresetOverridePayload(apiType, preset) {
 function getParticipantPolicy() {
 	const locale = getCurrentLocale?.() ?? "en";
 	const names = collectParticipantNames();
-	const policy = buildParticipantGuidance(extensionSettings.generationTarget, names, locale);
+	const participantFocus = extensionSettings.participantTarget ?? participantTargets.BOTH;
+	const template = extensionSettings.participantGuidanceTemplate;
+	const policy = buildParticipantGuidance(participantFocus, names, locale, template);
 
 	return {
 		locale,

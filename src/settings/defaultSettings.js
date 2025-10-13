@@ -2,12 +2,14 @@ import { t } from "../../lib/i18n.js";
 export const DEFAULT_PRESET_NAME = "Default Built-In (EN)";
 export const TRACKER_METADATA_VERSION = 3;
 //#region Setting Enums
-export const generationTargets = {
+const TARGET_VALUES = {
 	BOTH: "both",
 	USER: "user",
 	CHARACTER: "character",
 	NONE: "none",
 };
+export const automationTargets = Object.freeze({ ...TARGET_VALUES });
+export const participantTargets = Object.freeze({ ...TARGET_VALUES });
 export const trackerFormat = {
 	JSON: "JSON",
 	YAML: "YAML",
@@ -67,6 +69,12 @@ const generateRequestPrompt = t("prompts.generateRequestPrompt", `[Analyze the p
 ### Response Rules:
 {{trackerFieldPrompt}}
 Ensure the response remains consistent, strictly follows this structure in {{trackerFormat}}, and omits any extra data or deviations. You MUST enclose the tracker in <tracker></tracker> tags]`);
+const participantGuidanceTemplate = t(
+	"prompts.participant_guidance.template",
+	`### Participant Policy
+Always include the following participants in CharactersPresent and Characters: {{participants}}.
+Never remove these participants; infer their state even if they are temporarily off-screen.`
+);
 const generateRecentMessagesTemplate = t("prompts.generateRecentMessagesTemplate", `{{#if tracker}}Tracker: <tracker>
 {{tracker}}
 </tracker>
@@ -1006,13 +1014,15 @@ export const defaultSettings = {
 	languageOverride: "auto",
 	selectedProfile: "current",
 	selectedCompletionPreset: "current",
-	generationTarget: generationTargets.BOTH,
-	showPopupFor: generationTargets.NONE,
+	automationTarget: automationTargets.BOTH,
+	participantTarget: participantTargets.BOTH,
+	showPopupFor: automationTargets.NONE,
 	trackerFormat: trackerFormat.YAML,
 
 	generateContextTemplate: generateContextTemplate,
 	generateSystemPrompt: generateSystemPrompt,
 	generateRequestPrompt: generateRequestPrompt,
+	participantGuidanceTemplate: participantGuidanceTemplate,
 	generateRecentMessagesTemplate: generateRecentMessagesTemplate,
 
 	characterDescriptionTemplate: characterDescriptionTemplate,
@@ -1036,6 +1046,7 @@ export const defaultSettings = {
 			generateContextTemplate: generateContextTemplate,
 			generateSystemPrompt: generateSystemPrompt,
 			generateRequestPrompt: generateRequestPrompt,
+			participantGuidanceTemplate: participantGuidanceTemplate,
 			generateRecentMessagesTemplate: generateRecentMessagesTemplate,
 			roleplayPrompt: roleplayPrompt,
 
@@ -1043,8 +1054,9 @@ export const defaultSettings = {
 
 			mesTrackerTemplate: mesTrackerTemplate,
 			mesTrackerJavascript: mesTrackerJavascript,
-			generationTarget: generationTargets.BOTH,
-			showPopupFor: generationTargets.NONE,
+			automationTarget: automationTargets.BOTH,
+			participantTarget: participantTargets.BOTH,
+			showPopupFor: automationTargets.NONE,
 			trackerFormat: trackerFormat.YAML,
 			devToolsEnabled: false,
 			debugMode: false,

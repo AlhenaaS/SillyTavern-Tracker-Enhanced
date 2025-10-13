@@ -5,12 +5,12 @@ import { getMessageTimeStamp } from "../../../../../scripts/RossAscends-mods.js"
 import { log, debug, getLastMessageWithTracker, getLastNonSystemMessageIndex, getNextNonSystemMessageIndex, getPreviousNonSystemMessageIndex, isSystemMessage, shouldGenerateTracker, shouldShowPopup, warn } from "../lib/utils.js";
 import { extensionSettings } from "../index.js";
 import { generateTracker, getRequestPrompt } from "./generation.js";
-import { generationTargets } from "./settings/settings.js";
 import { FIELD_INCLUDE_OPTIONS, getDefaultTracker, OUTPUT_FORMATS, getTracker as getCleanTracker, trackerExists, cleanTracker, stripInternalOnlyFields } from "./trackerDataHandler.js";
 import { TrackerEditorModal } from "./ui/trackerEditorModal.js";
 import { TrackerPreviewManager } from "./ui/trackerPreviewManager.js";
 import { jsonToYAML } from "../lib/ymlParser.js";
 import { buildParticipantGuidance, collectParticipantNames } from "../lib/participantGuidance.js";
+import { participantTargets } from "./settings/settings.js";
 import { getCurrentLocale } from "../lib/i18n.js";
 
 // Constants
@@ -49,7 +49,9 @@ const SYSTEM_MESSAGE_TYPES = {
 function resolveParticipantSeeds() {
 	const locale = getCurrentLocale?.() ?? "en";
 	const names = collectParticipantNames();
-	const policy = buildParticipantGuidance(extensionSettings.generationTarget, names, locale);
+	const participantFocus = extensionSettings.participantTarget ?? participantTargets.BOTH;
+	const template = extensionSettings.participantGuidanceTemplate;
+	const policy = buildParticipantGuidance(participantFocus, names, locale, template);
 	return policy.participants;
 }
 

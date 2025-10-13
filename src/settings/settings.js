@@ -4,7 +4,7 @@ import { getContext } from '../../../../../../scripts/extensions.js';
 import { extensionFolderPath, extensionSettings } from "../../index.js";
 import { error, debug, warn, toTitleCase } from "../../lib/utils.js";
 import { getSupportedLocales, setLocale, t, translateHtml, onLocaleChange, getCurrentLocale } from "../../lib/i18n.js";
-import { DEFAULT_PRESET_NAME, TRACKER_METADATA_VERSION, defaultSettings, generationTargets } from "./defaultSettings.js";
+import { DEFAULT_PRESET_NAME, TRACKER_METADATA_VERSION, defaultSettings, automationTargets, participantTargets } from "./defaultSettings.js";
 import { generationCaptured } from "../../lib/interconnection.js";
 import { TrackerPromptMakerModal } from "../ui/trackerPromptMakerModal.js";
 import { TrackerTemplateGenerator } from "../ui/components/trackerTemplateGenerator.js";
@@ -12,7 +12,7 @@ import { TrackerJavaScriptGenerator } from "../ui/components/trackerJavaScriptGe
 import { TrackerInterface } from "../ui/trackerInterface.js";
 import { DevelopmentTestUI } from "../ui/developmentTestUI.js";
 
-export { generationTargets, trackerFormat } from "./defaultSettings.js";
+export { automationTargets, participantTargets, trackerFormat } from "./defaultSettings.js";
 
 let settingsRootElement = null;
 let localeListenerRegistered = false;
@@ -316,11 +316,11 @@ function notifyPresetMaintenance(report = {}) {
 	});
 }
 
-const generationTargetLabelKeys = {
-	[generationTargets.BOTH]: "settings.generation_target.option.both",
-	[generationTargets.USER]: "settings.generation_target.option.user",
-	[generationTargets.CHARACTER]: "settings.generation_target.option.character",
-	[generationTargets.NONE]: "settings.generation_target.option.none",
+const targetOptionLabelKeys = {
+	[automationTargets.BOTH]: "settings.generation_target.option.both",
+	[automationTargets.USER]: "settings.generation_target.option.user",
+	[automationTargets.CHARACTER]: "settings.generation_target.option.character",
+	[automationTargets.NONE]: "settings.generation_target.option.none",
 };
 
 const staticLocalizationBindings = [
@@ -332,12 +332,20 @@ const staticLocalizationBindings = [
 	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_completion_preset"]'), key: "settings.completion_preset.label" },
 	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_completion_preset')?.closest('.tracker-block')?.querySelector('small'), key: "settings.completion_preset.help", target: "html" },
 	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_completion_preset option[value="current"]'), key: "settings.completion_preset.option.current" },
-	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_generation_target"]'), key: "settings.generation_target.label" },
-	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_generation_target')?.closest('.tracker-block')?.querySelector('small'), key: "settings.generation_target.help", target: "html" },
-	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_generation_target option[value="both"]'), key: "settings.generation_target.option.both" },
-	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_generation_target option[value="user"]'), key: "settings.generation_target.option.user" },
-	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_generation_target option[value="character"]'), key: "settings.generation_target.option.character" },
-	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_generation_target option[value="none"]'), key: "settings.generation_target.option.none" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_automation_target"]'), key: "settings.automation_target.label" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_automation_target"] + br + small'), key: "settings.automation_target.help", target: "html" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_automation_target option[value="both"]'), key: "settings.generation_target.option.both" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_automation_target option[value="user"]'), key: "settings.generation_target.option.user" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_automation_target option[value="character"]'), key: "settings.generation_target.option.character" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_automation_target option[value="none"]'), key: "settings.generation_target.option.none" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_participant_target"]'), key: "settings.participant_target.label" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_participant_target"] + br + small'), key: "settings.participant_target.help", target: "html" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_participant_target option[value="both"]'), key: "settings.generation_target.option.both" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_participant_target option[value="user"]'), key: "settings.generation_target.option.user" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_participant_target option[value="character"]'), key: "settings.generation_target.option.character" },
+	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_participant_target option[value="none"]'), key: "settings.generation_target.option.none" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_participant_guidance"]'), key: "settings.participant_guidance.label" },
+	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_participant_guidance"] + br + small'), key: "settings.participant_guidance.help", target: "html" },
 	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_show_popup_for"]'), key: "settings.show_popup_for.label" },
 	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_show_popup_for')?.closest('.tracker-block')?.querySelector('small'), key: "settings.show_popup_for.help", target: "html" },
 	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_format"]'), key: "settings.format.label" },
@@ -395,12 +403,14 @@ const PRESET_VALUE_KEYS = [
 	"generateContextTemplate",
 	"generateSystemPrompt",
 	"generateRequestPrompt",
+	"participantGuidanceTemplate",
 	"generateRecentMessagesTemplate",
 	"characterDescriptionTemplate",
 	"mesTrackerTemplate",
 	"mesTrackerJavascript",
 	"roleplayPrompt",
-	"generationTarget",
+	"automationTarget",
+	"participantTarget",
 	"showPopupFor",
 	"trackerFormat",
 	"devToolsEnabled",
@@ -796,11 +806,28 @@ function setSettingsInitialValues() {
 	// Populate presets dropdown
 	updatePresetDropdown();
 	initializeOverridesDropdowns();
-	updatePopupDropdown();
 
 	$("#tracker_enhanced_enable").prop("checked", extensionSettings.enabled);
-	$("#tracker_enhanced_generation_target").val(extensionSettings.generationTarget);
-	$("#tracker_enhanced_show_popup_for").val(extensionSettings.showPopupFor);
+	if (typeof extensionSettings.automationTarget === "undefined") {
+		extensionSettings.automationTarget = defaultSettings.automationTarget;
+	}
+	if (typeof extensionSettings.participantTarget === "undefined") {
+		extensionSettings.participantTarget = defaultSettings.participantTarget;
+	}
+	if (typeof extensionSettings.participantGuidanceTemplate !== "string") {
+		extensionSettings.participantGuidanceTemplate = defaultSettings.participantGuidanceTemplate;
+	}
+	const automationTarget = extensionSettings.automationTarget ?? defaultSettings.automationTarget;
+	const participantTarget = extensionSettings.participantTarget ?? defaultSettings.participantTarget;
+	const participantGuidanceTemplate = extensionSettings.participantGuidanceTemplate ?? defaultSettings.participantGuidanceTemplate ?? "";
+
+	updatePopupDropdown();
+	const popupTarget = extensionSettings.showPopupFor ?? defaultSettings.showPopupFor;
+
+	$("#tracker_enhanced_automation_target").val(automationTarget);
+	$("#tracker_enhanced_participant_target").val(participantTarget);
+	$("#tracker_enhanced_participant_guidance").val(participantGuidanceTemplate);
+	$("#tracker_enhanced_show_popup_for").val(popupTarget);
 	$("#tracker_enhanced_format").val(extensionSettings.trackerFormat);
 	$("#tracker_enhanced_toolbar_indicator").prop("checked", extensionSettings.toolbarIndicatorEnabled !== false);
 	$("#tracker_enhanced_dev_tools").prop("checked", Boolean(extensionSettings.devToolsEnabled));
@@ -858,7 +885,8 @@ function registerSettingsListeners() {
 
 	// Settings fields
 	$("#tracker_enhanced_enable").on("input", onSettingCheckboxInput("enabled"));
-	$("#tracker_enhanced_generation_target").on("change", onSettingSelectChange("generationTarget"));
+	$("#tracker_enhanced_automation_target").on("change", onSettingSelectChange("automationTarget"));
+	$("#tracker_enhanced_participant_target").on("change", onSettingSelectChange("participantTarget"));
 	$("#tracker_enhanced_show_popup_for").on("change", onSettingSelectChange("showPopupFor"));
 	$("#tracker_enhanced_format").on("change", onSettingSelectChange("trackerFormat"));
 	$("#tracker_enhanced_language_override").on("change", onLanguageOverrideChange);
@@ -882,6 +910,7 @@ function registerSettingsListeners() {
 
 	$("#tracker_enhanced_context_prompt").on("input", onSettingInputareaInput("generateContextTemplate"));
 	$("#tracker_enhanced_system_prompt").on("input", onSettingInputareaInput("generateSystemPrompt"));
+	$("#tracker_enhanced_participant_guidance").on("input", onSettingInputareaInput("participantGuidanceTemplate"));
 	$("#tracker_enhanced_request_prompt").on("input", onSettingInputareaInput("generateRequestPrompt"));
 	$("#tracker_enhanced_roleplay_prompt").on("input", onSettingInputareaInput("roleplayPrompt"));
 	$("#tracker_enhanced_recent_messages").on("input", onSettingInputareaInput("generateRecentMessagesTemplate"));
@@ -1395,20 +1424,22 @@ function onPresetImportChange(event) {
 function getCurrentPresetSettings() {
 	return {
 
-		generateContextTemplate: extensionSettings.generateContextTemplate,
-		generateSystemPrompt: extensionSettings.generateSystemPrompt,
-		generateRequestPrompt: extensionSettings.generateRequestPrompt,
-		generateRecentMessagesTemplate: extensionSettings.generateRecentMessagesTemplate,
+	generateContextTemplate: extensionSettings.generateContextTemplate,
+	generateSystemPrompt: extensionSettings.generateSystemPrompt,
+	generateRequestPrompt: extensionSettings.generateRequestPrompt,
+	participantGuidanceTemplate: extensionSettings.participantGuidanceTemplate,
+	generateRecentMessagesTemplate: extensionSettings.generateRecentMessagesTemplate,
 		roleplayPrompt: extensionSettings.roleplayPrompt,
 		
 
 		
 		characterDescriptionTemplate: extensionSettings.characterDescriptionTemplate,
 
-		mesTrackerTemplate: extensionSettings.mesTrackerTemplate,
-		mesTrackerJavascript: extensionSettings.mesTrackerJavascript,
-		generationTarget: extensionSettings.generationTarget,
-		showPopupFor: extensionSettings.showPopupFor,
+	mesTrackerTemplate: extensionSettings.mesTrackerTemplate,
+	mesTrackerJavascript: extensionSettings.mesTrackerJavascript,
+	automationTarget: extensionSettings.automationTarget,
+	participantTarget: extensionSettings.participantTarget,
+	showPopupFor: extensionSettings.showPopupFor,
 		trackerFormat: extensionSettings.trackerFormat,
 		devToolsEnabled: extensionSettings.devToolsEnabled,
 		debugMode: extensionSettings.debugMode,
@@ -1445,7 +1476,7 @@ function onSettingSelectChange(settingName) {
 		const value = $(this).val();
 		extensionSettings[settingName] = value;
 		saveSettingsDebounced();
-		if (settingName === "generationTarget") {
+		if (settingName === "automationTarget") {
 			updatePopupDropdown();
 		}
 	};
@@ -1736,34 +1767,35 @@ function onTrackerPromptResetClick() {
 function updatePopupDropdown() {
 	const showPopupForSelect = $("#tracker_enhanced_show_popup_for");
 	const availablePopupOptions = [];
-	switch (extensionSettings.generationTarget) {
-		case generationTargets.CHARACTER:
-			availablePopupOptions.push(generationTargets.USER);
-			availablePopupOptions.push(generationTargets.NONE);
+	const automationTarget = extensionSettings.automationTarget ?? defaultSettings.automationTarget;
+	switch (automationTarget) {
+		case automationTargets.CHARACTER:
+			availablePopupOptions.push(automationTargets.USER);
+			availablePopupOptions.push(automationTargets.NONE);
 			break;
-		case generationTargets.USER:
-			availablePopupOptions.push(generationTargets.CHARACTER);
-			availablePopupOptions.push(generationTargets.NONE);
+		case automationTargets.USER:
+			availablePopupOptions.push(automationTargets.CHARACTER);
+			availablePopupOptions.push(automationTargets.NONE);
 			break;
-		case generationTargets.BOTH:
-			availablePopupOptions.push(generationTargets.NONE);
+		case automationTargets.BOTH:
+			availablePopupOptions.push(automationTargets.NONE);
 			break;
-		case generationTargets.NONE:
-			availablePopupOptions.push(generationTargets.BOTH);
-			availablePopupOptions.push(generationTargets.USER);
-			availablePopupOptions.push(generationTargets.CHARACTER);
-			availablePopupOptions.push(generationTargets.NONE);
+		case automationTargets.NONE:
+			availablePopupOptions.push(automationTargets.BOTH);
+			availablePopupOptions.push(automationTargets.USER);
+			availablePopupOptions.push(automationTargets.CHARACTER);
+			availablePopupOptions.push(automationTargets.NONE);
 			break;
 	}
 
 	if(!availablePopupOptions.includes(extensionSettings.showPopupFor)) {
-		extensionSettings.showPopupFor = generationTargets.NONE;
+		extensionSettings.showPopupFor = automationTargets.NONE;
 		saveSettingsDebounced();
 	}
 
 	showPopupForSelect.empty();
 	for (const popupOption of availablePopupOptions) {
-		const text = t(generationTargetLabelKeys[popupOption] || popupOption, toTitleCase(popupOption));
+		const text = t(targetOptionLabelKeys[popupOption] || popupOption, toTitleCase(popupOption));
 		const option = $("<option>").val(popupOption).text(text);
 		if (popupOption === extensionSettings.showPopupFor) {
 			option.attr("selected", "selected");
