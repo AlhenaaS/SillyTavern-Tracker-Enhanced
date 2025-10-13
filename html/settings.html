@@ -52,43 +52,7 @@
 				</select>
 			</div>
 
-				<!-- Tracker Automation & Focus -->
-				<div class="tracker-block m-b-1 m-t-1">
-					<label for="tracker_enhanced_automation_target">🤖 Automation Target</label><br />
-					<small>Decides whose turns trigger automatic tracker generation. Also limits which speakers appear in the manual popup selector.</small><br />
-					<select id="tracker_enhanced_automation_target" class="text_pole">
-						<option value="both">Both</option>
-						<option value="user">User</option>
-						<option value="character">Character</option>
-						<option value="none">None</option>
-					</select>
-					<br />
-					<label for="tracker_enhanced_participant_target">👥 Participant Focus</label><br />
-					<small>Guides seeding and prompt guidance. Choose whose perspectives the tracker should always maintain.</small><br />
-					<select id="tracker_enhanced_participant_target" class="text_pole">
-						<option value="both">Both</option>
-						<option value="user">User</option>
-						<option value="character">Character</option>
-						<option value="none">None</option>
-					</select>
-				</div>
-			<!-- Show Popup For -->
-			<div class="tracker-block m-b-1 m-t-1">
-				<label for="tracker_enhanced_show_popup_for">🪟 Show Popup For</label><br />
-				<small>Choose which speakers should open the manual tracker editor when automation is active. Options depend on the automation target.</small><br />
-				<select id="tracker_enhanced_show_popup_for" class="text_pole">
-					<!-- Options will be populated dynamically -->
-				</select>
-			</div>
-			<!-- Tracker Format -->
-			<div class="tracker-block m-b-1 m-t-1">
-				<label for="tracker_enhanced_format">{} Tracker Format</label><br />
-				<small>Choose the format for the tracker: YAML (recommended for lower token usage) or JSON (increases token count but may work better for struggling models).</small><br />
-				<select id="tracker_enhanced_format" class="text_pole">
-					<option value="JSON">JSON</option>
-					<option value="YAML">YAML</option>
-				</select>
-			</div>
+
 			<hr class="sysHR" />
 
 			<!-- Preset Management -->
@@ -118,10 +82,9 @@
 					<hr class="sysHR" />
 					<!-- Prompt Maker Buttons -->
 					<h4 class="tracker-section-title" data-i18n-key="settings.sections.prompt_maker">🛠️ Prompt Maker </h4>
-					<div class="tracker-block flex-container tracker-prompt-maker-block">						
-						<label for="tracker_enhanced_prompt_maker">Prompt Maker UI</label>
-						<small>This is where the tracker fields, default values, and example values are defined.</small>
-						<input id="tracker_enhanced_prompt_maker" class="menu_button" type="submit" value="Prompt Maker" />
+					<div class="tracker-block flex-container tracker-prompt-maker-block">
+						<small data-i18n-key="settings.prompt_maker.help">This is where the tracker fields, default values, and example values are defined.</small>
+						<input id="tracker_enhanced_prompt_maker" class="menu_button" type="submit" value="Open Prompt Maker" />
 					</div>
 					<div class="tracker-block m-b-1 m-t-1">
 						<label for="tracker_enhanced_mes_tracker_template">🌐 Message Tracker HTML</label><br />
@@ -145,6 +108,41 @@
 							<small class="tracker-template-controls-hint">Click to auto-generate JavaScript with gender-specific field hiding</small>
 						</div>
 						<textarea id="tracker_enhanced_mes_tracker_javascript" class="text_pole" rows="5"></textarea>
+					</div>
+					
+					<hr class="sysHR" />
+					<!-- Tracker participant focus, automation target, popup target & format-->
+					<div class="tracker-block m-b-1 m-t-1">
+						<label for="tracker_enhanced_participant_target" data-i18n-key="settings.participant_target.label">👥 Participant Focus</label><br />
+						<small data-i18n-key="settings.participant_target.help">Guides seeding and prompt guidance. Choose whose perspectives the tracker should always maintain.</small><br />
+						<select id="tracker_enhanced_participant_target" class="text_pole">
+							<option value="both">Both</option>
+							<option value="user">User</option>
+							<option value="character">Character</option>
+							<option value="none">None</option>
+						</select>
+						<br />
+						<label for="tracker_enhanced_automation_target" data-i18n-key="settings.automation_target.label">🤖 Automation Target</label><br />
+						<small data-i18n-key="settings.automation_target.help">Decides whose turns trigger automatic tracker generation. Also limits which speakers appear in the manual popup selector.</small><br />
+						<select id="tracker_enhanced_automation_target" class="text_pole">
+							<option value="both">Both</option>
+							<option value="user">User</option>
+							<option value="character">Character</option>
+							<option value="none">None</option>
+						</select>
+						<br />
+						<label for="tracker_enhanced_show_popup_for" data-i18n-key="settings.show_popup_for.label">🪟 Show Popup For</label><br />
+						<small data-i18n-key="settings.show_popup_for.help">Choose which speakers should open the manual tracker editor when automation is active. Options depend on the automation target.</small><br />
+						<select id="tracker_enhanced_show_popup_for" class="text_pole">
+							<!-- Options will be populated dynamically -->
+						</select>
+						<br />
+						<label for="tracker_enhanced_format" data-i18n-key="settings.format.label">{} Tracker Format</label><br />
+						<small data-i18n-key="settings.format.help">Choose the format for the tracker: YAML (recommended for lower token usage) or JSON (increases token count but may work better for struggling models).</small><br />
+						<select id="tracker_enhanced_format" class="text_pole">
+							<option value="JSON">JSON</option>
+							<option value="YAML">YAML</option>
+						</select>
 					</div>
 
 					<hr class="sysHR" />

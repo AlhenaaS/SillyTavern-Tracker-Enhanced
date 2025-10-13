@@ -55,7 +55,6 @@
   "settings.message_tracker_script.generate_button.value": "生成 JavaScript",
   "settings.message_tracker_script.generate_button.title": "根据当前提示生成器字段生成区分性别的隐藏逻辑",
   "settings.message_tracker_script.generate_hint": "点击即可自动生成带性别字段隐藏逻辑的 JavaScript",
-  "settings.prompt_maker.label": "提示生成器界面",
   "settings.prompt_maker.help": "在此定义追踪器字段、默认值与示例值。",
   "settings.prompt_maker.button": "打开提示生成器",
   "settings.number_of_messages.label": "包含的最近消息数量",
