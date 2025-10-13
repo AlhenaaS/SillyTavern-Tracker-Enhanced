@@ -1,6 +1,6 @@
 import { t } from "../../lib/i18n.js";
 export const DEFAULT_PRESET_NAME = "Default Built-In (EN)";
-export const TRACKER_METADATA_VERSION = 3;
+export const TRACKER_METADATA_VERSION = 4; // Bumped to introduce tracker field id/label split
 //#region Setting Enums
 const TARGET_VALUES = {
 	BOTH: "both",
@@ -275,7 +275,8 @@ return{init,cleanup,hideGenderSpecificFields:hideFields};
 }`;
 const trackerDef = {
   "field-0": {
-    "name": "TimeAnchor",
+    "id": "TimeAnchor",
+    "label": "Time Anchor",
     "type": "STRING",
     "presence": "DYNAMIC",
     "prompt": "Record the precise ISO-8601 timestamp anchoring this scene. Choose a datetime that reflects the story's own chronology (e.g., 2024-06-15T14:30:00Z), not a template placeholder.",
@@ -294,7 +295,8 @@ const trackerDef = {
     }
   },
   "field-1": {
-    "name": "LocalTime",
+    "id": "LocalTime",
+    "label": "Local Time",
     "type": "STRING",
     "presence": "DYNAMIC",
     "prompt": "Describe how the anchored moment reads inside the story world. Use the setting’s own calendars, watches, suns, bells, or metaphors, ensuring it aligns with the culture and location established in the scene.",
@@ -315,7 +317,8 @@ const trackerDef = {
     }
   },
   "field-2": {
-    "name": "Location",
+    "id": "Location",
+    "label": "Location",
     "type": "STRING",
     "presence": "DYNAMIC",
     "prompt": "Provide a **detailed and specific location**, including exact places like rooms, landmarks, or stores, following this format: \"Specific Place, Building, City, State\". Avoid unintended reuse of specific locations from previous examples. Example: \"Food court, second floor near east wing entrance, Madison Square Mall, Los Angeles, CA\".",
@@ -334,7 +337,8 @@ const trackerDef = {
     }
   },
   "field-3": {
-    "name": "Weather",
+    "id": "Weather",
+    "label": "Weather",
     "type": "STRING",
     "presence": "DYNAMIC",
     "prompt": "Describe current weather concisely to set the scene. Example: \"Light Drizzle, Cool Outside\".",
@@ -353,7 +357,8 @@ const trackerDef = {
     }
   },
   "field-7": {
-    "name": "Topics",
+    "id": "Topics",
+    "label": "Topics",
     "type": "ARRAY_OBJECT",
     "presence": "DYNAMIC",
     "prompt": "",
@@ -365,7 +370,8 @@ const trackerDef = {
     ],
     "nestedFields": {
       "field-4": {
-        "name": "PrimaryTopic",
+        "id": "PrimaryTopic",
+        "label": "Primary Topic",
         "type": "STRING",
         "presence": "DYNAMIC",
         "prompt": "**One- or two-word topic** describing main activity or focus of the scene.",
@@ -384,7 +390,8 @@ const trackerDef = {
         }
       },
       "field-5": {
-        "name": "EmotionalTone",
+        "id": "EmotionalTone",
+        "label": "Emotional Tone",
         "type": "STRING",
         "presence": "DYNAMIC",
         "prompt": "**One- or two-word topic** describing dominant emotional atmosphere of the scene.",
@@ -403,7 +410,8 @@ const trackerDef = {
         }
       },
       "field-6": {
-        "name": "InteractionTheme",
+        "id": "InteractionTheme",
+        "label": "Interaction Theme",
         "type": "STRING",
         "presence": "DYNAMIC",
         "prompt": "**One- or two-word topic** describing primary type of interactions or relationships in the scene.",
@@ -430,7 +438,8 @@ const trackerDef = {
     }
   },
   "field-8": {
-    "name": "CharactersPresent",
+    "id": "CharactersPresent",
+    "label": "Characters Present",
     "type": "ARRAY",
     "presence": "DYNAMIC",
     "prompt": "List all characters currently present in an array format.",
@@ -449,7 +458,8 @@ const trackerDef = {
     }
   },
   "field-22": {
-    "name": "Characters",
+    "id": "Characters",
+    "label": "Characters",
     "type": "FOR_EACH_OBJECT",
     "presence": "DYNAMIC",
     "prompt": "For each character, update the following details:",
@@ -461,7 +471,8 @@ const trackerDef = {
     ],
     "nestedFields": {
       "field-9": {
-        "name": "Gender",
+        "id": "Gender",
+        "label": "Gender",
         "type": "STRING",
         "presence": "DYNAMIC",
         "genderSpecific": "all",
@@ -482,7 +493,8 @@ const trackerDef = {
         }
       },
       "field-10": {
-        "name": "Age",
+        "id": "Age",
+        "label": "Age",
         "type": "STRING",
         "presence": "DYNAMIC",
         "genderSpecific": "all",
@@ -502,7 +514,8 @@ const trackerDef = {
         }
       },
       "field-11": {
-        "name": "Hair",
+        "id": "Hair",
+        "label": "Hair",
         "type": "STRING",
         "presence": "DYNAMIC",
         "genderSpecific": "all",
@@ -522,7 +535,8 @@ const trackerDef = {
         }
       },
       "field-12": {
-        "name": "Makeup",
+        "id": "Makeup",
+        "label": "Makeup",
         "type": "STRING",
         "presence": "DYNAMIC",
         "genderSpecific": "all",
@@ -542,7 +556,8 @@ const trackerDef = {
         }
       },
       "field-13": {
-        "name": "Outfit",
+        "id": "Outfit",
+        "label": "Outfit",
         "type": "STRING",
         "presence": "DYNAMIC",
         "genderSpecific": "all",
@@ -562,7 +577,8 @@ const trackerDef = {
         }
       },
       "field-14": {
-        "name": "StateOfDress",
+        "id": "StateOfDress",
+        "label": "State of Dress",
         "type": "STRING",
         "presence": "DYNAMIC",
         "genderSpecific": "all",
@@ -582,7 +598,8 @@ const trackerDef = {
         }
       },
       "field-15": {
-        "name": "PostureAndInteraction",
+        "id": "PostureAndInteraction",
+        "label": "Posture and Interaction",
         "type": "STRING",
         "presence": "DYNAMIC",
         "genderSpecific": "all",
@@ -602,7 +619,8 @@ const trackerDef = {
         }
       },
       "field-16": {
-        "name": "BustWaistHip",
+        "id": "BustWaistHip",
+        "label": "Bust Waist Hip",
         "type": "STRING",
         "presence": "DYNAMIC",
         "genderSpecific": "female",
@@ -622,7 +640,8 @@ const trackerDef = {
         }
       },
       "field-17": {
-        "name": "FertilityCycle",
+        "id": "FertilityCycle",
+        "label": "Fertility Cycle",
         "type": "STRING",
         "presence": "DYNAMIC",
         "genderSpecific": "female",
@@ -644,7 +663,8 @@ const trackerDef = {
         }
       },
       "field-18": {
-        "name": "Pregnancy",
+        "id": "Pregnancy",
+        "label": "Pregnancy",
         "type": "STRING",
         "presence": "DYNAMIC",
         "genderSpecific": "female",
@@ -664,7 +684,8 @@ const trackerDef = {
         }
       },
       "field-19": {
-        "name": "Virginity",
+        "id": "Virginity",
+        "label": "Virginity",
         "type": "STRING",
         "presence": "DYNAMIC",
         "genderSpecific": "all",
@@ -684,7 +705,8 @@ const trackerDef = {
         }
       },
       "field-20": {
-        "name": "Traits",
+        "id": "Traits",
+        "label": "Traits",
         "type": "STRING",
         "presence": "DYNAMIC",
         "genderSpecific": "all",
@@ -704,7 +726,8 @@ const trackerDef = {
         }
       },
       "field-21": {
-        "name": "Children",
+        "id": "Children",
+        "label": "Children",
         "type": "STRING",
         "presence": "DYNAMIC",
         "genderSpecific": "all",
@@ -732,7 +755,8 @@ const trackerDef = {
     }
   },
   "field-29": {
-    "name": "StoryEvents",
+    "id": "StoryEvents",
+    "label": "Story Events",
     "type": "OBJECT",
     "presence": "DYNAMIC",
     "prompt": "Lifecycle event log used to coordinate internal tracker automations.",
@@ -743,7 +767,8 @@ const trackerDef = {
     ],
     "nestedFields": {
       "field-24": {
-        "name": "BirthEvents",
+        "id": "BirthEvents",
+        "label": "Birth Events",
         "type": "FOR_EACH_OBJECT",
         "presence": "DYNAMIC",
         "genderSpecific": "all",
@@ -756,7 +781,8 @@ const trackerDef = {
         ],
         "nestedFields": {
           "field-23": {
-            "name": "NewBornDescription",
+            "id": "NewBornDescription",
+            "label": "Newborn Description",
             "type": "STRING",
             "presence": "DYNAMIC",
             "genderSpecific": "all",
@@ -783,7 +809,8 @@ const trackerDef = {
         }
       },
       "field-26": {
-        "name": "GrowthEvents",
+        "id": "GrowthEvents",
+        "label": "Growth Events",
         "type": "FOR_EACH_OBJECT",
         "presence": "DYNAMIC",
         "genderSpecific": "all",
@@ -796,7 +823,8 @@ const trackerDef = {
         ],
         "nestedFields": {
           "field-25": {
-            "name": "GrowthDescription",
+            "id": "GrowthDescription",
+            "label": "Growth Description",
             "type": "STRING",
             "presence": "DYNAMIC",
             "genderSpecific": "all",
@@ -823,7 +851,8 @@ const trackerDef = {
         }
       },
       "field-28": {
-        "name": "DeathEvents",
+        "id": "DeathEvents",
+        "label": "Death Events",
         "type": "FOR_EACH_OBJECT",
         "presence": "DYNAMIC",
         "genderSpecific": "all",
@@ -836,7 +865,8 @@ const trackerDef = {
         ],
         "nestedFields": {
           "field-27": {
-            "name": "DeathCauseDescription",
+            "id": "DeathCauseDescription",
+            "label": "Death Cause Description",
             "type": "STRING",
             "presence": "DYNAMIC",
             "genderSpecific": "all",
@@ -871,7 +901,8 @@ const trackerDef = {
     }
   },
   "field-37": {
-    "name": "TimeAnalysis",
+    "id": "TimeAnalysis",
+    "label": "Time Analysis",
     "type": "OBJECT",
     "presence": "STATIC",
     "prompt": "Auto-generated timing diagnostics derived from TimeAnchor. Used for internal engines and auditing.",
@@ -881,7 +912,8 @@ const trackerDef = {
     ],
     "nestedFields": {
       "field-30": {
-        "name": "AnchorRaw",
+        "id": "AnchorRaw",
+        "label": "Anchor Raw",
         "type": "STRING",
         "presence": "STATIC",
         "prompt": "The raw TimeAnchor value before parsing.",
@@ -897,7 +929,8 @@ const trackerDef = {
         }
       },
       "field-31": {
-        "name": "IsoTimestamp",
+        "id": "IsoTimestamp",
+        "label": "ISO Timestamp",
         "type": "STRING",
         "presence": "STATIC",
         "prompt": "Normalized ISO timestamp parsed from TimeAnchor.",
@@ -913,7 +946,8 @@ const trackerDef = {
         }
       },
       "field-32": {
-        "name": "EpochMillis",
+        "id": "EpochMillis",
+        "label": "Epoch Milliseconds",
         "type": "STRING",
         "presence": "STATIC",
         "prompt": "Milliseconds since Unix epoch for this anchor.",
@@ -929,7 +963,8 @@ const trackerDef = {
         }
       },
       "field-33": {
-        "name": "ElapsedSeconds",
+        "id": "ElapsedSeconds",
+        "label": "Elapsed Seconds",
         "type": "STRING",
         "presence": "STATIC",
         "prompt": "Elapsed seconds since the previous anchor, if available.",
@@ -945,7 +980,8 @@ const trackerDef = {
         }
       },
       "field-34": {
-        "name": "ElapsedDays",
+        "id": "ElapsedDays",
+        "label": "Elapsed Days",
         "type": "STRING",
         "presence": "STATIC",
         "prompt": "Elapsed days (decimal) since the previous anchor.",
@@ -961,7 +997,8 @@ const trackerDef = {
         }
       },
       "field-35": {
-        "name": "TimelineNote",
+        "id": "TimelineNote",
+        "label": "Timeline Note",
         "type": "STRING",
         "presence": "STATIC",
         "prompt": "Any warnings or notes about the timeline (e.g., invalid or regressing anchors).",
@@ -977,7 +1014,8 @@ const trackerDef = {
         }
       },
       "field-36": {
-        "name": "ParsedAt",
+        "id": "ParsedAt",
+        "label": "Parsed At",
         "type": "STRING",
         "presence": "STATIC",
         "prompt": "ISO timestamp when the tracker parsed this anchor.",
