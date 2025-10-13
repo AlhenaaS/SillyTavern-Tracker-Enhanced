@@ -2,14 +2,14 @@
 <div id="tracker_enhanced_settings" class="extension_container">
 	<div class="inline-drawer">
 		<div class="inline-drawer-toggle inline-drawer-header">
-			<b>Tracker Enhanced</b>
+			<b data-i18n-key="settings.title">Tracker Enhanced</b>
 			<div class="inline-drawer-icon fa-solid fa-circle-chevron-down down"></div>
 		</div>
 		<div class="inline-drawer-content">
 			<!-- Tracker Settings -->
 			<div class="tracker-block flex-container">
 				<input id="tracker_enhanced_enable" type="checkbox" />
-				<label for="tracker_enhanced_enable">Enable Tracker Enhanced</label>
+				<label for="tracker_enhanced_enable" data-i18n-key="settings.enable.label">Enable Tracker Enhanced</label>
 			</div>
 			<hr class="sysHR" />
 
@@ -25,21 +25,21 @@
 
 			<!-- Connection Profile -->
 			<div class="tracker-block m-b-1 m-t-1">
-				<label for="tracker_enhanced_connection_profile">🔒 Independent Connection Profile</label><br />
-				<small>
+				<label for="tracker_enhanced_connection_profile" data-i18n-key="settings.connection_profile.label">🔒 Independent Connection Profile</label><br />
+				<small data-i18n-key="settings.connection_profile.help" data-i18n-target="html">
 					<strong>Independent Connection:</strong> Tracker Enhanced uses a separate, dedicated connection that <strong>does NOT interfere</strong> with SillyTavern's main connection.<br>
 					<strong>Recommended:</strong> Create a dedicated connection profile specifically for tracker generation to ensure optimal performance and avoid conflicts.<br>
 					<em>Note: Even "Same as current" uses an independent connection with the current profile's settings.</em>
 				</small><br />
 				<select id="tracker_enhanced_connection_profile" class="text_pole">
-					<option value="current">Same as current (Independent)</option>
+					<option value="current" data-i18n-key="settings.connection_profile.option.current">Same as current (Independent)</option>
 				</select>
 			</div>
 
 			<!-- Completion Preset -->
 			<div class="tracker-block m-b-1 m-t-1">
-				<label for="tracker_enhanced_completion_preset">🎯 Dedicated Completion Preset</label><br />
-				<small>
+				<label for="tracker_enhanced_completion_preset" data-i18n-key="settings.completion_preset.label">🎯 Dedicated Completion Preset</label><br />
+				<small data-i18n-key="settings.completion_preset.help" data-i18n-target="html">
 					<strong>Recommended:</strong> Create a dedicated completion preset optimized for tracker generation.<br>
 					<strong>Compatibility Indicators:</strong><br>
 					• <strong>✅</strong> Compatible - Matches your selected profile's API<br>
@@ -48,7 +48,7 @@
 					<em>Tip: Use settings like higher temperature for more creative tracking or lower for consistent results.</em>
 				</small><br />
 				<select id="tracker_enhanced_completion_preset" class="text_pole">
-					<option value="current">Same as current</option>
+					<option value="current" data-i18n-key="settings.completion_preset.option.current">Same as current</option>
 				</select>
 			</div>
 
@@ -58,33 +58,33 @@
 			<!-- Preset Management -->
 			<div id="preset_settings">
 				<div class="tracker-block m-b-1 m-t-1">
-					<label for="tracker_enhanced_preset_select">Presets</label>
+					<label for="tracker_enhanced_preset_select" data-i18n-key="settings.presets.label">Presets</label>
 					<select id="tracker_enhanced_preset_select" class="text_pole">
 						<!-- Options will be populated dynamically -->
 					</select>
 					<div class="tracker-preset-buttons">
-						<button id="tracker_enhanced_preset_new" class="menu_button fa-solid fa-file-circle-plus interactable" title="Save preset as"></button>
-						<button id="tracker_enhanced_preset_save" class="menu_button fa-solid fa-save interactable" title="Update current preset"></button>
-						<button id="tracker_enhanced_preset_rename" class="menu_button fa-pencil fa-solid interactable" title="Rename current preset"></button>
-						<button id="tracker_enhanced_preset_restore" class="menu_button fa-solid fa-recycle interactable" title="Restore current preset"></button>
-						<button id="tracker_enhanced_preset_delete" class="menu_button fa-solid fa-trash-can interactable" title="Delete current preset"></button>
-						<input type="file" id="tracker_enhanced_preset_import" accept=".json" title="Import tracker enhanced preset file" aria-label="Import tracker enhanced preset file" />
-						<button id="tracker_enhanced_preset_import_button" class="menu_button fa-solid fa-file-import interactable" title="Import tracker enhanced preset"></button>
-						<button id="tracker_enhanced_preset_export" class="menu_button fa-solid fa-file-export interactable" title="Export current tracker enhanced preset"></button>
+						<button id="tracker_enhanced_preset_new" class="menu_button fa-solid fa-file-circle-plus interactable" title="Save preset as" data-i18n-key="settings.presets.button.new.title" data-i18n-target="attr:title"></button>
+						<button id="tracker_enhanced_preset_save" class="menu_button fa-solid fa-save interactable" title="Update current preset" data-i18n-key="settings.presets.button.save.title" data-i18n-target="attr:title"></button>
+						<button id="tracker_enhanced_preset_rename" class="menu_button fa-pencil fa-solid interactable" title="Rename current preset" data-i18n-key="settings.presets.button.rename.title" data-i18n-target="attr:title"></button>
+						<button id="tracker_enhanced_preset_restore" class="menu_button fa-solid fa-recycle interactable" title="Restore current preset" data-i18n-key="settings.presets.button.restore.title" data-i18n-target="attr:title"></button>
+						<button id="tracker_enhanced_preset_delete" class="menu_button fa-solid fa-trash-can interactable" title="Delete current preset" data-i18n-key="settings.presets.button.delete.title" data-i18n-target="attr:title"></button>
+						<input type="file" id="tracker_enhanced_preset_import" accept=".json" title="Import tracker enhanced preset file" aria-label="Import tracker enhanced preset file" data-i18n-key="settings.presets.import.input.title" data-i18n-target="attr:title" data-i18n-key-aria-label="settings.presets.import.input.aria" data-i18n-target-aria-label="attr:aria-label" />
+						<button id="tracker_enhanced_preset_import_button" class="menu_button fa-solid fa-file-import interactable" title="Import tracker enhanced preset" data-i18n-key="settings.presets.import.button.title" data-i18n-target="attr:title"></button>
+						<button id="tracker_enhanced_preset_export" class="menu_button fa-solid fa-file-export interactable" title="Export current tracker enhanced preset" data-i18n-key="settings.presets.export.button.title" data-i18n-target="attr:title"></button>
 					</div>
 				</div>
 				<hr class="sysHR" />
 
 				<details>
 					<!-- Preset Related Fields -->
-					<summary class="tracker-section-title" data-i18n-key="settings.sections.summary">⚙️ Preset Settings</summary>											
+					<summary class="tracker-section-title" data-i18n-key="settings.presets.summary">⚙️ Preset Settings</summary>											
 
 					<hr class="sysHR" />
 					<!-- Prompt Maker Buttons -->
 					<h4 class="tracker-section-title" data-i18n-key="settings.sections.prompt_maker">🛠️ Prompt Maker </h4>
 					<div class="tracker-block flex-container tracker-prompt-maker-block">
 						<small data-i18n-key="settings.prompt_maker.help">This is where the tracker fields, default values, and example values are defined.</small>
-						<input id="tracker_enhanced_prompt_maker" class="menu_button" type="submit" value="Open Prompt Maker" />
+						<input id="tracker_enhanced_prompt_maker" class="menu_button" type="submit" value="Open Prompt Maker" data-i18n-key="settings.prompt_maker.button" data-i18n-target="attr:value" />
 					</div>
 					<details class="tracker-section-collapsible tracker-collapsible">
 						<summary class="tracker-collapsible-summary">
@@ -96,8 +96,8 @@
 								{{key.subkey}}, {{#join "delimiter" arrayKey}}, {{#foreach objectOrArrayKey itemName}}...{{itemName.subKey}}...{{/foreach}}, {{#if key.subkey}}...{{/if}}.</small
 							><br />
 							<div class="tracker-template-controls flex-container">
-								<input id="tracker_enhanced_generate_template" class="menu_button" type="submit" value="Generate Template" title="Generate HTML template based on current Prompt Maker fields" />
-								<small class="tracker-template-controls-hint">Click to auto-generate template from your Prompt Maker fields</small>
+								<input id="tracker_enhanced_generate_template" class="menu_button" type="submit" value="Generate Template" title="Generate HTML template based on current Prompt Maker fields" data-i18n-key="settings.message_tracker_html.generate_button.value" data-i18n-target="attr:value" data-i18n-key-title="settings.message_tracker_html.generate_button.title" data-i18n-target-title="attr:title" />
+								<small class="tracker-template-controls-hint" data-i18n-key="settings.message_tracker_html.generate_hint">Click to auto-generate template from your Prompt Maker fields</small>
 							</div>
 							<textarea id="tracker_enhanced_mes_tracker_template" class="text_pole" rows="5"></textarea>
 						</div>
@@ -112,8 +112,8 @@
 								>Define any custom javascript to be used in the tracker preview. The javascript should return an object with all the functions that can be accessed through SillyTavern.trackerEnhanced</small
 							><br />
 							<div class="tracker-template-controls flex-container">
-								<input id="tracker_enhanced_generate_javascript" class="menu_button" type="submit" value="Generate JavaScript" title="Generate JavaScript for gender-specific field hiding based on current Prompt Maker fields" />
-								<small class="tracker-template-controls-hint">Click to auto-generate JavaScript with gender-specific field hiding</small>
+								<input id="tracker_enhanced_generate_javascript" class="menu_button" type="submit" value="Generate JavaScript" title="Generate JavaScript for gender-specific field hiding based on current Prompt Maker fields" data-i18n-key="settings.message_tracker_script.generate_button.value" data-i18n-target="attr:value" data-i18n-key-title="settings.message_tracker_script.generate_button.title" data-i18n-target-title="attr:title" />
+								<small class="tracker-template-controls-hint" data-i18n-key="settings.message_tracker_script.generate_hint">Click to auto-generate JavaScript with gender-specific field hiding</small>
 							</div>
 							<textarea id="tracker_enhanced_mes_tracker_javascript" class="text_pole" rows="5"></textarea>
 						</div>
@@ -130,19 +130,19 @@
 								<label for="tracker_enhanced_participant_target" data-i18n-key="settings.participant_target.label">👥 Participant Focus</label><br />
 								<small data-i18n-key="settings.participant_target.help">Guides seeding and prompt guidance. Choose whose perspectives the tracker should always maintain.</small><br />
 								<select id="tracker_enhanced_participant_target" class="text_pole">
-									<option value="both">Both</option>
-									<option value="user">User</option>
-									<option value="character">Character</option>
-									<option value="none">None</option>
+									<option value="both" data-i18n-key="settings.generation_target.option.both">Both</option>
+									<option value="user" data-i18n-key="settings.generation_target.option.user">User</option>
+									<option value="character" data-i18n-key="settings.generation_target.option.character">Character</option>
+									<option value="none" data-i18n-key="settings.generation_target.option.none">None</option>
 								</select>
 								<br />
 								<label for="tracker_enhanced_automation_target" data-i18n-key="settings.automation_target.label">🤖 Automation Target</label><br />
 								<small data-i18n-key="settings.automation_target.help">Decides whose turns trigger automatic tracker generation. Also limits which speakers appear in the manual popup selector.</small><br />
 								<select id="tracker_enhanced_automation_target" class="text_pole">
-									<option value="both">Both</option>
-									<option value="user">User</option>
-									<option value="character">Character</option>
-									<option value="none">None</option>
+									<option value="both" data-i18n-key="settings.generation_target.option.both">Both</option>
+									<option value="user" data-i18n-key="settings.generation_target.option.user">User</option>
+									<option value="character" data-i18n-key="settings.generation_target.option.character">Character</option>
+									<option value="none" data-i18n-key="settings.generation_target.option.none">None</option>
 								</select>
 								<br />
 								<label for="tracker_enhanced_show_popup_for" data-i18n-key="settings.show_popup_for.label">🪟 Show Popup For</label><br />
@@ -154,8 +154,8 @@
 								<label for="tracker_enhanced_format" data-i18n-key="settings.format.label">{} Tracker Format</label><br />
 								<small data-i18n-key="settings.format.help">Choose the format for the tracker: YAML (recommended for lower token usage) or JSON (increases token count but may work better for struggling models).</small><br />
 								<select id="tracker_enhanced_format" class="text_pole">
-									<option value="JSON">JSON</option>
-									<option value="YAML">YAML</option>
+									<option value="JSON" data-i18n-key="settings.format.option.json">JSON</option>
+									<option value="YAML" data-i18n-key="settings.format.option.yaml">YAML</option>
 								</select>
 							</div>
 						</div>
@@ -169,45 +169,45 @@
 						</summary>
 						<div class="tracker-collapsible-content">
 							<div id="generate_context_section" class="tracker-block m-b-1 m-t-1">
-								<label for="tracker_enhanced_context_prompt">Context Template</label><br />
-								<small
+								<label for="tracker_enhanced_context_prompt" data-i18n-key="settings.context.label">🧩 Context Template</label><br />
+								<small data-i18n-key="settings.context.help" data-i18n-target="html"
 									>Define the template for generating the tracker. Use macros like:<br />
 									{{trackerSystemPrompt}}, {{characterDescriptions}}, {{recentMessages}}, {{currentTracker}}, {{trackerFormat}}, {{trackerFieldPrompt}}.</small
 								><br />
 								<textarea id="tracker_enhanced_context_prompt" class="text_pole" rows="5"></textarea>
 							</div>
 							<div class="tracker-block m-b-1 m-t-1">
-								<label for="tracker_enhanced_system_prompt">📜 System Prompt</label><br />
-								<small
+								<label for="tracker_enhanced_system_prompt" data-i18n-key="settings.system.label">📜 System Prompt</label><br />
+								<small data-i18n-key="settings.system.help" data-i18n-target="html"
 									>Define the system-level prompt for tracker generation. Use macros like:<br />
 									{{charNames}}, {{defaultTracker}}, {{trackerFormat}}.</small
 								><br />
 								<textarea id="tracker_enhanced_system_prompt" class="text_pole" rows="5"></textarea>
 							</div>
 							<div class="tracker-block m-b-1 m-t-1">
-								<label for="tracker_enhanced_participant_guidance">🧭 Participant Guidance</label><br />
-								<small>Customize the guidance snippet inserted into prompts. Use {{participants}} to reference the enforced names.</small><br />
+								<label for="tracker_enhanced_participant_guidance" data-i18n-key="settings.participant_guidance.label">🧭 Participant Guidance</label><br />
+								<small data-i18n-key="settings.participant_guidance.help">Customize the guidance snippet inserted into prompts. Use {{participants}} to reference the enforced names.</small><br />
 								<textarea id="tracker_enhanced_participant_guidance" class="text_pole" rows="4"></textarea>
 							</div>
 							<div class="tracker-block m-b-1 m-t-1">
-								<label for="tracker_enhanced_character_description">🎭 Character Description Template</label><br />
-								<small
+								<label for="tracker_enhanced_character_description" data-i18n-key="settings.character_description.label">🎭 Character Description Template</label><br />
+								<small data-i18n-key="settings.character_description.help" data-i18n-target="html"
 									>Define the format for character descriptions in the tracker. Macros:<br />
 									{{char}}, {{charDescription}}.</small
 								><br />
 								<textarea id="tracker_enhanced_character_description" class="text_pole" rows="5"></textarea>
 							</div>
 							<div class="tracker-block m-b-1 m-t-1">
-								<label for="tracker_enhanced_recent_messages">⌛ Recent Messages Template</label><br />
-								<small
+								<label for="tracker_enhanced_recent_messages" data-i18n-key="settings.recent_messages.label">⌛ Recent Messages Template</label><br />
+								<small data-i18n-key="settings.recent_messages.help" data-i18n-target="html"
 									>Template for recent messages in the tracker. Macros include:<br />
 									{{char}}, {{message}}, {{tracker}}, {{#if tracker}}...{{/if}}.</small
 								><br />
 								<textarea id="tracker_enhanced_recent_messages" class="text_pole" rows="5"></textarea>
 							</div>
 							<div class="tracker-block m-b-1 m-t-1">
-								<label for="tracker_enhanced_request_prompt">ᯓ➤ Request Prompt</label><br />
-								<small
+								<label for="tracker_enhanced_request_prompt" data-i18n-key="settings.request.label">ᯓ➤ Request Prompt</label><br />
+								<small data-i18n-key="settings.request.help" data-i18n-target="html"
 									>Set the request prompt for generating the tracker. Available macros include:<br />
 									{{trackerFieldPrompt}}, {{trackerFormat}}, {{message}} (last message).</small
 								><br />
@@ -224,8 +224,8 @@
 						</summary>
 						<div class="tracker-collapsible-content">
 							<div class="tracker-block m-b-1 m-t-1">
-								<label for="tracker_enhanced_roleplay_prompt">Roleplay Injection Prompt</label><br />
-								<small
+								<label for="tracker_enhanced_roleplay_prompt" data-i18n-key="settings.roleplay.label">Roleplay Injection Prompt</label><br />
+								<small data-i18n-key="settings.roleplay.help" data-i18n-target="html"
 									>Additional guidance inserted ahead of the tracker block when we inject into SillyTavern prompts. Keep it concise and focused on diegetic knowledge boundaries.</small
 								><br />
 								<textarea id="tracker_enhanced_roleplay_prompt" class="text_pole" rows="3"></textarea>
@@ -237,38 +237,38 @@
 					<details class="tracker-section-collapsible tracker-collapsible">
 						<summary class="tracker-section-title" data-i18n-key="settings.sections.other">🪛 Other Settings</summary>
 						<div class="tracker-block m-b-1 m-t-1">
-							<label for="tracker_enhanced_number_of_messages">Number of Recent Messages to Include</label><br />
-							<small>Set how many recent messages are included in tracker generation prompts.</small><br />
+							<label for="tracker_enhanced_number_of_messages" data-i18n-key="settings.number_of_messages.label">Number of Recent Messages to Include</label><br />
+							<small data-i18n-key="settings.number_of_messages.help">Set how many recent messages are included in tracker generation prompts.</small><br />
 							<input max="99" min="1" class="text_pole" id="tracker_enhanced_number_of_messages" type="number" />
 						</div>
 						<div class="tracker-block m-b-1 m-t-1">
-							<label for="tracker_enhanced_generate_from_message">Message Number to Start Generating Tracker From</label><br />
-							<small>Specify which message (by number) the tracker starts generating from.</small><br />
+							<label for="tracker_enhanced_generate_from_message" data-i18n-key="settings.generate_from_message.label">Message Number to Start Generating Tracker From</label><br />
+							<small data-i18n-key="settings.generate_from_message.help">Specify which message (by number) the tracker starts generating from.</small><br />
 							<input max="99" min="1" class="text_pole" id="tracker_enhanced_generate_from_message" type="number" />
 						</div>
 						<div class="tracker-block m-b-1 m-t-1">
-							<label for="tracker_enhanced_minimum_depth">Minimum Depth</label><br />
-							<small>Specify the minimum depth for a tracker to be injected at.</small><br />
+							<label for="tracker_enhanced_minimum_depth" data-i18n-key="settings.minimum_depth.label">Minimum Depth</label><br />
+							<small data-i18n-key="settings.minimum_depth.help">Specify the minimum depth for a tracker to be injected at.</small><br />
 							<input max="99" min="0" class="text_pole" id="tracker_enhanced_minimum_depth" type="number" />
 						</div>
 						<div class="tracker-block m-b-1 m-t-1">
-							<label for="tracker_enhanced_response_length">Response Length</label><br />
-							<small>Set a response token limit for tracker prompts. Leave blank or set to 0 to use the default response token limit.</small><br />
+							<label for="tracker_enhanced_response_length" data-i18n-key="settings.response_length.label">Response Length</label><br />
+							<small data-i18n-key="settings.response_length.help">Set a response token limit for tracker prompts. Leave blank or set to 0 to use the default response token limit.</small><br />
 							<input min="0" class="text_pole" id="tracker_enhanced_response_length" type="number" />
 						</div>
 						<hr class="sysHR" />
 						<div class="tracker-block flex-container">
 							<input id="tracker_enhanced_toolbar_indicator" type="checkbox" />
-							<label for="tracker_enhanced_toolbar_indicator">Show toolbar injection indicator</label>
+							<label for="tracker_enhanced_toolbar_indicator" data-i18n-key="settings.toolbar_indicator.label">Show toolbar injection indicator</label>
 						</div>
 						<!-- Debug Mode -->
 						<div class="tracker-block flex-container">
 							<input id="tracker_enhanced_debug" type="checkbox" />
-							<label for="tracker_enhanced_debug">Enable Debug Logging</label>
+							<label for="tracker_enhanced_debug" data-i18n-key="settings.debug.label">Enable Debug Logging</label>
 						</div>
 						<div class="tracker-block flex-container">
 							<input id="tracker_enhanced_dev_tools" type="checkbox" />
-							<label for="tracker_enhanced_dev_tools">Enable Dev Tools</label>
+							<label for="tracker_enhanced_dev_tools" data-i18n-key="settings.devtools.label">Enable Dev Tools</label>
 						</div>			
 					</details>
 				</details>
@@ -276,7 +276,7 @@
 
 			<hr class="sysHR" />
 			<div class="tracker-block flex-container tracker-reset-container">
-				<input id="tracker_enhanced_reset_presets" class="menu_button" type="submit" value="Reset Extension Defaults" />
+				<input id="tracker_enhanced_reset_presets" class="menu_button" type="submit" value="Reset Extension Defaults" data-i18n-key="settings.reset_presets.button" data-i18n-target="attr:value" />
 				<label for="tracker_enhanced_reset_presets"></label>
 			</div>
 		</div>
