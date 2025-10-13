@@ -429,6 +429,10 @@ const PRESET_VALUE_KEYS = [
 	"participantTarget",
 	"showPopupFor",
 	"trackerFormat",
+	"numberOfMessages",
+	"generateFromMessage",
+	"minimumDepth",
+	"responseLength",
 	"devToolsEnabled",
 	"debugMode",
 	"trackerInjectionEnabled",
@@ -1439,24 +1443,23 @@ function onPresetImportChange(event) {
  */
 function getCurrentPresetSettings() {
 	return {
-
-	generateContextTemplate: extensionSettings.generateContextTemplate,
-	generateSystemPrompt: extensionSettings.generateSystemPrompt,
-	generateRequestPrompt: extensionSettings.generateRequestPrompt,
-	participantGuidanceTemplate: extensionSettings.participantGuidanceTemplate,
-	generateRecentMessagesTemplate: extensionSettings.generateRecentMessagesTemplate,
+		generateContextTemplate: extensionSettings.generateContextTemplate,
+		generateSystemPrompt: extensionSettings.generateSystemPrompt,
+		generateRequestPrompt: extensionSettings.generateRequestPrompt,
+		participantGuidanceTemplate: extensionSettings.participantGuidanceTemplate,
+		generateRecentMessagesTemplate: extensionSettings.generateRecentMessagesTemplate,
 		roleplayPrompt: extensionSettings.roleplayPrompt,
-		
-
-		
 		characterDescriptionTemplate: extensionSettings.characterDescriptionTemplate,
-
-	mesTrackerTemplate: extensionSettings.mesTrackerTemplate,
-	mesTrackerJavascript: extensionSettings.mesTrackerJavascript,
-	automationTarget: extensionSettings.automationTarget,
-	participantTarget: extensionSettings.participantTarget,
-	showPopupFor: extensionSettings.showPopupFor,
+		mesTrackerTemplate: extensionSettings.mesTrackerTemplate,
+		mesTrackerJavascript: extensionSettings.mesTrackerJavascript,
+		automationTarget: extensionSettings.automationTarget,
+		participantTarget: extensionSettings.participantTarget,
+		showPopupFor: extensionSettings.showPopupFor,
 		trackerFormat: extensionSettings.trackerFormat,
+		numberOfMessages: extensionSettings.numberOfMessages,
+		generateFromMessage: extensionSettings.generateFromMessage,
+		minimumDepth: extensionSettings.minimumDepth,
+		responseLength: extensionSettings.responseLength,
 		devToolsEnabled: extensionSettings.devToolsEnabled,
 		debugMode: extensionSettings.debugMode,
 		trackerInjectionEnabled: extensionSettings.trackerInjectionEnabled,
