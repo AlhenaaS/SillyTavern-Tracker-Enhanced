@@ -344,6 +344,7 @@ const staticLocalizationBindings = [
 	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_participant_target option[value="user"]'), key: "settings.generation_target.option.user" },
 	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_participant_target option[value="character"]'), key: "settings.generation_target.option.character" },
 	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_participant_target option[value="none"]'), key: "settings.generation_target.option.none" },
+	{ element: () => settingsRootElement?.querySelector('[data-i18n-key="settings.sections.tracker_targets"]'), key: "settings.sections.tracker_targets" },
 	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_participant_guidance"]'), key: "settings.participant_guidance.label" },
 	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_participant_guidance"] + br + small'), key: "settings.participant_guidance.help", target: "html" },
 	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_show_popup_for"]'), key: "settings.show_popup_for.label" },
@@ -374,12 +375,28 @@ const staticLocalizationBindings = [
 	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_character_description"]'), key: "settings.character_description.label" },
 	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_character_description"]')?.parentElement?.querySelector('small'), key: "settings.character_description.help", target: "html" },
 	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_mes_tracker_template"]'), key: "settings.message_tracker_html.label" },
-	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_mes_tracker_template"]')?.parentElement?.querySelector('small'), key: "settings.message_tracker_html.help", target: "html" },
+	{
+		element: () =>
+			settingsRootElement
+				?.querySelector('label[for="tracker_enhanced_mes_tracker_template"]')
+				?.closest(".tracker-collapsible")
+				?.querySelector(".tracker-collapsible-content small"),
+		key: "settings.message_tracker_html.help",
+		target: "html",
+	},
 	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_generate_template'), key: "settings.message_tracker_html.generate_button.value", target: "value" },
 	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_generate_template'), key: "settings.message_tracker_html.generate_button.title", target: "attr:title" },
 	{ element: () => settingsRootElement?.querySelectorAll('.tracker-template-controls-hint')?.[0], key: "settings.message_tracker_html.generate_hint" },
 	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_mes_tracker_javascript"]'), key: "settings.message_tracker_script.label" },
-	{ element: () => settingsRootElement?.querySelector('label[for="tracker_enhanced_mes_tracker_javascript"]')?.parentElement?.querySelector('small'), key: "settings.message_tracker_script.help", target: "html" },
+	{
+		element: () =>
+			settingsRootElement
+				?.querySelector('label[for="tracker_enhanced_mes_tracker_javascript"]')
+				?.closest(".tracker-collapsible")
+				?.querySelector(".tracker-collapsible-content small"),
+		key: "settings.message_tracker_script.help",
+		target: "html",
+	},
 	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_generate_javascript'), key: "settings.message_tracker_script.generate_button.value", target: "value" },
 	{ element: () => settingsRootElement?.querySelector('#tracker_enhanced_generate_javascript'), key: "settings.message_tracker_script.generate_button.title", target: "attr:title" },
 	{ element: () => settingsRootElement?.querySelectorAll('.tracker-template-controls-hint')?.[1], key: "settings.message_tracker_script.generate_hint" },

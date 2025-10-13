@@ -34,7 +34,7 @@
   "settings.presets.import.input.aria": "Import tracker enhanced preset file",
   "settings.presets.import.button.title": "Import tracker enhanced preset",
   "settings.presets.export.button.title": "Export current tracker enhanced preset",
-  "settings.presets.summary": "📁 Preset Settings",
+  "settings.presets.summary": "⚙️ Preset Settings",
   "settings.context.label": "Context Template",
   "settings.context.help": "Define the template for generating the tracker. Use macros like:<br>{{participantGuidance}}, {{trackerSystemPrompt}}, {{characterDescriptions}}, {{recentMessages}}, {{currentTracker}}, {{trackerFormat}}, {{trackerFieldPrompt}}.",
   "settings.system.label": "📜 System Prompt",
@@ -113,6 +113,7 @@
   "trackerPromptMaker.messages.confirmRemoveField": "Are you sure you want to remove this field?",
   "settings.sections.prompt_templates": "🧠 Tracker Prompt Templates",
   "settings.sections.prompt_maker": "🛠️ Prompt Maker Tools",
+  "settings.sections.tracker_targets": "🔎 Tracker Targets Selection",
   "settings.sections.downstream": "📤 Downstream SillyTavern Injection",
-  "settings.sections.other": "⚙️ Other Settings"  
+  "settings.sections.other": "🪛 Other Settings"  
 }
