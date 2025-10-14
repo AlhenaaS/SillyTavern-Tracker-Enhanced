@@ -7,7 +7,7 @@ import { yamlToJSON, jsonToYAML } from "../lib/ymlParser.js";
 import { buildParticipantGuidance, collectParticipantNames } from "../lib/participantGuidance.js";
 import { getCurrentLocale } from "../lib/i18n.js";
 import { extensionSettings } from "../index.js";
-import { FIELD_INCLUDE_OPTIONS, getDefaultTracker, getTracker, getTrackerPrompt, OUTPUT_FORMATS, updateTracker } from "./trackerDataHandler.js";
+import { FIELD_INCLUDE_OPTIONS, getDefaultTracker, getFieldId, getLegacyFieldName, getTracker, getTrackerPrompt, OUTPUT_FORMATS, updateTracker } from "./trackerDataHandler.js";
 import { trackerFormat, participantTargets } from "./settings/defaultSettings.js";
 import { buildTimeAnalysis } from "../lib/timeManager.js";
 
@@ -503,7 +503,10 @@ async function sendGenerateTrackerRequest(systemPrompt, requestPrompt, responseL
 		}
 
 		log("Parsed tracker:", { newTracker });
-		return newTracker;
+		logUnexpectedFieldKeys(newTracker, extensionSettings.trackerDef);
+		const normalizedTracker = getTracker(newTracker, extensionSettings.trackerDef, FIELD_INCLUDE_OPTIONS.ALL, true, OUTPUT_FORMATS.JSON);
+		debug("Normalized tracker after parse:", { normalizedTracker });
+		return normalizedTracker;
 		
 	} catch (err) {
 		error(`[Tracker Enhanced] ❌ sendIndependentGenerationRequest failed, falling back to old method:`, err);
@@ -528,7 +531,10 @@ async function sendGenerateTrackerRequest(systemPrompt, requestPrompt, responseL
 		}
 
 		log("Parsed tracker (fallback):", { newTracker });
-		return newTracker;
+		logUnexpectedFieldKeys(newTracker, extensionSettings.trackerDef);
+		const normalizedTracker = getTracker(newTracker, extensionSettings.trackerDef, FIELD_INCLUDE_OPTIONS.ALL, true, OUTPUT_FORMATS.JSON);
+		debug("Normalized tracker after fallback parse:", { normalizedTracker });
+		return normalizedTracker;
 	}
 }
 
@@ -756,3 +762,27 @@ export function getRequestPrompt(template, mesNum = null, includedFields) {
 	return formatTemplate(template, vars);
 }
 // #endregion
+
+function logUnexpectedFieldKeys(tracker, backendObj) {
+	if (!tracker || typeof tracker !== "object" || !backendObj || typeof backendObj !== "object") {
+		return;
+	}
+
+	const knownIds = new Set();
+	const legacyNames = new Set();
+	for (const field of Object.values(backendObj)) {
+		const fieldId = getFieldId(field);
+		if (fieldId) {
+			knownIds.add(fieldId);
+		}
+		const legacyName = getLegacyFieldName(field);
+		if (legacyName && legacyName !== fieldId) {
+			legacyNames.add(legacyName);
+		}
+	}
+
+	const unexpectedKeys = Object.keys(tracker).filter((key) => key !== "_extraFields" && !knownIds.has(key) && !legacyNames.has(key));
+	if (unexpectedKeys.length > 0) {
+		warn("[Tracker Enhanced] Parsed tracker includes unrecognized keys (expected Field IDs).", { unexpectedKeys });
+	}
+}

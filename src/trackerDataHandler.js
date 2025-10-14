@@ -1099,15 +1099,16 @@ function buildPrompt(backendObj, includeFields, indentLevel, lines) {
 
 		const fieldId = getFieldId(field);
 		const fieldLabel = getFieldLabel(field) || fieldId || "Unnamed Field";
-		const heading = `**${fieldLabel}**${fieldId ? ` (id: ${fieldId})` : ""}`;
-		const promptSuffix = field.prompt ? ` ${field.prompt}` : "";
+		const idSuffix = fieldId ? ` (Field ID: ${fieldId})` : "";
+		const promptSuffix = field.prompt ? ` — ${field.prompt}` : "";
+		const heading = `**${fieldLabel}**${idSuffix}`;
 
 		if (field.type === "FOR_EACH_OBJECT" || field.nestedFields) {
-			lines.push(`${indent}- ${heading}:${promptSuffix}`);
+			lines.push(`${indent}- ${heading}${promptSuffix}`);
 			appendExampleLines(field, indentLevel, lines);
 			buildPrompt(field.nestedFields, includeFields, indentLevel + 1, lines);
 		} else {
-			lines.push(`${indent}- ${heading}:${promptSuffix}`);
+			lines.push(`${indent}- ${heading}${promptSuffix}`);
 			appendExampleLines(field, indentLevel, lines);
 		}
 	}
