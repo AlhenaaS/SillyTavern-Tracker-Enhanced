@@ -799,6 +799,5 @@
     "trackerInjectionEnabled": true,
     "toolbarIndicatorEnabled": false,
     "participantGuidanceTemplate": "### 参与者策略\n请确保 CharactersPresent 与 Characters 始终包含以下参与者：{{participants}}。\n不要移除这些参与者；即便他们暂时未出场，也要继续推断其状态。"
-  },
-  "metadataSchemaVersion": 3
+  }
 }

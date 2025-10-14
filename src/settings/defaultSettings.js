@@ -1,6 +1,5 @@
 import { t } from "../../lib/i18n.js";
 export const DEFAULT_PRESET_NAME = "Default Built-In (EN)";
-export const TRACKER_METADATA_VERSION = 4; // Bumped to introduce tracker field id/label split
 //#region Setting Enums
 const TARGET_VALUES = {
 	BOTH: "both",
@@ -1112,7 +1111,6 @@ export const defaultSettings = {
 	debugMode: false,
 	trackerInjectionEnabled: true,
 	toolbarIndicatorEnabled: false,
-	metadataSchemaVersion: TRACKER_METADATA_VERSION,
 };
 // Default test data for development
 export const testTavernCardV2 = {

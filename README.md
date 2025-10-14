@@ -144,7 +144,7 @@ When selecting a "Dedicated Completion Preset", you'll see compatibility indicat
 - Prompt Maker auto-generates the ID from the label and shows it as a read-only badge after creation. Duplicate labels gain a numeric suffix so collisions cannot break previously saved data.
 - Template and preview generators render labels to the user but bind DOM nodes with `data-field-id` so UI updates always target the canonical identifier.
 - Tracker payloads (`/tracker save`, inline previews, presets) serialize by ID. Unknown keys are parked in `_extraFields`, making it easy to inspect legacy data without losing it.
-- `TRACKER_METADATA_VERSION` is `4`. Running **Reset Extension Defaults** or reloading bundled presets re-applies the canonical schema structure and keeps all locales aligned.
+- Running **Reset Extension Defaults** or reloading the bundled presets always re-applies the canonical schema structure and keeps every locale aligned.
 
 ### Migration Notes
 - Existing presets that only stored `name` still load thanks to the centralized identity helper. We log a single debug notice the first time an old field name is used so you know which schemas need attention.

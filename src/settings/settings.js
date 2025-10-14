@@ -4,7 +4,7 @@ import { getContext } from '../../../../../../scripts/extensions.js';
 import { extensionFolderPath, extensionSettings } from "../../index.js";
 import { error, debug, warn, toTitleCase } from "../../lib/utils.js";
 import { getSupportedLocales, setLocale, t, translateHtml, onLocaleChange, getCurrentLocale } from "../../lib/i18n.js";
-import { DEFAULT_PRESET_NAME, TRACKER_METADATA_VERSION, defaultSettings, automationTargets, participantTargets } from "./defaultSettings.js";
+import { DEFAULT_PRESET_NAME, defaultSettings, automationTargets, participantTargets } from "./defaultSettings.js";
 import { generationCaptured } from "../../lib/interconnection.js";
 import { TrackerPromptMakerModal } from "../ui/trackerPromptMakerModal.js";
 import { TrackerTemplateGenerator } from "../ui/components/trackerTemplateGenerator.js";
@@ -480,8 +480,6 @@ export async function toggleExtension(enable = true) {
  */
 export async function initSettings() {
 	const currentSettings = { ...extensionSettings };
-	const hadExistingSettings = Object.keys(currentSettings).length > 0;
-	const hadMetadataSchemaVersion = Object.prototype.hasOwnProperty.call(currentSettings, "metadataSchemaVersion");
 
 	if (!currentSettings.trackerDef) {
 		const allowedKeys = ["enabled", "generateContextTemplate", "generateSystemPrompt", "generateRequestPrompt", "roleplayPrompt", "characterDescriptionTemplate", "mesTrackerTemplate", "numberOfMessages", "responseLength", "debugMode", "devToolsEnabled"];
@@ -505,10 +503,6 @@ export async function initSettings() {
 		Object.assign(extensionSettings, defaultSettings, currentSettings);
 	}
 
-	if (hadExistingSettings && !hadMetadataSchemaVersion) {
-		extensionSettings.metadataSchemaVersion = 0;
-	}
-
 	delete extensionSettings.localePresetSnapshot;
 
 	if (!extensionSettings.selectedPreset) {
@@ -518,7 +512,6 @@ export async function initSettings() {
 	await ensureLocalePresetsRegistered();
 	registerBuiltInPresetTemplate(DEFAULT_PRESET_NAME, defaultSettings.presets?.[DEFAULT_PRESET_NAME]);
 	const legacyReport = handleLegacyTrackerPresets();
-	extensionSettings.metadataSchemaVersion = TRACKER_METADATA_VERSION;
 	notifyPresetMaintenance(legacyReport);
 
 	saveSettingsDebounced();
@@ -1785,7 +1778,6 @@ function onTrackerPromptResetClick() {
 			ensurePresetsMetadata(extensionSettings.presets);
 			const legacyReport = handleLegacyTrackerPresets();
 			notifyPresetMaintenance(legacyReport);
-			extensionSettings.metadataSchemaVersion = TRACKER_METADATA_VERSION;
 			extensionSettings.selectedPreset = DEFAULT_PRESET_NAME;
 			setSettingsInitialValues();
 			processTrackerJavascript();
