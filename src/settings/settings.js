@@ -17,7 +17,6 @@ export { automationTargets, participantTargets, trackerFormat } from "./defaultS
 
 let settingsRootElement = null;
 let localeListenerRegistered = false;
-const LEGACY_DEFAULT_PRESET_NAME = "Default-BuildIn";
 const BUILTIN_PRESET_NAMES = new Set([DEFAULT_PRESET_NAME]);
 const BUILTIN_PRESET_TEMPLATES = new Map();
 const BACKUP_PRESET_PREFIX = "❌ Backup";
@@ -480,8 +479,6 @@ export async function toggleExtension(enable = true) {
  * Saves the settings and loads the settings UI.
  */
 export async function initSettings() {
-	migrateDefaultPresetName(extensionSettings);
-
 	const currentSettings = { ...extensionSettings };
 	const hadExistingSettings = Object.keys(currentSettings).length > 0;
 	const hadMetadataSchemaVersion = Object.prototype.hasOwnProperty.call(currentSettings, "metadataSchemaVersion");
@@ -545,36 +542,6 @@ function migrateIsDynamicToPresence(obj) {
 		} else if (typeof obj[key] === "object") {
 			// Recursively migrate nested objects
 			migrateIsDynamicToPresence(obj[key]);
-		}
-	}
-}
-
-function migrateDefaultPresetName(settings) {
-	if (!settings || typeof settings !== "object") return;
-
-	const presets = settings.presets;
-	if (presets && Object.prototype.hasOwnProperty.call(presets, LEGACY_DEFAULT_PRESET_NAME)) {
-		if (!presets[DEFAULT_PRESET_NAME]) {
-			presets[DEFAULT_PRESET_NAME] = presets[LEGACY_DEFAULT_PRESET_NAME];
-		}
-		delete presets[LEGACY_DEFAULT_PRESET_NAME];
-	}
-
-	if (settings.selectedPreset === LEGACY_DEFAULT_PRESET_NAME) {
-		settings.selectedPreset = DEFAULT_PRESET_NAME;
-	}
-
-	const legacyOldSettings = settings.oldSettings;
-	if (legacyOldSettings && typeof legacyOldSettings === "object") {
-		if (legacyOldSettings.presets && Object.prototype.hasOwnProperty.call(legacyOldSettings.presets, LEGACY_DEFAULT_PRESET_NAME)) {
-			if (!legacyOldSettings.presets[DEFAULT_PRESET_NAME]) {
-				legacyOldSettings.presets[DEFAULT_PRESET_NAME] = legacyOldSettings.presets[LEGACY_DEFAULT_PRESET_NAME];
-			}
-			delete legacyOldSettings.presets[LEGACY_DEFAULT_PRESET_NAME];
-		}
-
-		if (legacyOldSettings.selectedPreset === LEGACY_DEFAULT_PRESET_NAME) {
-			legacyOldSettings.selectedPreset = DEFAULT_PRESET_NAME;
 		}
 	}
 }
@@ -1422,17 +1389,28 @@ function onPresetExportClick() {
 		toastr.error(`Preset "${presetName}" not found.`);
 		return;
 	}
-	
-	const dataStr = JSON.stringify({ [presetName]: presetData }, null, 2);
+
+	let exportPresetName = presetName;
+	if (isBuiltInPresetName(presetName)) {
+		const suffix = t("settings.presets.copySuffix", "copy");
+		const baseName = `${presetName} (${suffix})`;
+		exportPresetName = ensureUniquePresetName(baseName, extensionSettings.presets);
+	}
+
+	const dataStr = JSON.stringify({ [exportPresetName]: presetData }, null, 2);
 	const blob = new Blob([dataStr], { type: "application/json" });
 	const url = URL.createObjectURL(blob);
 
-	const a = $("<a>").attr("href", url).attr("download", `${presetName}.json`);
+	const a = $("<a>").attr("href", url).attr("download", `${exportPresetName}.json`);
 	$("body").append(a);
 	a[0].click();
 	a.remove();
 	URL.revokeObjectURL(url);
-	toastr.success(`Preset "${presetName}" exported successfully.`);
+	if (exportPresetName !== presetName) {
+		toastr.success(`Preset "${presetName}" exported as "${exportPresetName}".`);
+	} else {
+		toastr.success(`Preset "${presetName}" exported successfully.`);
+	}
 }
 
 /**
@@ -1450,6 +1428,7 @@ function onPresetImportChange(event) {
 	const file = event.target.files[0];
 	if (!file) return;
 
+	const inputElement = event.target;
 	const reader = new FileReader();
 	reader.onload = function (e) {
 		try {
@@ -1458,6 +1437,7 @@ function onPresetImportChange(event) {
 			migrateIsDynamicToPresence(importedPresets);
 			
 			const skippedBuiltIns = [];
+			let importedAny = false;
 			for (const presetName in importedPresets) {
 				if (isBuiltInPresetName(presetName)) {
 					skippedBuiltIns.push(presetName);
@@ -1465,17 +1445,26 @@ function onPresetImportChange(event) {
 				}
 				if (!extensionSettings.presets[presetName] || confirm(`Preset "${presetName}" already exists. Overwrite?`)) {
 					extensionSettings.presets[presetName] = importedPresets[presetName];
+					importedAny = true;
 				}
 			}
 			ensurePresetsMetadata(extensionSettings.presets);
 			updatePresetDropdown();
 			saveSettingsDebounced();
-			if (skippedBuiltIns.length > 0 && typeof toastr !== "undefined") {
-				toastr.warning(`Skipped built-in preset names: ${skippedBuiltIns.join(", ")}.`, "Tracker Enhanced Import");
+			if (typeof toastr !== "undefined") {
+				if (skippedBuiltIns.length > 0) {
+					toastr.warning(`Skipped built-in preset names: ${skippedBuiltIns.join(", ")}.`, "Tracker Enhanced Import");
+				} else if (importedAny) {
+					toastr.success("Presets imported successfully.");
+				}
 			}
-			toastr.success("Presets imported successfully.");
 		} catch (err) {
 			alert("Failed to import presets: " + err.message);
+		}
+	};
+	reader.onloadend = function () {
+		if (inputElement) {
+			inputElement.value = "";
 		}
 	};
 	reader.readAsText(file);
