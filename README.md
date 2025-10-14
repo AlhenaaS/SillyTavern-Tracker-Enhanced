@@ -107,8 +107,9 @@ This enhanced version significantly expands upon the original tracker with major
 1. Open SillyTavern Settings → Extensions → Tracker Enhanced
 2. Click **"Prompt Maker"** to open the field editor
 3. **Add Fields**: Use "Add Field" to create tracker properties
-4. **Configure Fields**: Set name, type, presence, and gender-specific visibility
-5. **Drag & Drop**: Reorder fields by dragging with the hamburger icon ☰
+4. **Set Display Labels**: Enter the human-facing label; the Field ID badge auto-generates a stable PascalCase identifier you can tweak before saving.
+5. **Configure Field Options**: Choose type, presence, prompts, and gender-specific visibility—IDs stay read-only once the field is created so downstream data stays aligned.
+6. **Drag & Drop**: Reorder fields by dragging with the hamburger icon ☰
 
 ### 2. **Generating Templates**
 1. After defining your fields, click **"Generate Template"**
@@ -137,6 +138,18 @@ When selecting a "Dedicated Completion Preset", you'll see compatibility indicat
 - **❌ Likely incompatible**: Preset is for a different API and may cause errors - not recommended
 
 *Tip: You can still use any preset, but compatible ones will provide the most reliable results.*
+
+## 🧱 Field Identity (Metadata v4)
+- Every tracker field now defines both a machine-safe `id` and a display-friendly `label`. Labels can contain spaces or non-Latin characters; IDs stay PascalCase so prompts, saved trackers, and templates remain deterministic.
+- Prompt Maker auto-generates the ID from the label and shows it as a read-only badge after creation. Duplicate labels gain a numeric suffix so collisions cannot break previously saved data.
+- Template and preview generators render labels to the user but bind DOM nodes with `data-field-id` so UI updates always target the canonical identifier.
+- Tracker payloads (`/tracker save`, inline previews, presets) serialize by ID. Unknown keys are parked in `_extraFields`, making it easy to inspect legacy data without losing it.
+- `TRACKER_METADATA_VERSION` is `4`. Running **Reset Extension Defaults** or reloading bundled presets re-applies the canonical schema structure and keeps all locales aligned.
+
+### Migration Notes
+- Existing presets that only stored `name` still load thanks to the centralized identity helper. We log a single debug notice the first time an old field name is used so you know which schemas need attention.
+- If you exported custom templates or prompts, update placeholders to the new field IDs (`{{defaultTracker}}` already follows the new format). Labels remain free-form, so nothing stops you from renaming UI text after migration.
+- When in doubt, export a tracker after a generation run—the JSON structure is the authoritative guide for future integrations.
 
 ## 📚 **Migration from Original**
 

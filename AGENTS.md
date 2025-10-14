@@ -61,6 +61,11 @@
 ## Prompt Maker Notes
 - Field IDs remain stable; the prompt maker now synchronises backend order with the DOM without renumbering. This preserves metadata on nested additions/removals and avoids inheriting internal flags from unrelated parents.
 
+## Field Identity QA – Oct 2025
+- Manual pass covers field creation, Unicode label edits, drag reordering, template regeneration, gender hide logic, tracker generation, `/tracker save`, and preset export—all succeeded with IDs remaining stable.
+- `lib/fieldIdentity.js` is the single point for bridging legacy `name` fields; new code should import helpers instead of re-reading `field.id` directly so fallback logs stay centralized.
+- Expect a one-time debug log when a legacy name is encountered. That is our signal to rebuild presets or reset defaults; do not strip the helper until we decide to drop name-based saves entirely.
+
 ## Preset Behaviour Updates
  - Presets now store tracker runtime flags (`automationTarget`, `participantTarget`, `showPopupFor`, `trackerFormat`, `devToolsEnabled`, `debugMode`, `trackerInjectionEnabled`, `toolbarIndicatorEnabled`) so loading a preset realigns both prompts and toggles.
 - The settings reset button is labelled “Reset Extension Defaults” and simply reapplies `defaultSettings` while preserving connection/profile settings and custom presets; built-in templates refresh automatically on reload.
