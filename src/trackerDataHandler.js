@@ -3,7 +3,17 @@ import { debug, warn } from "../lib/utils.js";
 import { buildTimeAnalysis } from "../lib/timeManager.js";
 
 import { jsonToYAML, yamlToJSON } from "../lib/ymlParser.js";
+import {
+	getExistingFieldKey,
+	getFieldId,
+	getFieldLabel,
+	getLegacyFieldName,
+	resolveTrackerValue,
+	deleteFieldFromNode,
+} from "../lib/fieldIdentity.js";
 import { TrackerPreviewManager } from "./ui/trackerPreviewManager.js";
+
+export { getFieldId, getFieldLabel, getLegacyFieldName } from "../lib/fieldIdentity.js";
 
 export const FIELD_INCLUDE_OPTIONS = {
 	DYNAMIC: "dynamic",
@@ -286,8 +296,11 @@ function processFieldDefaults(backendObj, trackerObj, includeFields) {
 	for (const field of Object.values(backendObj)) {
 		if (!shouldIncludeField(field, includeFields)) continue;
 
+		const fieldId = getFieldId(field);
+		if (!fieldId) continue;
+
 		const handler = FIELD_TYPES_HANDLERS[field.type] || handleString;
-		trackerObj[field.name] = handler(field, includeFields, null, null, null, null, true);
+		trackerObj[fieldId] = handler(field, includeFields, null, null, null, null, true);
 	}
 }
 
@@ -299,25 +312,34 @@ function seedTrackerParticipants(trackerObj, backendObj, includeFields, particip
 
 	const charactersPresentField = findFieldByName(backendObj, "CharactersPresent");
 	if (charactersPresentField && shouldIncludeField(charactersPresentField, includeFields)) {
-		trackerObj.CharactersPresent = participants;
+		const charactersPresentId = getFieldId(charactersPresentField);
+		if (charactersPresentId) {
+			trackerObj[charactersPresentId] = participants;
+		}
 	}
 
 	const charactersField = findFieldByName(backendObj, "Characters");
 	if (charactersField && shouldIncludeField(charactersField, includeFields)) {
 		const nestedFields = charactersField.nestedFields || {};
+		const charactersFieldId = getFieldId(charactersField);
+		if (!charactersFieldId) {
+			return trackerObj;
+		}
 		const characterEntries = {};
 
 		participants.forEach((participantName, index) => {
 			const entry = {};
 			for (const nestedField of Object.values(nestedFields)) {
 				if (!shouldIncludeField(nestedField, includeFields)) continue;
+				const nestedFieldId = getFieldId(nestedField);
+				if (!nestedFieldId) continue;
 				const handler = FIELD_TYPES_HANDLERS[nestedField.type] || handleString;
-				entry[nestedField.name] = handler(nestedField, includeFields, null, null, null, index, true);
+				entry[nestedFieldId] = handler(nestedField, includeFields, null, null, null, index, true);
 			}
 			characterEntries[participantName] = entry;
 		});
 
-		trackerObj.Characters = characterEntries;
+		trackerObj[charactersFieldId] = characterEntries;
 	}
 
 	return trackerObj;
@@ -346,6 +368,16 @@ function findFieldByName(backendObj, fieldName) {
 	}
 
 	for (const field of Object.values(backendObj)) {
+		const currentId = getFieldId(field);
+		if (currentId && currentId === fieldName) {
+			return field;
+		}
+
+		const legacyName = getLegacyFieldName(field);
+		if (legacyName && legacyName === fieldName) {
+			return field;
+		}
+
 		if (field?.name === fieldName) {
 			return field;
 		}
@@ -354,18 +386,26 @@ function findFieldByName(backendObj, fieldName) {
 }
 
 function reconcileTracker(trackerInput, backendObj, reconciledObj, extraFields, includeFields) {
+	const recognizedKeys = new Set();
 	for (const field of Object.values(backendObj)) {
 		if (!shouldIncludeField(field, includeFields)) continue;
 
-		const fieldName = field.name;
-		const trackerValue = trackerInput[fieldName];
+		const fieldId = getFieldId(field);
+		if (!fieldId) continue;
+		recognizedKeys.add(fieldId);
+		const legacyName = getLegacyFieldName(field);
+		if (legacyName && legacyName !== fieldId) {
+			recognizedKeys.add(legacyName);
+		}
+
+		const trackerValue = resolveTrackerValue(trackerInput, field);
 		const handler = FIELD_TYPES_HANDLERS[field.type] || handleString;
-		reconciledObj[fieldName] = handler(field, includeFields, null, trackerValue, extraFields);
+		reconciledObj[fieldId] = handler(field, includeFields, null, trackerValue, extraFields);
 	}
 
 	// Handle extra fields
 	for (const key in trackerInput) {
-		if (!Object.prototype.hasOwnProperty.call(reconciledObj, key) && key !== "_extraFields") {
+		if (!recognizedKeys.has(key) && key !== "_extraFields") {
 			extraFields[key] = trackerInput[key]; // Preserve original structure and data type
 		}
 	}
@@ -377,19 +417,27 @@ function reconcileTracker(trackerInput, backendObj, reconciledObj, extraFields, 
 }
 
 function reconcileUpdatedTracker(tracker, updatedTracker, backendObj, finalTracker, extraFields, fieldPath = "", includeUnmatchedFields, useUpdatedExtraFieldsAsSource = false) {
+	const recognizedKeys = new Set();
 	for (const field of Object.values(backendObj)) {
-		const fieldName = field.name;
-		const handler = FIELD_TYPES_HANDLERS[field.type] || handleString;
-		const trackerValue = tracker[fieldName];
-		const updatedValue = updatedTracker[fieldName];
+		const fieldId = getFieldId(field);
+		if (!fieldId) continue;
+		recognizedKeys.add(fieldId);
+		const legacyName = getLegacyFieldName(field);
+		if (legacyName && legacyName !== fieldId) {
+			recognizedKeys.add(legacyName);
+		}
 
-		debug("Reconciling field:", { fieldName, fieldPath, trackerValue, updatedValue });
-		finalTracker[fieldName] = handler(field, FIELD_INCLUDE_OPTIONS.ALL, null, updatedValue !== undefined ? updatedValue : trackerValue, extraFields);
+		const handler = FIELD_TYPES_HANDLERS[field.type] || handleString;
+		const trackerValue = resolveTrackerValue(tracker, field);
+		const updatedValue = resolveTrackerValue(updatedTracker, field);
+
+		debug("Reconciling field:", { fieldId, fieldPath, trackerValue, updatedValue });
+		finalTracker[fieldId] = handler(field, FIELD_INCLUDE_OPTIONS.ALL, null, updatedValue !== undefined ? updatedValue : trackerValue, extraFields);
 	}
 
 	if (includeUnmatchedFields) {
 		for (const key in updatedTracker) {
-			if (!Object.prototype.hasOwnProperty.call(finalTracker, key) && key !== "_extraFields") {
+			if (!recognizedKeys.has(key) && key !== "_extraFields") {
 				extraFields[key] = updatedTracker[key]; // Preserve original structure and data type
 			}
 		}
@@ -397,7 +445,7 @@ function reconcileUpdatedTracker(tracker, updatedTracker, backendObj, finalTrack
 		if (!useUpdatedExtraFieldsAsSource) {
 			// Handle extra fields from the original tracker
 			for (const key in tracker) {
-				if (!Object.prototype.hasOwnProperty.call(finalTracker, key) && !Object.prototype.hasOwnProperty.call(extraFields, key) && key !== "_extraFields") {
+				if (!recognizedKeys.has(key) && !Object.prototype.hasOwnProperty.call(extraFields, key) && key !== "_extraFields") {
 					extraFields[key] = tracker[key]; // Preserve original structure and data type
 				}
 			}
@@ -451,23 +499,29 @@ function removeInternalOnlyFields(trackerNode, backendNode, collector = null, so
 			continue;
 		}
 
-		const metadata = field.metadata || {};
-		const fieldName = field.name;
-		if (!fieldName || !Object.prototype.hasOwnProperty.call(trackerNode, fieldName)) {
+		const fieldId = getFieldId(field);
+		if (!fieldId) {
 			continue;
 		}
 
+		const trackerKey = getExistingFieldKey(trackerNode, field);
+		if (!trackerKey) {
+			continue;
+		}
+
+		const metadata = field.metadata || {};
+		const trackerValue = trackerNode[trackerKey];
+		const sourceValue = resolveTrackerValue(sourceNode, field);
+
 		const isInternalOnly = metadata.internalOnly === true || (metadata.internal && metadata.external === false);
 		if (isInternalOnly) {
-			if (collector && Object.prototype.hasOwnProperty.call(trackerNode, fieldName)) {
-				const sourceValue = sourceNode && typeof sourceNode === "object" && Object.prototype.hasOwnProperty.call(sourceNode, fieldName)
-					? sourceNode[fieldName]
-					: trackerNode[fieldName];
-				if (typeof sourceValue !== "undefined") {
-					collector[fieldName] = cloneTrackerData(sourceValue);
+			if (collector) {
+				const valueToCollect = typeof sourceValue !== "undefined" ? sourceValue : trackerValue;
+				if (typeof valueToCollect !== "undefined") {
+					collector[fieldId] = cloneTrackerData(valueToCollect);
 				}
 			}
-			delete trackerNode[fieldName];
+			deleteFieldFromNode(trackerNode, field);
 			continue;
 		}
 
@@ -476,8 +530,6 @@ function removeInternalOnlyFields(trackerNode, backendNode, collector = null, so
 			continue;
 		}
 
-		const trackerValue = trackerNode[fieldName];
-		const sourceValue = sourceNode && typeof sourceNode === "object" ? sourceNode[fieldName] : undefined;
 		if (!trackerValue || typeof trackerValue !== "object") {
 			continue;
 		}
@@ -485,12 +537,12 @@ function removeInternalOnlyFields(trackerNode, backendNode, collector = null, so
 		if (field.type === "OBJECT" || field.type === "ARRAY_OBJECT") {
 			let nestedCollector = null;
 			if (collector) {
-				nestedCollector = collector[fieldName] || (collector[fieldName] = {});
+				nestedCollector = collector[fieldId] || (collector[fieldId] = {});
 			}
 			const nextSource = sourceValue && typeof sourceValue === "object" ? sourceValue : undefined;
 			removeInternalOnlyFields(trackerValue, nestedFields, nestedCollector, nextSource);
 			if (collector && nestedCollector && Object.keys(nestedCollector).length === 0) {
-				delete collector[fieldName];
+				delete collector[fieldId];
 			}
 		} else if (field.type === "FOR_EACH_OBJECT") {
 			const parentSource = sourceValue && typeof sourceValue === "object" ? sourceValue : undefined;
@@ -502,7 +554,7 @@ function removeInternalOnlyFields(trackerNode, backendNode, collector = null, so
 
 				let itemCollector = null;
 				if (collector) {
-					const parentCollector = collector[fieldName] || (collector[fieldName] = {});
+					const parentCollector = collector[fieldId] || (collector[fieldId] = {});
 					itemCollector = parentCollector[key] || (parentCollector[key] = {});
 				}
 
@@ -510,12 +562,12 @@ function removeInternalOnlyFields(trackerNode, backendNode, collector = null, so
 				removeInternalOnlyFields(item, nestedFields, itemCollector, sourceItem);
 
 				if (collector && itemCollector && Object.keys(itemCollector).length === 0) {
-					delete collector[fieldName][key];
+					delete collector[fieldId][key];
 				}
 			}
 
-			if (collector && collector[fieldName] && Object.keys(collector[fieldName]).length === 0) {
-				delete collector[fieldName];
+			if (collector && collector[fieldId] && Object.keys(collector[fieldId]).length === 0) {
+				delete collector[fieldId];
 			}
 		} else if (field.type === "FOR_EACH_ARRAY") {
 			const parentSource = sourceValue && typeof sourceValue === "object" ? sourceValue : undefined;
@@ -527,7 +579,7 @@ function removeInternalOnlyFields(trackerNode, backendNode, collector = null, so
 
 				let arrayCollector = null;
 				if (collector) {
-					const parentCollector = collector[fieldName] || (collector[fieldName] = {});
+					const parentCollector = collector[fieldId] || (collector[fieldId] = {});
 					arrayCollector = parentCollector[key] || (parentCollector[key] = []);
 				}
 
@@ -555,15 +607,15 @@ function removeInternalOnlyFields(trackerNode, backendNode, collector = null, so
 				if (collector && Array.isArray(arrayCollector)) {
 					const cleanedArray = arrayCollector.filter((entry) => entry && Object.keys(entry).length > 0);
 					if (cleanedArray.length > 0) {
-						collector[fieldName][key] = cleanedArray;
+						collector[fieldId][key] = cleanedArray;
 					} else {
-						delete collector[fieldName][key];
+						delete collector[fieldId][key];
 					}
 				}
 			}
 
-			if (collector && collector[fieldName] && Object.keys(collector[fieldName]).length === 0) {
-				delete collector[fieldName];
+			if (collector && collector[fieldId] && Object.keys(collector[fieldId]).length === 0) {
+				delete collector[fieldId];
 			}
 		}
 	}
@@ -644,6 +696,7 @@ function logInternalStoryEvents(tracker) {
 }
 
 function handleString(field, includeFields, index = null, trackerValue = null, extraFields = null, charIndex = null, useDefaults = false) {
+	const fieldId = getFieldId(field);
 	const hasValue = trackerValue !== null && typeof trackerValue !== "undefined";
 
 	if (hasValue) {
@@ -656,7 +709,9 @@ function handleString(field, includeFields, index = null, trackerValue = null, e
 		}
 
 		if (extraFields && typeof extraFields === "object") {
-			extraFields[field.name] = trackerValue;
+			if (fieldId) {
+				extraFields[fieldId] = trackerValue;
+			}
 		}
 
 		return useDefaults ? (field.defaultValue || "Updated if Changed") : "";
@@ -687,12 +742,15 @@ function handleString(field, includeFields, index = null, trackerValue = null, e
 }
 
 function handleArray(field, includeFields, index = null, trackerValue = null, extraFields = null, charIndex = null, useDefaults = false) {
+	const fieldId = getFieldId(field);
 	if (trackerValue !== null && Array.isArray(trackerValue)) {
 		return trackerValue;
 	} else if (trackerValue !== null) {
 		// Type mismatch detected
 		if (extraFields && typeof extraFields === "object") {
-			extraFields[field.name] = trackerValue;
+			if (fieldId) {
+				extraFields[fieldId] = trackerValue;
+			}
 		}
 		return useDefaults ? buildArrayDefault(field, index, charIndex) : [];
 	}
@@ -745,6 +803,7 @@ function resolveForEachKeys(field, index = null) {
 }
 
 function handleObject(field, includeFields, index = null, trackerValue = null, extraFields = null, charIndex = null, useDefaults = false) {
+	const fieldId = getFieldId(field);
 	const obj = {};
 	const nestedFields = field.nestedFields || {};
 
@@ -753,22 +812,28 @@ function handleObject(field, includeFields, index = null, trackerValue = null, e
 		for (const nestedField of Object.values(nestedFields)) {
 			if (!shouldIncludeField(nestedField, includeFields)) continue;
 			const handler = FIELD_TYPES_HANDLERS[nestedField.type] || handleString;
-			const nestedValue = trackerValue[nestedField.name];
-			obj[nestedField.name] = handler(nestedField, includeFields, null, nestedValue, extraFields && typeof extraFields === "object" ? extraFields : null, charIndex, useDefaults);
+			const nestedFieldId = getFieldId(nestedField);
+			if (!nestedFieldId) continue;
+			const nestedValue = resolveTrackerValue(trackerValue, nestedField);
+			obj[nestedFieldId] = handler(nestedField, includeFields, null, nestedValue, extraFields && typeof extraFields === "object" ? extraFields : null, charIndex, useDefaults);
 		}
 
 		// Handle extra fields in the nested object
 		for (const key in trackerValue) {
 			if (!Object.prototype.hasOwnProperty.call(obj, key)) {
 				if (extraFields && typeof extraFields === "object") {
-					extraFields[field.name] = extraFields[field.name] || {};
-					extraFields[field.name][key] = trackerValue[key];
+					if (fieldId) {
+						extraFields[fieldId] = extraFields[fieldId] || {};
+						extraFields[fieldId][key] = trackerValue[key];
+					}
 				}
 			}
 		}
 	} else {
 		if (trackerValue !== null && typeof extraFields === "object") {
-			extraFields[field.name] = trackerValue;
+			if (fieldId) {
+				extraFields[fieldId] = trackerValue;
+			}
 		}
 		if (!useDefaults) {
 			return {};
@@ -777,7 +842,9 @@ function handleObject(field, includeFields, index = null, trackerValue = null, e
 		for (const nestedField of Object.values(nestedFields)) {
 			if (!shouldIncludeField(nestedField, includeFields)) continue;
 			const handler = FIELD_TYPES_HANDLERS[nestedField.type] || handleString;
-			obj[nestedField.name] = handler(nestedField, includeFields, index, null, extraFields, charIndex, useDefaults);
+			const nestedFieldId = getFieldId(nestedField);
+			if (!nestedFieldId) continue;
+			obj[nestedFieldId] = handler(nestedField, includeFields, index, null, extraFields, charIndex, useDefaults);
 		}
 	}
 
@@ -785,7 +852,20 @@ function handleObject(field, includeFields, index = null, trackerValue = null, e
 }
 
 function handleForEachObject(field, includeFields, index = null, trackerValue = null, extraFields = null, charIndex = null, useDefaults = false) {
+	const fieldId = getFieldId(field);
 	const nestedFields = field.nestedFields || {};
+	const nestedFieldList = Object.values(nestedFields);
+	const recognizedNestedKeys = new Set();
+	for (const nestedField of nestedFieldList) {
+		const nestedId = getFieldId(nestedField);
+		if (nestedId) {
+			recognizedNestedKeys.add(nestedId);
+		}
+		const legacyName = getLegacyFieldName(nestedField);
+		if (legacyName && legacyName !== nestedId) {
+			recognizedNestedKeys.add(legacyName);
+		}
+	}
 
 	if (trackerValue !== null && typeof trackerValue === "object" && !Array.isArray(trackerValue)) {
 		// Process existing trackerValue
@@ -795,16 +875,18 @@ function handleForEachObject(field, includeFields, index = null, trackerValue = 
 			let extraNestedFields = null;
 
 			const nestedSource = value && typeof value === "object" ? value : {};
-			for (const nestedField of Object.values(nestedFields)) {
+			for (const nestedField of nestedFieldList) {
 				if (!shouldIncludeField(nestedField, includeFields)) continue;
 				const handler = FIELD_TYPES_HANDLERS[nestedField.type] || handleString;
-				const nestedValue = nestedSource[nestedField.name];
-				obj[nestedField.name] = handler(nestedField, includeFields, null, nestedValue, extraNestedFields, null, useDefaults);
+				const nestedFieldId = getFieldId(nestedField);
+				if (!nestedFieldId) continue;
+				const nestedValue = resolveTrackerValue(nestedSource, nestedField);
+				obj[nestedFieldId] = handler(nestedField, includeFields, null, nestedValue, extraNestedFields, null, useDefaults);
 			}
 
 			// Handle extra fields in the nested object
 			for (const nestedKey in nestedSource) {
-				if (!Object.prototype.hasOwnProperty.call(obj, nestedKey)) {
+				if (!recognizedNestedKeys.has(nestedKey)) {
 					if (extraFields && typeof extraFields === "object") {
 						extraNestedFields = extraNestedFields || {};
 						extraNestedFields[nestedKey] = nestedSource[nestedKey];
@@ -812,9 +894,9 @@ function handleForEachObject(field, includeFields, index = null, trackerValue = 
 				}
 			}
 
-			if (extraFields && extraNestedFields) {
-				extraFields[field.name] = extraFields[field.name] || {};
-				extraFields[field.name][key] = extraNestedFields;
+			if (extraFields && extraNestedFields && fieldId) {
+				extraFields[fieldId] = extraFields[fieldId] || {};
+				extraFields[fieldId][key] = extraNestedFields;
 			}
 
 			result[key] = obj;
@@ -830,7 +912,9 @@ function handleForEachObject(field, includeFields, index = null, trackerValue = 
 				return {};
 			}
 		} else if (extraFields && typeof extraFields === "object") {
-			extraFields[field.name] = trackerValue;
+			if (fieldId) {
+				extraFields[fieldId] = trackerValue;
+			}
 		}
 	}
 
@@ -844,10 +928,12 @@ function handleForEachObject(field, includeFields, index = null, trackerValue = 
 	for (let cIndex = 0; cIndex < keys.length; cIndex++) {
 		const characterName = keys[cIndex];
 		const obj = {};
-		for (const nestedField of Object.values(nestedFields)) {
+		for (const nestedField of nestedFieldList) {
 			if (!shouldIncludeField(nestedField, includeFields)) continue;
 			const handler = FIELD_TYPES_HANDLERS[nestedField.type] || handleString;
-			obj[nestedField.name] = handler(nestedField, includeFields, index, null, extraFields, cIndex, useDefaults);
+			const nestedFieldId = getFieldId(nestedField);
+			if (!nestedFieldId) continue;
+			obj[nestedFieldId] = handler(nestedField, includeFields, index, null, extraFields, cIndex, useDefaults);
 		}
 		result[characterName] = obj;
 	}
@@ -855,18 +941,30 @@ function handleForEachObject(field, includeFields, index = null, trackerValue = 
 }
 
 function handleForEachArray(field, includeFields, index = null, trackerValue = null, extraFields = null, charIndex = null, useDefaults = false) {
+	const fieldId = getFieldId(field);
 	const nestedFields = field.nestedFields || {};
 
 	const nestedFieldArray = Object.values(nestedFields);
 	const singleStringField = nestedFieldArray.length === 1 && nestedFieldArray[0].type === "STRING";
+	const recognizedNestedKeys = new Set();
+	for (const nf of nestedFieldArray) {
+		const nestedId = getFieldId(nf);
+		if (nestedId) {
+			recognizedNestedKeys.add(nestedId);
+		}
+		const legacyName = getLegacyFieldName(nf);
+		if (legacyName && legacyName !== nestedId) {
+			recognizedNestedKeys.add(legacyName);
+		}
+	}
 
 	if (trackerValue !== null && typeof trackerValue === "object" && !Array.isArray(trackerValue)) {
 		const result = {};
 		for (const [key, value] of Object.entries(trackerValue)) {
 			if (!Array.isArray(value)) {
-				if (extraFields && typeof extraFields === "object") {
-					extraFields[field.name] = extraFields[field.name] || {};
-					extraFields[field.name][key] = value;
+				if (extraFields && typeof extraFields === "object" && fieldId) {
+					extraFields[fieldId] = extraFields[fieldId] || {};
+					extraFields[fieldId][key] = value;
 				}
 				result[key] = singleStringField ? [] : [];
 				continue;
@@ -877,44 +975,46 @@ function handleForEachArray(field, includeFields, index = null, trackerValue = n
 				for (const v of value) {
 					if (typeof v === "string") {
 						filteredValues.push(v);
-					} else if (extraFields && typeof extraFields === "object") {
-						extraFields[field.name] = extraFields[field.name] || {};
-						extraFields[field.name][key] = extraFields[field.name][key] || [];
-						extraFields[field.name][key].push(v);
+					} else if (extraFields && typeof extraFields === "object" && fieldId) {
+						extraFields[fieldId] = extraFields[fieldId] || {};
+						extraFields[fieldId][key] = extraFields[fieldId][key] || [];
+						extraFields[fieldId][key].push(v);
 					}
 				}
 				result[key] = filteredValues;
 			} else {
 				const arrayOfObjects = [];
 				for (const arrItem of value) {
-					if (typeof arrItem === "object" && !Array.isArray(arrItem)) {
+					if (arrItem && typeof arrItem === "object" && !Array.isArray(arrItem)) {
 						const obj = {};
 						let extraNestedFields = null;
 						for (const nf of nestedFieldArray) {
 							if (!shouldIncludeField(nf, includeFields)) continue;
 							const handler = FIELD_TYPES_HANDLERS[nf.type] || handleString;
-							const arrItemVal = arrItem[nf.name];
-							obj[nf.name] = handler(nf, includeFields, null, arrItemVal, extraNestedFields, null, useDefaults);
+							const nestedFieldId = getFieldId(nf);
+							if (!nestedFieldId) continue;
+							const arrItemVal = resolveTrackerValue(arrItem, nf);
+							obj[nestedFieldId] = handler(nf, includeFields, null, arrItemVal, extraNestedFields, null, useDefaults);
 						}
 
 						for (const nestedKey in arrItem) {
-							if (!Object.prototype.hasOwnProperty.call(obj, nestedKey)) {
+							if (!recognizedNestedKeys.has(nestedKey)) {
 								extraNestedFields = extraNestedFields || {};
 								extraNestedFields[nestedKey] = arrItem[nestedKey];
 							}
 						}
 
-						if (extraNestedFields && extraFields && typeof extraFields === "object") {
-							extraFields[field.name] = extraFields[field.name] || {};
-							extraFields[field.name][key] = extraFields[field.name][key] || [];
-							extraFields[field.name][key].push(extraNestedFields);
+						if (extraNestedFields && extraFields && typeof extraFields === "object" && fieldId) {
+							extraFields[fieldId] = extraFields[fieldId] || {};
+							extraFields[fieldId][key] = extraFields[fieldId][key] || [];
+							extraFields[fieldId][key].push(extraNestedFields);
 						}
 
 						arrayOfObjects.push(obj);
-					} else if (extraFields && typeof extraFields === "object") {
-						extraFields[field.name] = extraFields[field.name] || {};
-						extraFields[field.name][key] = extraFields[field.name][key] || [];
-						extraFields[field.name][key].push(arrItem);
+					} else if (extraFields && typeof extraFields === "object" && fieldId) {
+						extraFields[fieldId] = extraFields[fieldId] || {};
+						extraFields[fieldId][key] = extraFields[fieldId][key] || [];
+						extraFields[fieldId][key].push(arrItem);
 					}
 				}
 				result[key] = arrayOfObjects;
@@ -930,8 +1030,8 @@ function handleForEachArray(field, includeFields, index = null, trackerValue = n
 			if (!normalized || normalized.toLowerCase() === "none") {
 				return {};
 			}
-		} else if (extraFields && typeof extraFields === "object") {
-			extraFields[field.name] = trackerValue;
+		} else if (extraFields && typeof extraFields === "object" && fieldId) {
+			extraFields[fieldId] = trackerValue;
 		}
 	}
 
@@ -980,7 +1080,9 @@ function handleForEachArray(field, includeFields, index = null, trackerValue = n
 			for (const nf of nestedFieldArray) {
 				if (!shouldIncludeField(nf, includeFields)) continue;
 				const handler = FIELD_TYPES_HANDLERS[nf.type] || handleString;
-				arrItem[nf.name] = handler(nf, includeFields, index, null, extraFields, cIndex, useDefaults);
+				const nestedFieldId = getFieldId(nf);
+				if (!nestedFieldId) continue;
+				arrItem[nestedFieldId] = handler(nf, includeFields, index, null, extraFields, cIndex, useDefaults);
 			}
 			result[characterName] = [arrItem];
 		}
@@ -995,12 +1097,17 @@ function buildPrompt(backendObj, includeFields, indentLevel, lines) {
 		if (!shouldIncludeField(field, includeFields)) continue;
 		if (!field.prompt && !field.nestedFields && (!field.exampleValues || field.exampleValues.length === 0)) continue;
 
+		const fieldId = getFieldId(field);
+		const fieldLabel = getFieldLabel(field) || fieldId || "Unnamed Field";
+		const heading = `**${fieldLabel}**${fieldId ? ` (id: ${fieldId})` : ""}`;
+		const promptSuffix = field.prompt ? ` ${field.prompt}` : "";
+
 		if (field.type === "FOR_EACH_OBJECT" || field.nestedFields) {
-			lines.push(`${indent}- **${field.name}:**${field.prompt ? " " + field.prompt : ""}`);
+			lines.push(`${indent}- ${heading}:${promptSuffix}`);
 			appendExampleLines(field, indentLevel, lines);
 			buildPrompt(field.nestedFields, includeFields, indentLevel + 1, lines);
 		} else {
-			lines.push(`${indent}- **${field.name}:** ${field.prompt}`);
+			lines.push(`${indent}- ${heading}:${promptSuffix}`);
 			appendExampleLines(field, indentLevel, lines);
 		}
 	}

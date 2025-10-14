@@ -1,4 +1,5 @@
 import { debug } from "../../../lib/utils.js";
+import { getFieldId, getFieldLabel } from "../../../lib/fieldIdentity.js";
 
 /**
  * Generates JavaScript code for tracker gender-specific field hiding
@@ -54,55 +55,60 @@ export class TrackerJavaScriptGenerator {
             'all': []
         };
 
-        const normalizeDisplayName = (rawName) => {
-            if (!rawName) return "";
-            switch (rawName) {
-                case "StateOfDress":
-                    return "State";
-                case "PostureAndInteraction":
-                    return "Position";
-                default:
-                    return rawName;
-            }
-        };
+		const normalizeDisplayName = (fieldId, fallbackLabel) => {
+			const base = fallbackLabel || fieldId || "";
+			switch (fieldId) {
+				case "StateOfDress":
+					return "State";
+				case "PostureAndInteraction":
+					return "Position";
+				default:
+					return base;
+			}
+		};
 
-        // Look for the Characters field (FOR_EACH_OBJECT type)
-        for (const [fieldKey, fieldData] of Object.entries(trackerDef)) {
-            if (!fieldData || typeof fieldData !== 'object') continue;
-            
-            const fieldType = fieldData.type;
-            const isCharactersField = fieldType === 'FOR_EACH_OBJECT' && fieldData.nestedFields;
-            
-            if (isCharactersField) {
-                if (typeof debug === 'function') {
-                    debug(`TrackerJavaScriptGenerator: Found Characters field: ${fieldKey}`);
-                }
-                
-                // Process nested character fields
-                for (const [nestedKey, nestedData] of Object.entries(fieldData.nestedFields)) {
-                    if (!nestedData || typeof nestedData !== 'object') continue;
-                    
-                    const fieldName = nestedData.name || nestedKey;
-                    const displayName = normalizeDisplayName(fieldName);
-                    const genderSpecific = nestedData.genderSpecific || 'all'; // Default to 'all'
-                    const metadata = nestedData.metadata || {};
-                    const internalKeyId = metadata.internalKeyId || null;
-                    
-                    if (typeof debug === 'function') {
-                        debug(`TrackerJavaScriptGenerator: Processing field ${fieldName} with genderSpecific: ${genderSpecific}`);
-                    }
-                    
-                    if (genderFields[genderSpecific]) {
-                        genderFields[genderSpecific].push({
-                            fieldId: nestedKey,
-                            internalKeyId,
-                            label: `${displayName}:`
-                        });
-                    }
-                }
-                break; // Only process the first Characters field found
-            }
-        }
+		for (const [fieldKey, fieldData] of Object.entries(trackerDef || {})) {
+			if (!fieldData || typeof fieldData !== "object") {
+				continue;
+			}
+
+			const fieldType = fieldData.type;
+			const hasNestedFields = fieldData.nestedFields && Object.keys(fieldData.nestedFields).length > 0;
+			const fieldId = getFieldId(fieldData) || fieldKey;
+			const isCharactersField = fieldType === "FOR_EACH_OBJECT" && hasNestedFields;
+
+			if (isCharactersField) {
+				if (typeof debug === "function") {
+					debug(`TrackerJavaScriptGenerator: Found Characters field: ${fieldId}`);
+				}
+
+				for (const [nestedKey, nestedData] of Object.entries(fieldData.nestedFields || {})) {
+					if (!nestedData || typeof nestedData !== "object") {
+						continue;
+					}
+
+					const nestedId = getFieldId(nestedData) || nestedKey;
+					const nestedLabel = getFieldLabel(nestedData) || nestedId;
+					const displayName = normalizeDisplayName(nestedId, nestedLabel);
+					const genderSpecific = nestedData.genderSpecific || "all";
+					const metadata = nestedData.metadata || {};
+					const internalKeyId = metadata.internalKeyId || null;
+
+					if (typeof debug === "function") {
+						debug(`TrackerJavaScriptGenerator: Processing field ${nestedId} with genderSpecific: ${genderSpecific}`);
+					}
+
+					if (genderFields[genderSpecific]) {
+						genderFields[genderSpecific].push({
+							fieldId: nestedId,
+							internalKeyId,
+							label: `${displayName}:`,
+						});
+					}
+				}
+				break;
+			}
+		}
 
         return genderFields;
     }

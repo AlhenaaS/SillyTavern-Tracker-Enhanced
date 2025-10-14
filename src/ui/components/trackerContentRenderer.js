@@ -1,9 +1,11 @@
 import { extensionSettings } from "../../../index.js";
+import { assignTrackerValue, getFieldId, getFieldLabel, resolveTrackerValue } from "../../../lib/fieldIdentity.js";
 import { TrackerPromptMaker } from "./trackerPromptMaker.js";
 
 export class TrackerContentRenderer {
 	constructor() {
 		this.schema = extensionSettings.trackerDef;
+		this.cachedCharactersFieldId = null;
 	}
 
 	get FIELD_TYPES() {
@@ -12,6 +14,39 @@ export class TrackerContentRenderer {
 			types[key] = key;
 		});
 		return types;
+	}
+
+	getFieldIdentity(fieldSchema, schemaKey = "") {
+		const fieldId = getFieldId(fieldSchema) || schemaKey || "";
+		const fieldLabel = getFieldLabel(fieldSchema) || fieldId || "";
+		return { fieldId, fieldLabel };
+	}
+
+	resolveFieldValue(source, fieldSchema) {
+		return resolveTrackerValue(source, fieldSchema);
+	}
+
+	assignFieldValue(target, fieldSchema, value) {
+		if (!target || typeof target !== "object") {
+			return;
+		}
+		assignTrackerValue(target, fieldSchema, value);
+	}
+
+	getCharactersFieldId() {
+		if (this.cachedCharactersFieldId) {
+			return this.cachedCharactersFieldId;
+		}
+		for (const fieldSchema of Object.values(this.schema || {})) {
+			if (this.isCharactersField(fieldSchema)) {
+				const fieldId = getFieldId(fieldSchema);
+				if (fieldId) {
+					this.cachedCharactersFieldId = fieldId;
+					return fieldId;
+				}
+			}
+		}
+		return "";
 	}
 
 	/**
@@ -28,13 +63,14 @@ export class TrackerContentRenderer {
 
 		const createFields = (object, schema, parentElement, context = {}) => {
 			const sourceObject = object && typeof object === "object" ? object : {};
-			for (const [fieldId, fieldSchema] of Object.entries(schema)) {
+			for (const [schemaKey, fieldSchema] of Object.entries(schema || {})) {
 				const metadata = fieldSchema.metadata || {};
 				if ((!includeInternal && metadata.internalOnly) || (includeInternal && !metadata.internalOnly)) {
 					continue;
 				}
 
-				const value = sourceObject[fieldSchema.name];
+				const { fieldId, fieldLabel } = this.getFieldIdentity(fieldSchema, schemaKey);
+				const value = this.resolveFieldValue(sourceObject, fieldSchema);
 				const fieldType = fieldSchema.type;
 
 				const wrapper = document.createElement("div");
@@ -43,7 +79,7 @@ export class TrackerContentRenderer {
 
 				const label = document.createElement("span");
 				label.className = "tracker-view-label";
-				label.textContent = `${fieldSchema.name}: `;
+				label.textContent = `${fieldLabel}: `;
 				wrapper.appendChild(label);
 
 				switch (fieldType) {
@@ -252,13 +288,14 @@ export class TrackerContentRenderer {
 		};
 
 		const createEditorFields = (object, schema, parentElement, context = {}) => {
-			for (const [fieldId, fieldSchema] of Object.entries(schema)) {
+			for (const [schemaKey, fieldSchema] of Object.entries(schema || {})) {
 				const metadata = fieldSchema.metadata || {};
 				if (metadata.internalOnly) {
 					continue;
 				}
 
-				const value = object[fieldSchema.name];
+				const { fieldId, fieldLabel } = this.getFieldIdentity(fieldSchema, schemaKey);
+				let value = this.resolveFieldValue(object, fieldSchema);
 				const fieldType = fieldSchema.type;
 
 				const wrapper = document.createElement("div");
@@ -267,13 +304,16 @@ export class TrackerContentRenderer {
 
 				const label = document.createElement("label");
 				label.className = "tracker-editor-label";
-				label.textContent = `${fieldSchema.name}: `;
+				label.textContent = `${fieldLabel}: `;
 				wrapper.appendChild(label);
 
 				switch (fieldType) {
 					case this.FIELD_TYPES.ARRAY: {
 						const arrayValue = Array.isArray(value) ? value : [];
-						object[fieldSchema.name] = arrayValue;
+						if (!Array.isArray(value)) {
+							this.assignFieldValue(object, fieldSchema, arrayValue);
+							value = arrayValue;
+						}
 
 						const listContainer = document.createElement("div");
 						listContainer.className = "tracker-editor-list";
@@ -316,8 +356,11 @@ export class TrackerContentRenderer {
 					}
 					case this.FIELD_TYPES.ARRAY_OBJECT:
 					case this.FIELD_TYPES.OBJECT: {
-						const nestedObject = value || {};
-						object[fieldSchema.name] = nestedObject;
+						const nestedObject = value && typeof value === "object" ? value : {};
+						if (nestedObject !== value) {
+							this.assignFieldValue(object, fieldSchema, nestedObject);
+							value = nestedObject;
+						}
 
 						const nestedFields = document.createElement("div");
 						nestedFields.className = "tracker-editor-nested";
@@ -326,29 +369,39 @@ export class TrackerContentRenderer {
 						break;
 					}
 					case this.FIELD_TYPES.FOR_EACH_OBJECT: {
-						const objectValue = value || {};
-						object[fieldSchema.name] = objectValue;
+						const objectValue = value && typeof value === "object" ? value : {};
+						if (objectValue !== value) {
+							this.assignFieldValue(object, fieldSchema, objectValue);
+						}
 
 						const nestedFields = document.createElement("div");
 						nestedFields.className = "tracker-editor-nested";
 
 						const createDefaultValues = (schemaMap) => {
 							const obj = {};
-							for (const nestedField of Object.values(schemaMap)) {
+							Object.values(schemaMap || {}).forEach((nestedField) => {
+								if (!nestedField || typeof nestedField !== "object") {
+									return;
+								}
+								let defaultValue;
 								switch (nestedField.type) {
 									case this.FIELD_TYPES.STRING:
-										obj[nestedField.name] = nestedField.defaultValue || "";
+										defaultValue = nestedField.defaultValue || "";
 										break;
 									case this.FIELD_TYPES.ARRAY:
-										obj[nestedField.name] = nestedField.defaultValue || [];
+										defaultValue = Array.isArray(nestedField.defaultValue)
+											? [...nestedField.defaultValue]
+											: [];
 										break;
 									case this.FIELD_TYPES.OBJECT:
-										obj[nestedField.name] = createDefaultValues(nestedField.nestedFields);
+									case this.FIELD_TYPES.ARRAY_OBJECT:
+										defaultValue = createDefaultValues(nestedField.nestedFields);
 										break;
 									default:
-										obj[nestedField.name] = nestedField.defaultValue || "";
+										defaultValue = nestedField.defaultValue || "";
 								}
-							}
+								this.assignFieldValue(obj, nestedField, defaultValue);
+							});
 							return obj;
 						};
 
@@ -387,7 +440,7 @@ export class TrackerContentRenderer {
 								...context,
 								currentCharacterKey: isCharactersCollection ? nestedKey : context.currentCharacterKey,
 							};
-							createEditorFields(nestedValue, fieldSchema.nestedFields, forEachFields, nestedContext);
+							createEditorFields(nestedValue || {}, fieldSchema.nestedFields, forEachFields, nestedContext);
 							forEachFields.appendChild(removeButton);
 							itemWrapper.appendChild(forEachFields);
 
@@ -455,8 +508,10 @@ export class TrackerContentRenderer {
 						break;
 					}
 					case this.FIELD_TYPES.FOR_EACH_ARRAY: {
-						const objectValue = value || {};
-						object[fieldSchema.name] = objectValue;
+						const objectValue = value && typeof value === "object" ? value : {};
+						if (objectValue !== value) {
+							this.assignFieldValue(object, fieldSchema, objectValue);
+						}
 
 						const nestedFields = document.createElement("div");
 						nestedFields.className = "tracker-editor-nested";
@@ -464,25 +519,33 @@ export class TrackerContentRenderer {
 						const nestedFieldValues = Object.values(fieldSchema.nestedFields);
 						const singleStringField = nestedFieldValues.length === 1 && nestedFieldValues[0].type === this.FIELD_TYPES.STRING;
 
-						const createDefaultValues = (schemaMap) => {
-							const obj = {};
-							for (const nestedField of Object.values(schemaMap)) {
-								switch (nestedField.type) {
-									case this.FIELD_TYPES.STRING:
-										obj[nestedField.name] = nestedField.defaultValue || "";
-										break;
-									case this.FIELD_TYPES.ARRAY:
-										obj[nestedField.name] = nestedField.defaultValue || [];
-										break;
-									case this.FIELD_TYPES.OBJECT:
-										obj[nestedField.name] = createDefaultValues(nestedField.nestedFields);
-										break;
-									default:
-										obj[nestedField.name] = nestedField.defaultValue || "";
-								}
-							}
-							return obj;
-						};
+							const createDefaultValues = (schemaMap) => {
+								const obj = {};
+								Object.values(schemaMap || {}).forEach((nestedField) => {
+									if (!nestedField || typeof nestedField !== "object") {
+										return;
+									}
+									let defaultValue;
+									switch (nestedField.type) {
+										case this.FIELD_TYPES.STRING:
+											defaultValue = nestedField.defaultValue || "";
+											break;
+										case this.FIELD_TYPES.ARRAY:
+											defaultValue = Array.isArray(nestedField.defaultValue)
+												? [...nestedField.defaultValue]
+												: [];
+											break;
+										case this.FIELD_TYPES.OBJECT:
+										case this.FIELD_TYPES.ARRAY_OBJECT:
+											defaultValue = createDefaultValues(nestedField.nestedFields);
+											break;
+										default:
+											defaultValue = nestedField.defaultValue || "";
+									}
+									this.assignFieldValue(obj, nestedField, defaultValue);
+								});
+								return obj;
+							};
 
 						const createDefaultArrayItem = () => {
 							if (singleStringField) {
@@ -594,9 +657,10 @@ export class TrackerContentRenderer {
 					}
 					default: {
 						const textarea = createAutoResizingTextarea(value, (newVal) => {
-							object[fieldSchema.name] = newVal;
+							this.assignFieldValue(object, fieldSchema, newVal);
 							propagateUpdate();
 						});
+						textarea.classList.add("tracker-editor-inline");
 						wrapper.appendChild(textarea);
 						break;
 					}
@@ -661,8 +725,12 @@ export class TrackerContentRenderer {
 		if (metadata.internalKeyId === "characters") {
 			return true;
 		}
-		const fieldName = typeof fieldSchema.name === "string" ? fieldSchema.name.toLowerCase() : "";
-		return fieldName === "characters";
+		const fieldId = getFieldId(fieldSchema);
+		if (fieldId && fieldId.toLowerCase() === "characters") {
+			return true;
+		}
+		const fieldLabel = getFieldLabel(fieldSchema);
+		return fieldLabel && fieldLabel.toLowerCase() === "characters";
 	}
 
 	decorateFieldElement(element, fieldId, fieldSchema, context = {}) {
@@ -674,8 +742,20 @@ export class TrackerContentRenderer {
 			element.dataset.fieldId = fieldId;
 		}
 
-		if (fieldSchema.name) {
-			element.dataset.fieldName = fieldSchema.name;
+		const legacyName = typeof fieldSchema.name === "string" ? fieldSchema.name : "";
+		const fieldLabel = getFieldLabel(fieldSchema);
+		if (fieldLabel) {
+			element.dataset.fieldLabel = fieldLabel;
+		} else {
+			delete element.dataset.fieldLabel;
+		}
+
+		if (legacyName) {
+			element.dataset.fieldName = legacyName;
+		} else if (fieldLabel) {
+			element.dataset.fieldName = fieldLabel;
+		} else {
+			delete element.dataset.fieldName;
 		}
 
 		const metadata = fieldSchema.metadata || {};
@@ -706,7 +786,11 @@ export class TrackerContentRenderer {
 			return;
 		}
 
-		const characters = tracker && tracker.Characters;
+		const charactersFieldId = this.getCharactersFieldId();
+		const charactersById = charactersFieldId && tracker ? tracker[charactersFieldId] : undefined;
+		const fallbackCharacters = tracker && tracker.Characters;
+		const characters =
+			charactersById && typeof charactersById === "object" ? charactersById : fallbackCharacters;
 		if (!characters || typeof characters !== "object") {
 			return;
 		}
