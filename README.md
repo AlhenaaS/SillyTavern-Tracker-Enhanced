@@ -151,6 +151,11 @@ When selecting a "Dedicated Completion Preset", you'll see compatibility indicat
 - If you exported custom templates or prompts, update placeholders to the new field IDs (`{{defaultTracker}}` already follows the new format). Labels remain free-form, so nothing stops you from renaming UI text after migration.
 - When in doubt, export a tracker after a generation run—the JSON structure is the authoritative guide for future integrations.
 
+## 🗂️ Preset Management Updates
+- Built-in presets (including locale defaults) stay selected while you experiment. The dropdown shows `*` to flag unsaved edits, and the first time you press **Save** we clone the preset to `Preset Name (copy)` (translated) so the factory defaults remain intact.
+- The presets dropdown appends `*` to the active name when the current settings diverge from the saved snapshot. The hint below the dropdown reminds you what the marker means.
+- ❌ Backup presets open in a read-only viewer instead of being applied. Use the “Copy JSON” button if you need to port values into a modern preset manually.
+
 ## 📚 **Migration from Original**
 
 - I recommend using only the original or my enhanced version - choose one. 

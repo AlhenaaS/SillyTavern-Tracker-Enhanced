@@ -509,6 +509,18 @@
   display: flex;
 }
 
+.tracker-preset-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.tracker-preset-tip {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
 #tracker_reset_presets:hover {
   background-color: #a90000;
 }
@@ -516,4 +528,30 @@
 label[for=tracker_reset_presets] {
   display: flex;
   align-items: center;
+}
+
+.tracker-legacy-preset-content {
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.tracker-legacy-preset-description {
+  margin-bottom: 12px;
+  line-height: 1.4;
+  opacity: 0.85;
+}
+
+.tracker-legacy-preset-json {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 12px;
+  font-family: "Fira Code", "Consolas", monospace;
+  font-size: 12px;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.tracker-legacy-preset-footer {
+  justify-content: flex-end;
 }

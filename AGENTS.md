@@ -66,6 +66,11 @@
 - `lib/fieldIdentity.js` is the single point for bridging legacy `name` fields; new code should import helpers instead of re-reading `field.id` directly so fallback logs stay centralized.
 - Expect a one-time debug log when a legacy name is encountered. That is our signal to rebuild presets or reset defaults; do not strip the helper until we decide to drop name-based saves entirely.
 
+## Preset UX – Oct 2025
+- Built-in and locale defaults now hold edits in place; the dropdown shows a trailing `*` while unsaved changes exist. When the user chooses **Save**, we duplicate the preset to `(<copy suffix>)` and switch the session to that clone so the base template stays intact.
+- The presets dropdown renders the active name with a trailing `*` when current settings diverge from the stored snapshot; the inline tip keeps the marker self-explanatory.
+- Selecting a ❌ Backup preset no longer applies it—users get a modal with pretty-printed JSON plus a copy button instead. Any future migration tooling should hook into that same viewer rather than re-introducing partial support.
+
 ## Preset Behaviour Updates
  - Presets now store tracker runtime flags (`automationTarget`, `participantTarget`, `showPopupFor`, `trackerFormat`, `devToolsEnabled`, `debugMode`, `trackerInjectionEnabled`, `toolbarIndicatorEnabled`) so loading a preset realigns both prompts and toggles.
 - The settings reset button is labelled “Reset Extension Defaults” and simply reapplies `defaultSettings` while preserving connection/profile settings and custom presets; built-in templates refresh automatically on reload.

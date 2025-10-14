@@ -9,6 +9,7 @@ import { generationCaptured } from "../../lib/interconnection.js";
 import { TrackerPromptMakerModal } from "../ui/trackerPromptMakerModal.js";
 import { TrackerTemplateGenerator } from "../ui/components/trackerTemplateGenerator.js";
 import { TrackerJavaScriptGenerator } from "../ui/components/trackerJavaScriptGenerator.js";
+import { legacyPresetViewer } from "../ui/components/legacyPresetViewerModal.js";
 import { TrackerInterface } from "../ui/trackerInterface.js";
 import { DevelopmentTestUI } from "../ui/developmentTestUI.js";
 
@@ -22,6 +23,10 @@ const BUILTIN_PRESET_TEMPLATES = new Map();
 const BACKUP_PRESET_PREFIX = "❌ Backup";
 const legacyPresetNames = new Set();
 const CANONICAL_FIELD_MAP = buildCanonicalFieldMap(defaultSettings.trackerDef);
+let activePresetName = null;
+let activePresetBaseline = null;
+let presetDirty = false;
+let lastAppliedPresetName = null;
 
 function normalizeMetadata(metadata = {}) {
 	const normalized = {
@@ -174,6 +179,109 @@ function buildBackupPresetName(originalName, existingPresets = {}) {
 	const timestamp = formatBackupTimestamp();
 	const base = `${BACKUP_PRESET_PREFIX} ${timestamp} ${originalName}`;
 	return ensureUniquePresetName(base, existingPresets);
+}
+
+function refreshPresetOptionLabels() {
+	const presetSelect = $("#tracker_enhanced_preset_select");
+	if (!presetSelect.length) {
+		return;
+	}
+	presetSelect.find("option").each((_, option) => {
+		const baseLabel = option.dataset.baseLabel || option.value;
+		if (option.value === activePresetName && presetDirty) {
+			option.text = `${baseLabel}*`;
+		} else {
+			option.text = baseLabel;
+		}
+	});
+}
+
+function normalizePresetForComparison(preset) {
+	if (!preset || typeof preset !== "object") {
+		return null;
+	}
+	const normalized = {};
+	for (const key of PRESET_VALUE_KEYS) {
+		if (Object.prototype.hasOwnProperty.call(preset, key)) {
+			const value = preset[key];
+			normalized[key] = typeof value === "object" ? deepClone(value) : value;
+		}
+	}
+	return normalized;
+}
+
+function arePresetSettingsEqual(a, b) {
+	const normalizedA = normalizePresetForComparison(a);
+	const normalizedB = normalizePresetForComparison(b);
+	if (!normalizedA && !normalizedB) {
+		return true;
+	}
+	if (!normalizedA || !normalizedB) {
+		return false;
+	}
+	return JSON.stringify(normalizedA) === JSON.stringify(normalizedB);
+}
+
+function refreshPresetBaseline() {
+	const presetName = extensionSettings.selectedPreset;
+	activePresetName = presetName || null;
+	const presetSettings = presetName && extensionSettings.presets ? extensionSettings.presets[presetName] : null;
+	activePresetBaseline = presetSettings ? deepClone(presetSettings) : null;
+	if (presetName) {
+		lastAppliedPresetName = presetName;
+	}
+	presetDirty = false;
+	refreshPresetOptionLabels();
+}
+
+function updatePresetDirtyState() {
+	if (!activePresetName || !activePresetBaseline) {
+		presetDirty = false;
+		refreshPresetOptionLabels();
+		return;
+	}
+	const currentSnapshot = getCurrentPresetSettings();
+	const isDirty = !arePresetSettingsEqual(currentSnapshot, activePresetBaseline);
+	if (isDirty !== presetDirty) {
+		presetDirty = isDirty;
+		refreshPresetOptionLabels();
+	}
+}
+
+function ensureEditablePreset() {
+	const presetName = extensionSettings.selectedPreset;
+	if (!presetName || !isBuiltInPresetName(presetName)) {
+		return false;
+	}
+	if (!presetDirty) {
+		return false;
+	}
+
+	const currentSnapshot = getCurrentPresetSettings();
+	const suffix = t("settings.presets.copySuffix", "copy");
+	const duplicateBaseName = `${presetName} (${suffix})`;
+	const duplicateName = ensureUniquePresetName(duplicateBaseName, extensionSettings.presets);
+	extensionSettings.presets[duplicateName] = deepClone(currentSnapshot);
+	extensionSettings.selectedPreset = duplicateName;
+	activePresetName = duplicateName;
+	lastAppliedPresetName = duplicateName;
+	updatePresetDropdown();
+	refreshPresetBaseline();
+	if (typeof toastr !== "undefined") {
+		const messageTemplate = t(
+			"settings.presets.toast.duplicated",
+			"Built-in preset duplicated to {{name}}. Future edits apply to this copy."
+		);
+		toastr.info(messageTemplate.replace("{{name}}", duplicateName), "Tracker Enhanced Presets");
+	}
+	return true;
+}
+
+function handleSettingsMutation(options = {}) {
+	updatePresetDirtyState();
+	if (options.save !== false) {
+		saveSettingsDebounced();
+	}
 }
 
 function sanitizeTrackerDefinition(definition) {
@@ -789,6 +897,9 @@ function setSettingsInitialValues() {
 	} else if (typeof TrackerInterface.updateInjectionIndicator === "function") {
 		TrackerInterface.updateInjectionIndicator(extensionSettings.trackerInjectionEnabled !== false);
 	}
+
+	refreshPresetBaseline();
+	updatePresetDirtyState();
 }
 
 // #endregion
@@ -813,7 +924,7 @@ function registerSettingsListeners() {
 	$("#tracker_enhanced_preset_import").on("change", onPresetImportChange);
 
 	// Settings fields
-	$("#tracker_enhanced_enable").on("input", onSettingCheckboxInput("enabled"));
+	$("#tracker_enhanced_enable").on("input", onSettingCheckboxInput("enabled", { trackPreset: false }));
 	$("#tracker_enhanced_automation_target").on("change", onSettingSelectChange("automationTarget"));
 	$("#tracker_enhanced_participant_target").on("change", onSettingSelectChange("participantTarget"));
 	$("#tracker_enhanced_show_popup_for").on("change", onSettingSelectChange("showPopupFor"));
@@ -822,7 +933,7 @@ function registerSettingsListeners() {
 	$("#tracker_enhanced_toolbar_indicator").on("input", (event) => {
 		const enabled = $(event.currentTarget).is(":checked");
 		extensionSettings.toolbarIndicatorEnabled = enabled;
-		saveSettingsDebounced();
+		handleSettingsMutation();
 		if (typeof TrackerInterface.setIndicatorVisibility === "function") {
 			TrackerInterface.setIndicatorVisibility(enabled);
 		}
@@ -831,7 +942,7 @@ function registerSettingsListeners() {
 	$("#tracker_enhanced_dev_tools").on("input", (event) => {
 		const enabled = $(event.currentTarget).is(":checked");
 		extensionSettings.devToolsEnabled = enabled;
-		saveSettingsDebounced();
+		handleSettingsMutation();
 		DevelopmentTestUI.setEnabled(enabled);
 	});
 
@@ -1111,11 +1222,13 @@ function updatePresetDropdown() {
 	presetSelect.empty();
 	for (const presetName in extensionSettings.presets) {
 		const option = $("<option>").val(presetName).text(presetName);
+		option.attr("data-base-label", presetName);
 		if (presetName === extensionSettings.selectedPreset) {
 			option.attr("selected", "selected");
 		}
 		presetSelect.append(option);
 	}
+	refreshPresetOptionLabels();
 }
 
 /**
@@ -1123,17 +1236,42 @@ function updatePresetDropdown() {
  */
 function onPresetSelectChange() {
 	const selectedPreset = $(this).val();
-	extensionSettings.selectedPreset = selectedPreset;
-	const presetSettings = extensionSettings.presets[selectedPreset];
-
-	if (isBackupPresetName(selectedPreset) && typeof toastr !== "undefined") {
-		toastr.warning("You selected a legacy backup preset. Review its contents and rebuild from the refreshed defaults when possible.", "Legacy Tracker Preset");
+	if (isBackupPresetName(selectedPreset)) {
+		const fallbackPreset =
+			(lastAppliedPresetName && extensionSettings.presets[lastAppliedPresetName] && lastAppliedPresetName) ||
+			(activePresetName && extensionSettings.presets[activePresetName] && activePresetName) ||
+			DEFAULT_PRESET_NAME;
+		$(this).val(fallbackPreset);
+		refreshPresetOptionLabels();
+		const presetData = extensionSettings.presets[selectedPreset];
+		if (typeof toastr !== "undefined") {
+			const message = t(
+				"settings.presets.toast.legacyReadOnly",
+				"This preset uses an older schema. Previewing it in read-only mode instead."
+			);
+			toastr.info(message, "Legacy Tracker Preset");
+		}
+		if (presetData) {
+			legacyPresetViewer.show(selectedPreset, presetData);
+		} else {
+			warn("Legacy preset missing payload", { preset: selectedPreset });
+		}
+		return;
 	}
 
-	// Update settings with preset settings
-	Object.assign(extensionSettings, presetSettings);
-	debug("Selected preset:", { selectedPreset, presetSettings, extensionSettings });
+	applyPreset(selectedPreset);
+}
 
+function applyPreset(presetName) {
+	const presetSettings = extensionSettings.presets[presetName];
+	if (!presetSettings) {
+		warn("Preset selection ignored because preset was not found", { presetName });
+		return;
+	}
+	extensionSettings.selectedPreset = presetName;
+	const presetClone = deepClone(presetSettings);
+	Object.assign(extensionSettings, presetClone);
+	debug("Selected preset:", { presetName, presetClone });
 	setSettingsInitialValues();
 	saveSettingsDebounced();
 }
@@ -1156,10 +1294,12 @@ function onPresetNewClick() {
 		return;
 	}
 	if (!extensionSettings.presets[presetName]) {
-		const newPreset = getCurrentPresetSettings();
+		const newPreset = deepClone(getCurrentPresetSettings());
 		extensionSettings.presets[presetName] = newPreset;
 		extensionSettings.selectedPreset = presetName;
 		updatePresetDropdown();
+		refreshPresetBaseline();
+		updatePresetDirtyState();
 		saveSettingsDebounced();
 		toastr.success(`Tracker Enhanced preset ${presetName} created.`);
 	} else if (extensionSettings.presets[presetName]) {
@@ -1171,20 +1311,19 @@ function onPresetNewClick() {
  * Event handler for creating a new preset.
  */
 function onPresetSaveClick() {
+	const originalPresetName = extensionSettings.selectedPreset;
+	const duplicated = ensureEditablePreset();
 	const presetName = extensionSettings.selectedPreset;
-	if (isBuiltInPresetName(presetName)) {
-		if (typeof toastr !== "undefined") {
-			toastr.error("Built-in presets cannot be overwritten. Create a new preset or rename this preset first.");
-		} else {
-			alert("Built-in presets cannot be overwritten. Create a new preset or rename this preset first.");
-		}
-		return;
-	}
-
 	const updatedPreset = getCurrentPresetSettings();
-	extensionSettings.presets[presetName] = updatedPreset;
+	extensionSettings.presets[presetName] = deepClone(updatedPreset);
+	refreshPresetBaseline();
+	updatePresetDirtyState();
 	saveSettingsDebounced();
-	toastr.success(`Tracker Enhanced preset ${presetName} saved.`);
+	if (duplicated && presetName !== originalPresetName) {
+		toastr.success(`Tracker Enhanced preset ${presetName} created from ${originalPresetName} and saved.`);
+	} else {
+		toastr.success(`Tracker Enhanced preset ${presetName} saved.`);
+	}
 }
 
 /**
@@ -1217,6 +1356,8 @@ function onPresetRenameClick() {
 			extensionSettings.selectedPreset = newName;
 		}
 		updatePresetDropdown();
+		refreshPresetBaseline();
+		updatePresetDirtyState();
 		saveSettingsDebounced();
 		toastr.success(`Tracker Enhanced preset "${oldName}" renamed to "${newName}".`);
 	} else if (extensionSettings.presets[newName]) {
@@ -1228,14 +1369,9 @@ function onPresetRenameClick() {
  * Event handler for renaming an existing preset.
  */
 function onPresetRestoreClick() {
-	const presetSettings = extensionSettings.presets[extensionSettings.selectedPreset];
-
-	// Restore settings with preset settings
-	Object.assign(extensionSettings, presetSettings);
-
-	setSettingsInitialValues();
-	saveSettingsDebounced();
-	toastr.success(`Tracker Enhanced preset ${extensionSettings.selectedPreset} restored.`);
+	const presetName = extensionSettings.selectedPreset;
+	applyPreset(presetName);
+	toastr.success(`Tracker Enhanced preset ${presetName} restored.`);
 }
 
 /**
@@ -1267,7 +1403,6 @@ function onPresetDeleteClick() {
 		
 		updatePresetDropdown();
 		onPresetSelectChange.call($("#tracker_enhanced_preset_select"));
-		saveSettingsDebounced();
 		toastr.success(`Tracker Enhanced preset "${presetName}" deleted.`);
 	}
 }
@@ -1386,11 +1521,16 @@ function getCurrentPresetSettings() {
  * @param {string} settingName The name of the setting.
  * @returns {Function} The event handler function.
  */
-function onSettingCheckboxInput(settingName) {
+function onSettingCheckboxInput(settingName, options = {}) {
+	const trackPreset = options.trackPreset !== false;
 	return function () {
 		const value = Boolean($(this).prop("checked"));
 		extensionSettings[settingName] = value;
-		saveSettingsDebounced();
+		if (trackPreset) {
+			handleSettingsMutation();
+		} else {
+			saveSettingsDebounced();
+		}
 	};
 }
 
@@ -1403,10 +1543,10 @@ function onSettingSelectChange(settingName) {
 	return function () {
 		const value = $(this).val();
 		extensionSettings[settingName] = value;
-		saveSettingsDebounced();
 		if (settingName === "automationTarget") {
 			updatePopupDropdown();
 		}
+		handleSettingsMutation();
 	};
 }
 
@@ -1420,10 +1560,10 @@ function onSettingInputareaInput(settingName) {
 	return function () {
 		const value = $(this).val();
 		extensionSettings[settingName] = value;
-		saveSettingsDebounced();
 		if (settingName === "mesTrackerJavascript") {
 			processTrackerJavascript();
 		}
+		handleSettingsMutation();
 	};
 }
 
@@ -1499,7 +1639,7 @@ function onSettingNumberInput(settingName) {
 			$(this).val(1);
 		}
 		extensionSettings[settingName] = value;
-		saveSettingsDebounced();
+		handleSettingsMutation();
 	};
 }
 
@@ -1510,7 +1650,7 @@ function onTrackerPromptMakerClick() {
 	const modal = new TrackerPromptMakerModal();
 	modal.show(extensionSettings.trackerDef, (updatedTracker) => {
 		extensionSettings.trackerDef = updatedTracker;
-		saveSettingsDebounced();
+		handleSettingsMutation();
 	});
 }
 
@@ -1542,7 +1682,7 @@ function onGenerateTemplateClick() {
 		extensionSettings.mesTrackerTemplate = generatedTemplate;
 		
 		// Save settings
-		saveSettingsDebounced();
+		handleSettingsMutation();
 		
 		// Show success message
 		toastr.success('Template generated successfully from your Prompt Maker fields!', 'Template Generation');
@@ -1585,7 +1725,7 @@ function onGenerateJavaScriptClick() {
 		extensionSettings.mesTrackerJavascript = generatedJS;
 		
 		// Save settings
-		saveSettingsDebounced();
+		handleSettingsMutation();
 		
 		// Show success message
 		toastr.success('JavaScript generated successfully with gender-specific field hiding!', 'JavaScript Generation');
