@@ -1648,6 +1648,7 @@ function onPresetImportChange(event) {
 			const isoTimestamp = timestamp.toISOString();
 			const skippedBuiltIns = [];
 			const importedPresetsList = [];
+			let firstImportedPreset = null;
 			const quarantinedPresets = [];
 
 			for (const [presetName, presetValue] of Object.entries(importedPresets || {})) {
@@ -1677,6 +1678,9 @@ function onPresetImportChange(event) {
 				const normalizedSnapshot = analysis.normalizedSnapshot || deepClone(presetValue);
 				extensionSettings.presets[presetName] = normalizedSnapshot;
 				importedPresetsList.push(presetName);
+				if (!firstImportedPreset) {
+					firstImportedPreset = presetName;
+				}
 				legacyNameSet.add(presetName);
 			}
 
@@ -1687,6 +1691,19 @@ function onPresetImportChange(event) {
 			if (importedPresetsList.length || quarantinedPresets.length) {
 				quarantineSummary = quarantineExtensionPresets({ timestamp });
 				announcePresetQuarantine(quarantineSummary, { context: "import" });
+			}
+
+			let appliedPresetName = null;
+			if (importedPresetsList.length) {
+				const presetCandidate =
+					importedPresetsList.find((name) => Object.prototype.hasOwnProperty.call(extensionSettings.presets, name)) ||
+					(firstImportedPreset && Object.prototype.hasOwnProperty.call(extensionSettings.presets, firstImportedPreset)
+						? firstImportedPreset
+						: null);
+				if (presetCandidate) {
+					applyPreset(presetCandidate);
+					appliedPresetName = presetCandidate;
+				}
 			}
 
 			updatePresetDropdown();
@@ -1723,6 +1740,13 @@ function onPresetImportChange(event) {
 						parts.push(
 							quarantinedTemplate.replace("{{count}}", String(count)).replace("{{plural}}", pluralSuffix)
 						);
+					}
+					if (appliedPresetName) {
+						const appliedTemplate = t(
+							"settings.presets.import.toast.applied",
+							"Applied preset \"{{name}}\" immediately."
+						);
+						parts.push(appliedTemplate.replace("{{name}}", appliedPresetName));
 					}
 					let toastMessage = parts.join(" ");
 					const toastTitle = "Tracker Enhanced Import";

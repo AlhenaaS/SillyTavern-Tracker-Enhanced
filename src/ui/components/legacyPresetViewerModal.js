@@ -8,7 +8,6 @@ class LegacyPresetViewerModal {
 		this.content = null;
 		this.body = null;
 		this.copyButton = null;
-		this.currentMetadata = null;
 	}
 
 	ensureModal() {
@@ -78,7 +77,6 @@ class LegacyPresetViewerModal {
 		}
 
 		this.content.innerHTML = "";
-		this.currentMetadata = metadata;
 
 		const title = document.createElement("h3");
 		title.className = "tracker-modal-title";
@@ -237,7 +235,6 @@ class LegacyPresetViewerModal {
 		this.content = null;
 		this.body = null;
 		this.copyButton = null;
-		this.currentMetadata = null;
 	}
 }
 

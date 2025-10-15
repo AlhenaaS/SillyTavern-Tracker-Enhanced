@@ -60,6 +60,7 @@
   "settings.presets.import.input.title": "导入追踪器加强版预设文件",
   "settings.presets.import.toast.imported_count": "已导入 {{count}} 个预设{{plural}}。",
   "settings.presets.import.toast.quarantined_count": "已隔离 {{count}} 个旧版预设{{plural}}。",
+  "settings.presets.import.toast.applied": "已立即应用预设“{{name}}”。",
   "settings.presets.label": "预设",
   "settings.presets.unsaved.tip": "* 有未保存的更改",
   "settings.presets.copySuffix": "副本",

@@ -60,6 +60,7 @@
   "settings.presets.import.input.title": "Import tracker enhanced preset file",
   "settings.presets.import.toast.imported_count": "Imported {{count}} preset{{plural}}.",
   "settings.presets.import.toast.quarantined_count": "Quarantined {{count}} legacy preset{{plural}}.",
+  "settings.presets.import.toast.applied": "Applied preset \"{{name}}\" immediately.",
   "settings.presets.label": "Presets",
   "settings.presets.unsaved.tip": "* Unsaved changes",
   "settings.presets.copySuffix": "copy",
