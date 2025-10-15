@@ -17,8 +17,8 @@ export class TrackerContentRenderer {
 	}
 
 	getFieldIdentity(fieldSchema, schemaKey = "") {
-		const fieldId = getFieldId(fieldSchema) || schemaKey || "";
-		const fieldLabel = getFieldLabel(fieldSchema) || fieldId || "";
+		const fieldId = getFieldId(fieldSchema);
+		const fieldLabel = getFieldLabel(fieldSchema) || fieldId || schemaKey || "";
 		return { fieldId, fieldLabel };
 	}
 
@@ -740,22 +740,20 @@ export class TrackerContentRenderer {
 
 		if (fieldId) {
 			element.dataset.fieldId = fieldId;
+		} else {
+			delete element.dataset.fieldId;
 		}
 
-		const legacyName = typeof fieldSchema.name === "string" ? fieldSchema.name : "";
 		const fieldLabel = getFieldLabel(fieldSchema);
 		if (fieldLabel) {
 			element.dataset.fieldLabel = fieldLabel;
-		} else {
-			delete element.dataset.fieldLabel;
-		}
-
-		if (legacyName) {
-			element.dataset.fieldName = legacyName;
-		} else if (fieldLabel) {
 			element.dataset.fieldName = fieldLabel;
+		} else if (fieldId) {
+			element.dataset.fieldLabel = fieldId;
+			element.dataset.fieldName = fieldId;
 		} else {
 			delete element.dataset.fieldName;
+			delete element.dataset.fieldLabel;
 		}
 
 		const metadata = fieldSchema.metadata || {};

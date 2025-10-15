@@ -7,9 +7,11 @@ import { yamlToJSON, jsonToYAML } from "../lib/ymlParser.js";
 import { buildParticipantGuidance, collectParticipantNames } from "../lib/participantGuidance.js";
 import { getCurrentLocale } from "../lib/i18n.js";
 import { extensionSettings } from "../index.js";
-import { FIELD_INCLUDE_OPTIONS, getDefaultTracker, getFieldId, getLegacyFieldName, getTracker, getTrackerPrompt, OUTPUT_FORMATS, updateTracker } from "./trackerDataHandler.js";
+import { FIELD_INCLUDE_OPTIONS, getDefaultTracker, getFieldId, getTracker, getTrackerPrompt, OUTPUT_FORMATS, updateTracker } from "./trackerDataHandler.js";
 import { trackerFormat, participantTargets } from "./settings/defaultSettings.js";
 import { buildTimeAnalysis } from "../lib/timeManager.js";
+
+const EXTRA_FIELD_LOG_LIMIT = 12;
 
 // #region Utility Functions
 
@@ -769,20 +771,73 @@ function logUnexpectedFieldKeys(tracker, backendObj) {
 	}
 
 	const knownIds = new Set();
-	const legacyNames = new Set();
 	for (const field of Object.values(backendObj)) {
 		const fieldId = getFieldId(field);
 		if (fieldId) {
 			knownIds.add(fieldId);
 		}
-		const legacyName = getLegacyFieldName(field);
-		if (legacyName && legacyName !== fieldId) {
-			legacyNames.add(legacyName);
+	}
+
+	const unexpectedKeys = Object.keys(tracker).filter((key) => key !== "_extraFields" && !knownIds.has(key));
+	const hasExtraFields = Object.prototype.hasOwnProperty.call(tracker, "_extraFields");
+
+	if (unexpectedKeys.length === 0 && !hasExtraFields) {
+		return;
+	}
+
+	const payload = {};
+	if (unexpectedKeys.length > 0) {
+		payload.unexpectedKeys = unexpectedKeys;
+	}
+	if (hasExtraFields) {
+		const extraFieldPaths = flattenExtraFieldPaths(tracker._extraFields);
+		if (extraFieldPaths.length > 0) {
+			const sortedPaths = [...extraFieldPaths].sort();
+			payload.extraFieldPaths = sortedPaths.slice(0, EXTRA_FIELD_LOG_LIMIT);
+			if (sortedPaths.length > EXTRA_FIELD_LOG_LIMIT) {
+				payload.extraFieldPathsTruncated = true;
+				payload.totalExtraFieldPaths = sortedPaths.length;
+			}
+		} else {
+			payload.extraFieldPaths = [];
 		}
 	}
 
-	const unexpectedKeys = Object.keys(tracker).filter((key) => key !== "_extraFields" && !knownIds.has(key) && !legacyNames.has(key));
-	if (unexpectedKeys.length > 0) {
-		warn("[Tracker Enhanced] Parsed tracker includes unrecognized keys (expected Field IDs).", { unexpectedKeys });
+	warn(
+		"[Tracker Enhanced] Parsed tracker includes unrecognized field keys; they will be stored in _extraFields. Reset extension defaults or rebuild the source preset to eliminate legacy data.",
+		payload
+	);
+}
+
+function flattenExtraFieldPaths(extraFields, prefix = []) {
+	if (extraFields === null || typeof extraFields === "undefined") {
+		return [];
 	}
+
+	if (typeof extraFields !== "object") {
+		const path = prefix.length ? prefix.join(".") : "(root)";
+		return [path];
+	}
+
+	const entries = Object.entries(extraFields);
+	if (entries.length === 0) {
+		return [];
+	}
+
+	const paths = [];
+	for (const [key, value] of entries) {
+		const nextPrefix = prefix.concat(key);
+		if (value !== null && typeof value === "object") {
+			const nested = flattenExtraFieldPaths(value, nextPrefix);
+			if (nested.length > 0) {
+				paths.push(...nested);
+			} else {
+				paths.push(nextPrefix.join("."));
+			}
+		} else {
+			paths.push(nextPrefix.join("."));
+		}
+	}
+
+	return paths;
 }

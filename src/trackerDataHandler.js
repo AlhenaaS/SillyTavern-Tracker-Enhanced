@@ -7,13 +7,12 @@ import {
 	getExistingFieldKey,
 	getFieldId,
 	getFieldLabel,
-	getLegacyFieldName,
 	resolveTrackerValue,
 	deleteFieldFromNode,
 } from "../lib/fieldIdentity.js";
 import { TrackerPreviewManager } from "./ui/trackerPreviewManager.js";
 
-export { getFieldId, getFieldLabel, getLegacyFieldName } from "../lib/fieldIdentity.js";
+export { getFieldId, getFieldLabel } from "../lib/fieldIdentity.js";
 
 export const FIELD_INCLUDE_OPTIONS = {
 	DYNAMIC: "dynamic",
@@ -30,6 +29,9 @@ export const FIELD_PRESENCE_OPTIONS = {
 	DYNAMIC: "DYNAMIC",
 	STATIC: "STATIC",
 };
+
+const EXTRA_FIELD_WARNING_LIMIT = 12;
+const extraFieldWarningCache = new Set();
 
 // Handlers for different field types
 const FIELD_TYPES_HANDLERS = {
@@ -151,7 +153,10 @@ export function getTracker(trackerInput, backendObject, includeFields = FIELD_IN
 
 	if (includeUnmatchedFields) {
 		extraFields = cleanEmptyObjects(extraFields);
-		if ((typeof extraFields === "object" && Object.keys(extraFields).length > 0) || typeof extraFields === "string") {
+		const hasExtraObject = typeof extraFields === "object" && extraFields !== null && Object.keys(extraFields).length > 0;
+		const hasExtraScalar = typeof extraFields === "string";
+		if (hasExtraObject || hasExtraScalar) {
+			emitExtraFieldWarning(extraFields, "getTracker");
 			reconciledTracker._extraFields = extraFields;
 		}
 	}
@@ -190,13 +195,30 @@ export function updateTracker(tracker, updatedTrackerInput, backendObject, inclu
 
 	reconcileUpdatedTracker(tracker, updatedTracker, backendObject, finalTracker, extraFields, "", includeUnmatchedFields, useUpdatedExtraFieldsAsSource);
 
+	let finalExtraFields = null;
+
 	if (includeUnmatchedFields && !useUpdatedExtraFieldsAsSource) {
 		extraFields = cleanEmptyObjects(extraFields);
-		if ((typeof extraFields === "object" && Object.keys(extraFields).length > 0) || typeof extraFields === "string") {
-			finalTracker._extraFields = extraFields;
+		const hasExtraObject = typeof extraFields === "object" && extraFields !== null && Object.keys(extraFields).length > 0;
+		const hasExtraScalar = typeof extraFields === "string";
+		if (hasExtraObject || hasExtraScalar) {
+			finalExtraFields = extraFields;
 		}
 	} else if (useUpdatedExtraFieldsAsSource && updatedTracker._extraFields) {
-		finalTracker._extraFields = updatedTracker._extraFields; // Directly use `_extraFields` from updatedTracker
+		finalExtraFields = updatedTracker._extraFields; // Directly use `_extraFields` from updatedTracker
+	}
+
+	if (includeUnmatchedFields && !useUpdatedExtraFieldsAsSource) {
+		extraFields = mergeExtraFields(extraFields, tracker._extraFields);
+		extraFields = mergeExtraFields(extraFields, updatedTracker._extraFields);
+		if (finalExtraFields !== null && typeof finalExtraFields !== "undefined") {
+			finalExtraFields = extraFields;
+		}
+	}
+
+	if (finalExtraFields !== null && typeof finalExtraFields !== "undefined") {
+		emitExtraFieldWarning(finalExtraFields, "updateTracker");
+		finalTracker._extraFields = finalExtraFields;
 	}
 
 	logInternalStoryEvents(finalTracker);
@@ -310,7 +332,7 @@ function seedTrackerParticipants(trackerObj, backendObj, includeFields, particip
 		return trackerObj;
 	}
 
-	const charactersPresentField = findFieldByName(backendObj, "CharactersPresent");
+	const charactersPresentField = findFieldById(backendObj, "CharactersPresent");
 	if (charactersPresentField && shouldIncludeField(charactersPresentField, includeFields)) {
 		const charactersPresentId = getFieldId(charactersPresentField);
 		if (charactersPresentId) {
@@ -318,7 +340,7 @@ function seedTrackerParticipants(trackerObj, backendObj, includeFields, particip
 		}
 	}
 
-	const charactersField = findFieldByName(backendObj, "Characters");
+	const charactersField = findFieldById(backendObj, "Characters");
 	if (charactersField && shouldIncludeField(charactersField, includeFields)) {
 		const nestedFields = charactersField.nestedFields || {};
 		const charactersFieldId = getFieldId(charactersField);
@@ -362,23 +384,14 @@ function sanitizeParticipantSeeds(participantSeeds) {
 	return normalized;
 }
 
-function findFieldByName(backendObj, fieldName) {
+function findFieldById(backendObj, targetId) {
 	if (!backendObj || typeof backendObj !== "object") {
 		return null;
 	}
 
 	for (const field of Object.values(backendObj)) {
 		const currentId = getFieldId(field);
-		if (currentId && currentId === fieldName) {
-			return field;
-		}
-
-		const legacyName = getLegacyFieldName(field);
-		if (legacyName && legacyName === fieldName) {
-			return field;
-		}
-
-		if (field?.name === fieldName) {
+		if (currentId && currentId === targetId) {
 			return field;
 		}
 	}
@@ -393,10 +406,6 @@ function reconcileTracker(trackerInput, backendObj, reconciledObj, extraFields, 
 		const fieldId = getFieldId(field);
 		if (!fieldId) continue;
 		recognizedKeys.add(fieldId);
-		const legacyName = getLegacyFieldName(field);
-		if (legacyName && legacyName !== fieldId) {
-			recognizedKeys.add(legacyName);
-		}
 
 		const trackerValue = resolveTrackerValue(trackerInput, field);
 		const handler = FIELD_TYPES_HANDLERS[field.type] || handleString;
@@ -422,10 +431,6 @@ function reconcileUpdatedTracker(tracker, updatedTracker, backendObj, finalTrack
 		const fieldId = getFieldId(field);
 		if (!fieldId) continue;
 		recognizedKeys.add(fieldId);
-		const legacyName = getLegacyFieldName(field);
-		if (legacyName && legacyName !== fieldId) {
-			recognizedKeys.add(legacyName);
-		}
 
 		const handler = FIELD_TYPES_HANDLERS[field.type] || handleString;
 		const trackerValue = resolveTrackerValue(tracker, field);
@@ -861,10 +866,6 @@ function handleForEachObject(field, includeFields, index = null, trackerValue = 
 		if (nestedId) {
 			recognizedNestedKeys.add(nestedId);
 		}
-		const legacyName = getLegacyFieldName(nestedField);
-		if (legacyName && legacyName !== nestedId) {
-			recognizedNestedKeys.add(legacyName);
-		}
 	}
 
 	if (trackerValue !== null && typeof trackerValue === "object" && !Array.isArray(trackerValue)) {
@@ -951,10 +952,6 @@ function handleForEachArray(field, includeFields, index = null, trackerValue = n
 		const nestedId = getFieldId(nf);
 		if (nestedId) {
 			recognizedNestedKeys.add(nestedId);
-		}
-		const legacyName = getLegacyFieldName(nf);
-		if (legacyName && legacyName !== nestedId) {
-			recognizedNestedKeys.add(legacyName);
 		}
 	}
 
@@ -1197,6 +1194,73 @@ function mergeExtraFields(extraFields, existingExtra) {
 	} else {
 		return extraFields;
 	}
+}
+
+function emitExtraFieldWarning(extraFields, context) {
+	if (extraFields === undefined || extraFields === null) {
+		return;
+	}
+
+	const paths = collectExtraFieldPaths(extraFields);
+	if (paths.length === 0) {
+		return;
+	}
+
+	const normalizedContext = typeof context === "string" && context ? context : "tracker";
+	const sortedPaths = [...paths].sort();
+	const signature = `${normalizedContext}:${sortedPaths.slice(0, EXTRA_FIELD_WARNING_LIMIT).join("|")}`;
+	if (extraFieldWarningCache.has(signature)) {
+		return;
+	}
+
+	extraFieldWarningCache.add(signature);
+
+	const payload = {
+		context: normalizedContext,
+		extraFieldPaths: sortedPaths.slice(0, EXTRA_FIELD_WARNING_LIMIT),
+		totalExtraFieldPaths: sortedPaths.length,
+	};
+	if (sortedPaths.length > EXTRA_FIELD_WARNING_LIMIT) {
+		payload.truncated = true;
+	}
+
+	warn(
+		"[Tracker Enhanced] Tracker data included unknown field keys; data was moved to _extraFields. Reset extension defaults or rebuild the originating preset to resolve legacy payloads.",
+		payload
+	);
+}
+
+function collectExtraFieldPaths(extraFields, prefix = []) {
+	if (extraFields === null || typeof extraFields === "undefined") {
+		return [];
+	}
+
+	if (typeof extraFields !== "object") {
+		const path = prefix.length ? prefix.join(".") : "(root)";
+		return [path];
+	}
+
+	const entries = Object.entries(extraFields);
+	if (entries.length === 0) {
+		return [];
+	}
+
+	const paths = [];
+	for (const [key, value] of entries) {
+		const nextPrefix = prefix.concat(key);
+		if (value !== null && typeof value === "object") {
+			const nested = collectExtraFieldPaths(value, nextPrefix);
+			if (nested.length > 0) {
+				paths.push(...nested);
+			} else {
+				paths.push(nextPrefix.join("."));
+			}
+		} else {
+			paths.push(nextPrefix.join("."));
+		}
+	}
+
+	return paths;
 }
 
 // Utility function to merge objects deeply

@@ -58,8 +58,8 @@ export class TrackerTemplateGenerator {
 				continue;
 			}
 
-			const fieldId = getFieldId(fieldData) || fieldKey;
-			const fieldLabel = getFieldLabel(fieldData) || fieldId;
+			const fieldId = getFieldId(fieldData);
+			const fieldLabel = getFieldLabel(fieldData) || fieldId || fieldKey;
 			const metadata = fieldData.metadata || {};
 			const fieldType = this.normalizeFieldType(fieldData.type);
 			const isNested = fieldData.nestedFields && Object.keys(fieldData.nestedFields).length > 0;
