@@ -86,7 +86,7 @@ export class LegacyPresetManagerModal {
 		subtitle.className = "tracker-legacy-manager-warning";
 		subtitle.textContent = t(
 			"settings.presets.legacy.modal.subtitle",
-			"Presets listed here were quarantined for compatibility reasons. They can be viewed or exported, but not applied directly."
+			"These presets were quarantined by schema checks. Inspect or export them from here; they stay read-only and cannot be applied."
 		);
 		this.content.appendChild(subtitle);
 

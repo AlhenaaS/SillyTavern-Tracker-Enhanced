@@ -156,6 +156,13 @@ When selecting a "Dedicated Completion Preset", you'll see compatibility indicat
 - The presets dropdown appends `*` to the active name when the current settings diverge from the saved snapshot. The hint below the dropdown reminds you what the marker means.
 - ❌ Backup presets open in a read-only viewer instead of being applied. Use the “Copy JSON” button if you need to port values into a modern preset manually.
 
+## 🧰 Legacy Preset Quarantine
+- Presets now resolve to either **compatible** (matches the canonical `trackerDef`) or **legacy**. Initialization, locale seeding, imports, and the “Reset Extension Defaults” flow all run through the legacy registry so incompatible payloads are quarantined before they touch live settings.
+- Quarantined snapshots live in the separate archive surfaced by **Legacy presets (view only)**. The manager lists each entry, its original label, quarantine timestamp, and registry reason codes so you know exactly what failed validation.
+- Legacy presets are strictly read-only. You can open the viewer to inspect JSON, export a copy with an automatic `(legacy)` suffix, or delete the archive record. Applying a quarantined preset is blocked—recreate it against the current schema instead of forcing partial migrations.
+- Toasts and debug logs summarize every quarantine event and include a quick-jump button back to the legacy manager whenever entries are added.
+- Runtime paths no longer upgrade legacy data. Generation, reconciliation, and preview rendering require canonical IDs/labels and route unknown keys into `_extraFields` for manual inspection.
+
 ## 📚 **Migration from Original**
 
 - I recommend using only the original or my enhanced version - choose one. 

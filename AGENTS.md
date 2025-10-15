@@ -58,6 +58,13 @@
 - `sanitizeTrackerDefinition` now only normalises metadata against the canonical map. It no longer injects missing fields, so missing required keys are treated as legacy presets and routed to the auto-backup flow.
 - Tracker field presence is now a read-only attribute: `DYNAMIC` fields are generated each turn, while `STATIC` fields are reserved for engine-managed state. The prompt maker shows this as a badge instead of an editable dropdown, and the deprecated `EPHEMERAL` presence automatically maps to `DYNAMIC` during schema sanitisation.
 
+## Legacy Registry & Preset Quarantine
+- All preset validation routes through `lib/legacyRegistry.js`. Use `analyzeTrackerDefinition`, `analyzePresetSnapshot`, and `generateLegacyPresetName` instead of mutating payloads directly; the registry returns reason codes and timestamps that feed the UI.
+- Settings bootstrap, reset, locale seeding, and import flows must normalize `extensionSettings.legacyPresets` using the shared helpers before touching live presets. Quarantined entries stay in that archive; do not rehydrate them into active maps.
+- The **Legacy presets (view only)** button launches `LegacyPresetManagerModal`, which surfaces archive records, reason summaries, export/delete hooks, and links into `LegacyPresetViewerModal`. Any new workflow touching legacy data should reuse these components instead of duplicating UI.
+- Toast/notification copy is localized. When adding new quarantine outcomes, wire them through `announcePresetQuarantine()` and add matching keys to both locale bundles (entry order must remain identical).
+- Runtime code now enforces canonical IDs/labels only. `trackerDataHandler` funnels unknown fields into `_extraFields`, and `generation.js` warns about unexpected response keys—avoid reintroducing fallbacks that revive legacy `name` support.
+
 ## Prompt Maker Notes
 - Field IDs remain stable; the prompt maker now synchronises backend order with the DOM without renumbering. This preserves metadata on nested additions/removals and avoids inheriting internal flags from unrelated parents.
 

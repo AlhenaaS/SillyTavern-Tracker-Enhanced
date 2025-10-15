@@ -369,33 +369,52 @@ function announcePresetQuarantine(summary = {}, options = {}) {
 	}
 
 	if (quarantined.length) {
+		const count = quarantined.length;
+		const pluralSuffix = count === 1 ? "" : "s";
+		const headerTemplate = t(
+			"settings.presets.legacy.toast.quarantined_list.header",
+			"Quarantined {{count}} preset{{plural}}:"
+		);
+		const header = headerTemplate.replace("{{count}}", String(count)).replace("{{plural}}", pluralSuffix);
 		const preview = quarantined
 			.slice(0, LEGACY_PRESET_SUMMARY_LIMIT)
 			.map((entry) => `${entry.originalName} → ${entry.legacyLabel}`)
 			.join("<br>");
-		notifications.push(
-			[
-				`Quarantined ${quarantined.length} preset${quarantined.length === 1 ? "" : "s"}:`,
-				preview,
-				quarantined.length > LEGACY_PRESET_SUMMARY_LIMIT
-					? `…and ${quarantined.length - LEGACY_PRESET_SUMMARY_LIMIT} more.`
-					: null,
-			]
-				.filter(Boolean)
-				.join("<br>")
-		);
+		const messageParts = [header, preview];
+		if (count > LEGACY_PRESET_SUMMARY_LIMIT) {
+			const remainder = count - LEGACY_PRESET_SUMMARY_LIMIT;
+			const moreTemplate = t(
+				"settings.presets.legacy.toast.quarantined_list.more",
+				"…and {{count}} more."
+			);
+			messageParts.push(moreTemplate.replace("{{count}}", String(remainder)));
+		}
+		notifications.push(messageParts.filter(Boolean).join("<br>"));
 	}
 
 	if (replacedBuiltIns.length) {
-		notifications.push(`Reinstalled built-in defaults for: ${replacedBuiltIns.join(", ")}`);
+		const builtInTemplate = t(
+			"settings.presets.legacy.toast.reinstalled_builtins",
+			"Reinstalled built-in defaults for: {{names}}"
+		);
+		notifications.push(builtInTemplate.replace("{{names}}", replacedBuiltIns.join(", ")));
 	}
 
 	if (summary.trackerReplacedWithDefault) {
-		notifications.push("Active tracker definition reset to the canonical default.");
+		notifications.push(
+			t(
+				"settings.presets.legacy.toast.tracker_reset",
+				"Active tracker definition reset to the canonical default."
+			)
+		);
 	}
 
 	if (summary.selectedPresetChanged && summary.selectedPreset) {
-		notifications.push(`Active preset switched to ${summary.selectedPreset}.`);
+		const switchedTemplate = t(
+			"settings.presets.legacy.toast.preset_switched",
+			"Active preset switched to {{name}}."
+		);
+		notifications.push(switchedTemplate.replace("{{name}}", summary.selectedPreset));
 	}
 
 	if (typeof toastr === "undefined" || notifications.length === 0) {
@@ -1686,10 +1705,24 @@ function onPresetImportChange(event) {
 				if (importedPresetsList.length || quarantinedPresets.length) {
 					const parts = [];
 					if (importedPresetsList.length) {
-						parts.push(`Imported ${importedPresetsList.length} preset${importedPresetsList.length === 1 ? "" : "s"}.`);
+						const importedTemplate = t(
+							"settings.presets.import.toast.imported_count",
+							"Imported {{count}} preset{{plural}}."
+						);
+						const count = importedPresetsList.length;
+						const pluralSuffix = count === 1 ? "" : "s";
+						parts.push(importedTemplate.replace("{{count}}", String(count)).replace("{{plural}}", pluralSuffix));
 					}
 					if (quarantinedPresets.length) {
-						parts.push(`Quarantined ${quarantinedPresets.length} legacy preset${quarantinedPresets.length === 1 ? "" : "s"}.`);
+						const quarantinedTemplate = t(
+							"settings.presets.import.toast.quarantined_count",
+							"Quarantined {{count}} legacy preset{{plural}}."
+						);
+						const count = quarantinedPresets.length;
+						const pluralSuffix = count === 1 ? "" : "s";
+						parts.push(
+							quarantinedTemplate.replace("{{count}}", String(count)).replace("{{plural}}", pluralSuffix)
+						);
 					}
 					let toastMessage = parts.join(" ");
 					const toastTitle = "Tracker Enhanced Import";
