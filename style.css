@@ -521,6 +521,21 @@
   color: rgba(255, 255, 255, 0.6);
 }
 
+.tracker-legacy-presets-link {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.75);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 2px 4px;
+  text-decoration: underline;
+  transition: color 0.2s ease;
+}
+.tracker-legacy-presets-link:hover, .tracker-legacy-presets-link:focus {
+  color: rgba(255, 255, 255, 0.95);
+  outline: none;
+}
+
 #tracker_reset_presets:hover {
   background-color: #a90000;
 }
@@ -554,4 +569,213 @@ label[for=tracker_reset_presets] {
 
 .tracker-legacy-preset-footer {
   justify-content: flex-end;
+}
+
+.tracker-legacy-preset-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.tracker-legacy-preset-meta-item {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.tracker-legacy-preset-meta-label {
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  opacity: 0.9;
+}
+
+.tracker-legacy-preset-meta-value {
+  opacity: 0.85;
+}
+
+.tracker-legacy-preset-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.tracker-legacy-preset-reasons-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.tracker-legacy-manager-content {
+  max-height: 65vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tracker-legacy-manager-empty {
+  font-size: 14px;
+  opacity: 0.8;
+  margin: 12px 0;
+  text-align: center;
+}
+
+.tracker-legacy-manager-warning {
+  font-size: 13px;
+  line-height: 1.4;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+
+.tracker-legacy-manager-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tracker-legacy-manager-entry {
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tracker-legacy-manager-entry.is-highlighted {
+  border-color: rgba(143, 213, 255, 0.65);
+  box-shadow: 0 0 0 1px rgba(143, 213, 255, 0.2);
+}
+
+.tracker-legacy-manager-entry-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.tracker-legacy-manager-entry-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.tracker-legacy-manager-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tracker-legacy-manager-reason-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.tracker-legacy-manager-reason-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tracker-legacy-manager-reason-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 6px;
+  padding: 6px 8px;
+}
+
+.tracker-legacy-manager-reason-code {
+  font-family: "Fira Code", "Consolas", monospace;
+  font-size: 11px;
+  background: rgba(0, 0, 0, 0.45);
+  padding: 3px 5px;
+  border-radius: 4px;
+}
+
+.tracker-legacy-manager-path {
+  font-family: "Fira Code", "Consolas", monospace;
+  font-size: 11px;
+  opacity: 0.7;
+}
+
+.tracker-legacy-manager-severity {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: rgba(255, 196, 120, 0.9);
+}
+
+.tracker-legacy-manager-severity.is-changed {
+  color: rgba(135, 206, 250, 0.9);
+}
+
+.tracker-legacy-toast-button {
+  background: transparent;
+  border: none;
+  color: #8fd5ff;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 13px;
+  margin-top: 8px;
+  padding: 0;
+}
+.tracker-legacy-toast-button:hover, .tracker-legacy-toast-button:focus {
+  color: #cbe9ff;
+  outline: none;
+}
+
+.tracker-legacy-manager-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tracker-legacy-manager-button {
+  padding: 6px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.9);
+  cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.tracker-legacy-manager-button:hover, .tracker-legacy-manager-button:focus {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.35);
+  outline: none;
+}
+
+.tracker-legacy-manager-button--danger {
+  border-color: rgba(255, 128, 128, 0.5);
+  background: rgba(255, 0, 0, 0.1);
+}
+.tracker-legacy-manager-button--danger:hover, .tracker-legacy-manager-button--danger:focus {
+  background: rgba(255, 0, 0, 0.2);
+  border-color: rgba(255, 128, 128, 0.75);
 }

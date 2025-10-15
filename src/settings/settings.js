@@ -11,6 +11,7 @@ import { TrackerPromptMakerModal } from "../ui/trackerPromptMakerModal.js";
 import { TrackerTemplateGenerator } from "../ui/components/trackerTemplateGenerator.js";
 import { TrackerJavaScriptGenerator } from "../ui/components/trackerJavaScriptGenerator.js";
 import { legacyPresetViewer } from "../ui/components/legacyPresetViewerModal.js";
+import { legacyPresetManager } from "../ui/components/legacyPresetManagerModal.js";
 import { TrackerInterface } from "../ui/trackerInterface.js";
 import { DevelopmentTestUI } from "../ui/developmentTestUI.js";
 
@@ -401,13 +402,19 @@ function announcePresetQuarantine(summary = {}, options = {}) {
 		return;
 	}
 
-	const message = notifications.join("<br><br>");
-	toastr.info(message, "Tracker Enhanced Presets", {
+	const highlightLabel = quarantined[0]?.legacyLabel || null;
+	let message = notifications.join("<br><br>");
+	if (quarantined.length) {
+		const actionLabel = t("settings.presets.legacy.toastAction", "View legacy presets");
+		message = `${message}<br><br><button type="button" class="tracker-legacy-toast-button" data-action="view-legacy">${actionLabel}</button>`;
+	}
+	const toast = toastr.info(message, "Tracker Enhanced Presets", {
 		closeButton: true,
 		timeOut: 0,
 		extendedTimeOut: 0,
 		escapeHtml: false,
 	});
+	attachLegacyToastAction(toast, { highlightLabel });
 }
 
 function getLegacyPresetSnapshot(name) {
@@ -422,9 +429,111 @@ function getLegacyPresetSnapshot(name) {
 	const presetPayload = record.preset ?? record.payload ?? record.snapshot ?? record;
 	return {
 		originalName: typeof record.originalName === "string" ? record.originalName : name,
+		quarantinedAt: typeof record.quarantinedAt === "string" ? record.quarantinedAt : null,
 		reasons: Array.isArray(record.reasons) ? record.reasons : [],
 		preset: presetPayload,
 	};
+}
+
+function getNormalizedLegacyStore() {
+	return normalizeLegacyPresetStore(extensionSettings.legacyPresets);
+}
+
+function refreshLegacyPresetManager(options = {}) {
+	if (!legacyPresetManager?.modal || !legacyPresetManager.modal.open) {
+		return;
+	}
+	const normalizedStore = getNormalizedLegacyStore();
+	legacyPresetManager.updateStore(normalizedStore, options);
+}
+
+function removeLegacyPreset(label) {
+	if (!label) {
+		return false;
+	}
+	if (!extensionSettings.legacyPresets || typeof extensionSettings.legacyPresets !== "object" || Array.isArray(extensionSettings.legacyPresets)) {
+		return false;
+	}
+	if (!Object.prototype.hasOwnProperty.call(extensionSettings.legacyPresets, label)) {
+		warn("Attempted to remove unknown legacy preset", { label });
+		return false;
+	}
+	const template = t(
+		"settings.presets.legacy.delete.confirm",
+		'Remove legacy preset "{{name}}"? This action cannot be undone.'
+	);
+	const message = template.replace("{{name}}", label);
+	if (!confirm(message)) {
+		return false;
+	}
+
+	delete extensionSettings.legacyPresets[label];
+	refreshLegacyPresetManager();
+	saveSettingsDebounced();
+	if (typeof toastr !== "undefined") {
+		toastr.success(
+			t("settings.presets.legacy.delete.success", 'Legacy preset "{{name}}" removed.').replace("{{name}}", label),
+			"Legacy Presets"
+		);
+	}
+	debug("Removed legacy preset entry", { label });
+	return true;
+}
+
+function showLegacyPresetManager(options = {}) {
+	const normalizedStore = getNormalizedLegacyStore();
+	const highlightLabel = options.highlightLabel || null;
+	legacyPresetManager.show(
+		normalizedStore,
+		{
+			onView: (record) => {
+				legacyPresetViewer.show(record.label, record.preset, {
+					originalName: record.originalName,
+					quarantinedAt: record.quarantinedAt,
+					reasons: record.reasons,
+				});
+			},
+			onExport: (record) => {
+				exportPresetByName(record.label, { allowLegacy: true });
+			},
+			onDelete: (record) => {
+				removeLegacyPreset(record.label);
+			},
+		},
+		{ highlightLabel }
+	);
+}
+
+function onLegacyPresetsClick(event) {
+	event.preventDefault();
+	showLegacyPresetManager();
+}
+
+function attachLegacyToastAction(toastResult, options = {}) {
+	if (!toastResult) {
+		return;
+	}
+	let toastElement = null;
+	if (typeof toastResult.get === "function") {
+		toastElement = toastResult.get(0);
+	} else if (Array.isArray(toastResult) && toastResult.length && toastResult[0] instanceof HTMLElement) {
+		[toastElement] = toastResult;
+	} else if (toastResult.nodeType === 1) {
+		toastElement = toastResult;
+	}
+	if (!toastElement) {
+		return;
+	}
+	const button = toastElement.querySelector(".tracker-legacy-toast-button");
+	if (!button) {
+		return;
+	}
+	const highlightLabel = options.highlightLabel || null;
+	button.addEventListener("click", (event) => {
+		event.preventDefault();
+		event.stopPropagation();
+		showLegacyPresetManager({ highlightLabel });
+	});
 }
 
 const targetOptionLabelKeys = {
@@ -644,6 +753,7 @@ async function seedLocalePresetEntries() {
 	extensionSettings.presets = extensionSettings.presets || {};
 	const legacyStore = normalizeLegacyPresetStore(extensionSettings.legacyPresets);
 	extensionSettings.legacyPresets = legacyStore;
+	refreshLegacyPresetManager();
 	const existingPresetNames = new Set(Object.keys(extensionSettings.presets));
 	const legacyNameSet = new Set([
 		...existingPresetNames,
@@ -728,6 +838,7 @@ async function seedLocalePresetEntries() {
 
 	if (changesMade) {
 		extensionSettings.legacyPresets = legacyStore;
+		refreshLegacyPresetManager();
 		saveSettingsDebounced();
 	}
 }
@@ -891,6 +1002,7 @@ function setSettingsInitialValues() {
 function registerSettingsListeners() {
 	// Preset management
 	$("#tracker_enhanced_preset_select").on("change", onPresetSelectChange);
+	$("#tracker_enhanced_legacy_presets").on("click", onLegacyPresetsClick);
 	$("#tracker_enhanced_connection_profile").on("change", onConnectionProfileSelectChange);
 	$("#tracker_enhanced_completion_preset").on("change", onCompletionPresetSelectChange);
 	$("#tracker_enhanced_preset_new").on("click", onPresetNewClick);
@@ -1237,7 +1349,7 @@ function onPresetSelectChange() {
 			toastr.info(message, "Legacy Tracker Preset");
 		}
 		if (legacySnapshot.preset) {
-			legacyPresetViewer.show(selectedPreset, legacySnapshot.preset);
+			legacyPresetViewer.show(selectedPreset, legacySnapshot.preset, legacySnapshot);
 		} else {
 			warn("Legacy preset missing payload", { preset: selectedPreset });
 		}
@@ -1395,15 +1507,18 @@ function onPresetDeleteClick() {
 /**
  * Event handler for exporting a preset.
  */
-function onPresetExportClick() {
-	const presetName = $("#tracker_enhanced_preset_select").val();
+function exportPresetByName(presetName, options = {}) {
+	const allowLegacy = options.allowLegacy !== false;
+	const silent = options.silent === true;
 	if (!presetName) {
-		toastr.error("No preset selected for export.");
-		return;
+		if (!silent && typeof toastr !== "undefined") {
+			toastr.error(t("settings.presets.export.error.none", "No preset selected for export."));
+		}
+		return false;
 	}
 
 	const presetData = extensionSettings.presets[presetName];
-	const legacySnapshot = presetData ? null : getLegacyPresetSnapshot(presetName);
+	const legacySnapshot = !presetData && allowLegacy ? getLegacyPresetSnapshot(presetName) : null;
 	let exportPresetName = presetName;
 	let exportPayload = null;
 	let exportKind = "valid";
@@ -1422,28 +1537,61 @@ function onPresetExportClick() {
 			exportPresetName = `${exportPresetName}${LEGACY_EXPORT_SUFFIX}`;
 		}
 	} else {
-		toastr.error(`Preset "${presetName}" not found.`);
-		return;
+		if (!silent && typeof toastr !== "undefined") {
+			toastr.error(t("settings.presets.export.error.missing", `Preset "${presetName}" not found.`));
+		}
+		return false;
 	}
 
-	const dataStr = JSON.stringify({ [exportPresetName]: exportPayload }, null, 2);
-	const blob = new Blob([dataStr], { type: "application/json" });
-	const url = URL.createObjectURL(blob);
+	try {
+		const dataStr = JSON.stringify({ [exportPresetName]: exportPayload }, null, 2);
+		const blob = new Blob([dataStr], { type: "application/json" });
+		const url = URL.createObjectURL(blob);
 
-	const a = $("<a>").attr("href", url).attr("download", `${exportPresetName}.json`);
-	$("body").append(a);
-	a[0].click();
-	a.remove();
-	URL.revokeObjectURL(url);
-	const toastTitle = "Tracker Enhanced Export";
-	if (exportKind === "legacy") {
-		toastr.info(`Legacy preset "${presetName}" exported as "${exportPresetName}".`, toastTitle);
-	} else if (exportPresetName !== presetName) {
-		toastr.success(`Preset "${presetName}" exported as "${exportPresetName}".`, toastTitle);
-	} else {
-		toastr.success(`Preset "${presetName}" exported successfully.`, toastTitle);
+		const anchor = document.createElement("a");
+		anchor.href = url;
+		anchor.download = `${exportPresetName}.json`;
+		document.body.appendChild(anchor);
+		anchor.click();
+		document.body.removeChild(anchor);
+		URL.revokeObjectURL(url);
+		if (!silent && typeof toastr !== "undefined") {
+			const toastTitle = "Tracker Enhanced Export";
+			if (exportKind === "legacy") {
+				toastr.info(
+					t("settings.presets.export.success.legacy", `Legacy preset "{{name}}" exported as "{{exportName}}".`)
+						.replace("{{name}}", presetName)
+						.replace("{{exportName}}", exportPresetName),
+					toastTitle
+				);
+			} else if (exportPresetName !== presetName) {
+				toastr.success(
+					t("settings.presets.export.success.renamed", `Preset "{{name}}" exported as "{{exportName}}".`)
+						.replace("{{name}}", presetName)
+						.replace("{{exportName}}", exportPresetName),
+					toastTitle
+				);
+			} else {
+				toastr.success(
+					t("settings.presets.export.success.standard", `Preset "{{name}}" exported successfully.`).replace("{{name}}", presetName),
+					toastTitle
+				);
+			}
+		}
+		debug("Preset export completed", { presetName, exportPresetName, exportKind });
+		return true;
+	} catch (err) {
+		error("Failed to export preset", err);
+		if (!silent && typeof toastr !== "undefined") {
+			toastr.error(t("settings.presets.export.error.failed", "Failed to export preset. Check console for details."));
+		}
+		return false;
 	}
-	debug("Preset export completed", { presetName, exportPresetName, exportKind });
+}
+
+function onPresetExportClick() {
+	const presetName = $("#tracker_enhanced_preset_select").val();
+	exportPresetByName(presetName);
 }
 
 /**
@@ -1514,6 +1662,7 @@ function onPresetImportChange(event) {
 			}
 
 			extensionSettings.legacyPresets = legacyStore;
+			refreshLegacyPresetManager();
 
 			let quarantineSummary = null;
 			if (importedPresetsList.length || quarantinedPresets.length) {
@@ -1542,12 +1691,23 @@ function onPresetImportChange(event) {
 					if (quarantinedPresets.length) {
 						parts.push(`Quarantined ${quarantinedPresets.length} legacy preset${quarantinedPresets.length === 1 ? "" : "s"}.`);
 					}
-					const toastMessage = parts.join(" ");
+					let toastMessage = parts.join(" ");
 					const toastTitle = "Tracker Enhanced Import";
+					let toastOptions = { escapeHtml: false, closeButton: true };
+					let toastInstance = null;
+					let highlightLabel = null;
+					if (quarantinedPresets.length) {
+						const actionLabel = t("settings.presets.legacy.toastAction", "View legacy presets");
+						toastMessage = `${toastMessage}<br><button type="button" class="tracker-legacy-toast-button" data-action="view-legacy">${actionLabel}</button>`;
+						highlightLabel = quarantinedPresets[0]?.legacyLabel || null;
+					}
 					if (importedPresetsList.length) {
-						toastr.success(toastMessage, toastTitle);
+						toastInstance = toastr.success(toastMessage, toastTitle, toastOptions);
 					} else {
-						toastr.info(toastMessage, toastTitle);
+						toastInstance = toastr.info(toastMessage, toastTitle, toastOptions);
+					}
+					if (toastInstance && highlightLabel) {
+						attachLegacyToastAction(toastInstance, { highlightLabel });
 					}
 				} else if (skippedBuiltIns.length === 0) {
 					toastr.info("No presets were imported.", "Tracker Enhanced Import");
@@ -1876,6 +2036,7 @@ function onTrackerPromptResetClick() {
 			await ensureLocalePresetsRegistered({ force: true });
 			Object.assign(extensionSettings, preservedSettings);
 			extensionSettings.legacyPresets = preservedLegacyPresets;
+			refreshLegacyPresetManager();
 			extensionSettings.presets = {
 				...extensionSettings.presets,
 				...customPresets,
