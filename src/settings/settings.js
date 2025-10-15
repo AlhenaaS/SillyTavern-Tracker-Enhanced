@@ -146,7 +146,8 @@ function ensureEditablePreset() {
 			"settings.presets.toast.duplicated",
 			"Built-in preset duplicated to {{name}}. Future edits apply to this copy."
 		);
-		toastr.info(messageTemplate.replace("{{name}}", duplicateName), "Tracker Enhanced Presets");
+		const toastTitle = t("settings.presets.toast.title", "Tracker Enhanced Presets");
+		toastr.info(messageTemplate.replace("{{name}}", duplicateName), toastTitle);
 	}
 	return true;
 }
@@ -427,7 +428,8 @@ function announcePresetQuarantine(summary = {}, options = {}) {
 		const actionLabel = t("settings.presets.legacy.toastAction", "View legacy presets");
 		message = `${message}<br><br><button type="button" class="tracker-legacy-toast-button" data-action="view-legacy">${actionLabel}</button>`;
 	}
-	const toast = toastr.info(message, "Tracker Enhanced Presets", {
+	const toastTitle = t("settings.presets.toast.title", "Tracker Enhanced Presets");
+	const toast = toastr.info(message, toastTitle, {
 		closeButton: true,
 		timeOut: 0,
 		extendedTimeOut: 0,
@@ -490,9 +492,10 @@ function removeLegacyPreset(label) {
 	refreshLegacyPresetManager();
 	saveSettingsDebounced();
 	if (typeof toastr !== "undefined") {
+		const toastTitle = t("settings.presets.legacy.toast.title", "Legacy Presets");
 		toastr.success(
 			t("settings.presets.legacy.delete.success", 'Legacy preset "{{name}}" removed.').replace("{{name}}", label),
-			"Legacy Presets"
+			toastTitle
 		);
 	}
 	debug("Removed legacy preset entry", { label });
@@ -1148,7 +1151,7 @@ function initializeOverridesDropdowns() {
 		updateCompletionPresetsDropdown();
 	} catch(e) {
 		error(e)
-		toastr.error('Failed to initialize overrides presets');
+		toastr.error(t("settings.overrides.error.init", "Failed to initialize overrides presets"));
 
 	}
 	saveSettingsDebounced();
@@ -1365,7 +1368,8 @@ function onPresetSelectChange() {
 				"settings.presets.toast.legacyReadOnly",
 				"This preset uses an older schema. Previewing it in read-only mode instead."
 			);
-			toastr.info(message, "Legacy Tracker Preset");
+			const toastTitle = t("settings.presets.toast.legacy_view_title", "Legacy Tracker Preset");
+			toastr.info(message, toastTitle);
 		}
 		if (legacySnapshot.preset) {
 			legacyPresetViewer.show(selectedPreset, legacySnapshot.preset, legacySnapshot);
@@ -1396,16 +1400,27 @@ function applyPreset(presetName) {
  * Event handler for creating a new preset.
  */
 function onPresetNewClick() {
-	const rawName = prompt("Enter a name for the new preset:");
+	const promptMessage = t("settings.presets.prompt.new", "Enter a name for the new preset:");
+	const rawName = prompt(promptMessage);
 	const presetName = rawName ? rawName.trim() : "";
 	if (!presetName) {
 		return;
 	}
 	if (isBuiltInPresetName(presetName)) {
 		if (typeof toastr !== "undefined") {
-			toastr.error("Built-in preset names are reserved. Choose a unique name for your custom preset.");
+			toastr.error(
+				t(
+					"settings.presets.error.builtinReserved",
+					"Built-in preset names are reserved. Choose a unique name for your custom preset."
+				)
+			);
 		} else {
-			alert("Built-in preset names are reserved. Choose a unique name for your custom preset.");
+			alert(
+				t(
+					"settings.presets.error.builtinReserved",
+					"Built-in preset names are reserved. Choose a unique name for your custom preset."
+				)
+			);
 		}
 		return;
 	}
@@ -1417,9 +1432,18 @@ function onPresetNewClick() {
 		refreshPresetBaseline();
 		updatePresetDirtyState();
 		saveSettingsDebounced();
-		toastr.success(`Tracker Enhanced preset ${presetName} created.`);
+		const messageTemplate = t(
+			"settings.presets.success.created",
+			'Tracker Enhanced preset "{{name}}" created.'
+		);
+		toastr.success(messageTemplate.replace("{{name}}", presetName));
 	} else if (extensionSettings.presets[presetName]) {
-		alert("A preset with that name already exists.");
+		alert(
+			t(
+				"settings.presets.error.duplicateName",
+				"A preset with that name already exists."
+			)
+		);
 	}
 }
 
@@ -1436,9 +1460,19 @@ function onPresetSaveClick() {
 	updatePresetDirtyState();
 	saveSettingsDebounced();
 	if (duplicated && presetName !== originalPresetName) {
-		toastr.success(`Tracker Enhanced preset ${presetName} created from ${originalPresetName} and saved.`);
+		const messageTemplate = t(
+			"settings.presets.success.savedFromOriginal",
+			'Tracker Enhanced preset "{{name}}" created from "{{original}}" and saved.'
+		);
+		toastr.success(
+			messageTemplate.replace("{{name}}", presetName).replace("{{original}}", originalPresetName)
+		);
 	} else {
-		toastr.success(`Tracker Enhanced preset ${presetName} saved.`);
+		const messageTemplate = t(
+			"settings.presets.success.saved",
+			'Tracker Enhanced preset "{{name}}" saved.'
+		);
+		toastr.success(messageTemplate.replace("{{name}}", presetName));
 	}
 }
 
@@ -1448,21 +1482,27 @@ function onPresetSaveClick() {
 function onPresetRenameClick() {
 	const oldName = $("#tracker_enhanced_preset_select").val();
 	if (!oldName) {
-		toastr.error("No preset selected for renaming.");
+		toastr.error(t("settings.presets.error.renameNoneSelected", "No preset selected for renaming."));
 		return;
 	}
 	if (isBuiltInPresetName(oldName)) {
-		toastr.error("Built-in presets cannot be renamed.");
+		toastr.error(t("settings.presets.error.renameBuiltIn", "Built-in presets cannot be renamed."));
 		return;
 	}
 	
-	const newNameInput = prompt("Enter the new name for the preset:", oldName);
+	const promptMessage = t("settings.presets.prompt.rename", "Enter the new name for the preset:");
+	const newNameInput = prompt(promptMessage, oldName);
 	const newName = newNameInput ? newNameInput.trim() : "";
 	if (!newName || newName === oldName) {
 		return;
 	}
 	if (isBuiltInPresetName(newName)) {
-		toastr.error("Built-in preset names are reserved. Choose a different name.");
+		toastr.error(
+			t(
+				"settings.presets.error.renameReserved",
+				"Built-in preset names are reserved. Choose a different name."
+			)
+		);
 		return;
 	}
 	if (!extensionSettings.presets[newName]) {
@@ -1475,9 +1515,20 @@ function onPresetRenameClick() {
 		refreshPresetBaseline();
 		updatePresetDirtyState();
 		saveSettingsDebounced();
-		toastr.success(`Tracker Enhanced preset "${oldName}" renamed to "${newName}".`);
+		const messageTemplate = t(
+			"settings.presets.success.renamed",
+			'Tracker Enhanced preset "{{oldName}}" renamed to "{{newName}}".'
+		);
+		toastr.success(
+			messageTemplate.replace("{{oldName}}", oldName).replace("{{newName}}", newName)
+		);
 	} else if (extensionSettings.presets[newName]) {
-		alert("A preset with that name already exists.");
+		alert(
+			t(
+				"settings.presets.error.duplicateName",
+				"A preset with that name already exists."
+			)
+		);
 	}
 }
 
@@ -1487,7 +1538,11 @@ function onPresetRenameClick() {
 function onPresetRestoreClick() {
 	const presetName = extensionSettings.selectedPreset;
 	applyPreset(presetName);
-	toastr.success(`Tracker Enhanced preset ${presetName} restored.`);
+	const messageTemplate = t(
+		"settings.presets.success.restored",
+		'Tracker Enhanced preset "{{name}}" restored.'
+	);
+	toastr.success(messageTemplate.replace("{{name}}", presetName));
 }
 
 /**
@@ -1496,15 +1551,20 @@ function onPresetRestoreClick() {
 function onPresetDeleteClick() {
 	const presetName = $("#tracker_enhanced_preset_select").val();
 	if (!presetName) {
-		toastr.error("No preset selected for deletion.");
+		toastr.error(t("settings.presets.error.deleteNoneSelected", "No preset selected for deletion."));
 		return;
 	}
 	if (isBuiltInPresetName(presetName)) {
-		toastr.error("Built-in presets cannot be deleted.");
+		toastr.error(t("settings.presets.error.deleteBuiltIn", "Built-in presets cannot be deleted."));
 		return;
 	}
 	
-	if (confirm(`Are you sure you want to delete the preset "${presetName}"?`)) {
+	const confirmTemplate = t(
+		"settings.presets.confirm.delete",
+		'Are you sure you want to delete the preset "{{name}}"?'
+	);
+	const confirmMessage = confirmTemplate.replace("{{name}}", presetName);
+	if (confirm(confirmMessage)) {
 		delete extensionSettings.presets[presetName];
 		
 		// Select the first available preset or create a default one
@@ -1519,7 +1579,11 @@ function onPresetDeleteClick() {
 		
 		updatePresetDropdown();
 		onPresetSelectChange.call($("#tracker_enhanced_preset_select"));
-		toastr.success(`Tracker Enhanced preset "${presetName}" deleted.`);
+		const messageTemplate = t(
+			"settings.presets.success.deleted",
+			'Tracker Enhanced preset "{{name}}" deleted.'
+		);
+		toastr.success(messageTemplate.replace("{{name}}", presetName));
 	}
 }
 
@@ -1575,7 +1639,7 @@ function exportPresetByName(presetName, options = {}) {
 		document.body.removeChild(anchor);
 		URL.revokeObjectURL(url);
 		if (!silent && typeof toastr !== "undefined") {
-			const toastTitle = "Tracker Enhanced Export";
+			const toastTitle = t("settings.presets.export.toastTitle", "Tracker Enhanced Export");
 			if (exportKind === "legacy") {
 				toastr.info(
 					t("settings.presets.export.success.legacy", `Legacy preset "{{name}}" exported as "{{exportName}}".`)
@@ -1636,7 +1700,9 @@ function onPresetImportChange(event) {
 
 			migrateIsDynamicToPresence(importedPresets);
 			if (!importedPresets || typeof importedPresets !== "object" || Array.isArray(importedPresets)) {
-				throw new Error("Preset file must contain an object map.");
+				throw new Error(
+					t("settings.presets.import.error.invalidPayload", "Preset file must contain an object map.")
+				);
 			}
 			const timestamp = new Date();
 			const canonicalOptions = { canonicalMap: CANONICAL_FIELD_MAP };
@@ -1657,8 +1723,14 @@ function onPresetImportChange(event) {
 					continue;
 				}
 
-				if (extensionSettings.presets[presetName] && !confirm(`Preset "${presetName}" already exists. Overwrite?`)) {
-					continue;
+				if (extensionSettings.presets[presetName]) {
+					const overwriteMessage = t(
+						"settings.presets.import.confirmOverwrite",
+						`Preset "${presetName}" already exists. Overwrite?`
+					).replace("{{name}}", presetName);
+					if (!confirm(overwriteMessage)) {
+						continue;
+					}
 				}
 
 				const analysis = analyzePresetSnapshot(presetName, presetValue, canonicalOptions);
@@ -1717,7 +1789,15 @@ function onPresetImportChange(event) {
 
 			if (typeof toastr !== "undefined") {
 				if (skippedBuiltIns.length > 0) {
-					toastr.warning(`Skipped built-in preset names: ${skippedBuiltIns.join(", ")}.`, "Tracker Enhanced Import");
+					const toastTitle = t("settings.presets.import.toastTitle", "Tracker Enhanced Import");
+					const messageTemplate = t(
+						"settings.presets.import.toast.skippedBuiltIns",
+						"Skipped built-in preset names: {{names}}."
+					);
+					toastr.warning(
+						messageTemplate.replace("{{names}}", skippedBuiltIns.join(", ")),
+						toastTitle
+					);
 				}
 				if (importedPresetsList.length || quarantinedPresets.length) {
 					const parts = [];
@@ -1749,7 +1829,7 @@ function onPresetImportChange(event) {
 						parts.push(appliedTemplate.replace("{{name}}", appliedPresetName));
 					}
 					let toastMessage = parts.join(" ");
-					const toastTitle = "Tracker Enhanced Import";
+					const toastTitle = t("settings.presets.import.toastTitle", "Tracker Enhanced Import");
 					let toastOptions = { escapeHtml: false, closeButton: true };
 					let toastInstance = null;
 					let highlightLabel = null;
@@ -1767,12 +1847,20 @@ function onPresetImportChange(event) {
 						attachLegacyToastAction(toastInstance, { highlightLabel });
 					}
 				} else if (skippedBuiltIns.length === 0) {
-					toastr.info("No presets were imported.", "Tracker Enhanced Import");
+					const toastTitle = t("settings.presets.import.toastTitle", "Tracker Enhanced Import");
+					toastr.info(
+						t("settings.presets.import.toast.noneImported", "No presets were imported."),
+						toastTitle
+					);
 				}
 			}
 		} catch (err) {
 			error("Failed to import presets", err);
-			alert("Failed to import presets: " + err.message);
+			const messageTemplate = t(
+				"settings.presets.import.alert.failed",
+				"Failed to import presets: {{error}}"
+			);
+			alert(messageTemplate.replace("{{error}}", err.message));
 		}
 	};
 	reader.onloadend = function () {
@@ -1967,7 +2055,12 @@ function onGenerateTemplateClick() {
 		
 		// Check if trackerDef exists and has fields
 		if (!extensionSettings.trackerDef || Object.keys(extensionSettings.trackerDef).length === 0) {
-			toastr.warning('No tracker fields defined. Please use the Prompt Maker to define fields first.', 'Template Generation');
+			const message = t(
+				"settings.generation.error.noFields",
+				"No tracker fields defined. Please use the Prompt Maker to define fields first."
+			);
+			const toastTitle = t("settings.generation.template.toastTitle", "Template Generation");
+			toastr.warning(message, toastTitle);
 			return;
 		}
 
@@ -1987,7 +2080,12 @@ function onGenerateTemplateClick() {
 		handleSettingsMutation();
 		
 		// Show success message
-		toastr.success('Template generated successfully from your Prompt Maker fields!', 'Template Generation');
+		const successMessage = t(
+			"settings.generation.template.success",
+			"Template generated successfully from your Prompt Maker fields!"
+		);
+		const toastTitle = t("settings.generation.template.toastTitle", "Template Generation");
+		toastr.success(successMessage, toastTitle);
 		
 		if (typeof debug === 'function') {
 			debug('Template generation completed successfully');
@@ -1995,7 +2093,12 @@ function onGenerateTemplateClick() {
 		
 	} catch (error) {
 		console.error('Failed to generate template:', error);
-		toastr.error('Failed to generate template. Check console for details.', 'Template Generation');
+		const errorMessage = t(
+			"settings.generation.template.error",
+			"Failed to generate template. Check console for details."
+		);
+		const toastTitle = t("settings.generation.template.toastTitle", "Template Generation");
+		toastr.error(errorMessage, toastTitle);
 	}
 }
 
@@ -2010,7 +2113,12 @@ function onGenerateJavaScriptClick() {
 		
 		// Check if trackerDef exists and has fields
 		if (!extensionSettings.trackerDef || Object.keys(extensionSettings.trackerDef).length === 0) {
-			toastr.warning('No tracker fields defined. Please use the Prompt Maker to define fields first.', 'JavaScript Generation');
+			const message = t(
+				"settings.generation.error.noFields",
+				"No tracker fields defined. Please use the Prompt Maker to define fields first."
+			);
+			const toastTitle = t("settings.generation.javascript.toastTitle", "JavaScript Generation");
+			toastr.warning(message, toastTitle);
 			return;
 		}
 
@@ -2030,7 +2138,12 @@ function onGenerateJavaScriptClick() {
 		handleSettingsMutation();
 		
 		// Show success message
-		toastr.success('JavaScript generated successfully with gender-specific field hiding!', 'JavaScript Generation');
+		const successMessage = t(
+			"settings.generation.javascript.success",
+			"JavaScript generated successfully with gender-specific field hiding!"
+		);
+		const toastTitle = t("settings.generation.javascript.toastTitle", "JavaScript Generation");
+		toastr.success(successMessage, toastTitle);
 		
 		if (typeof debug === 'function') {
 			debug('JavaScript generation completed successfully');
@@ -2038,7 +2151,12 @@ function onGenerateJavaScriptClick() {
 		
 	} catch (error) {
 		console.error('Failed to generate JavaScript:', error);
-		toastr.error('Failed to generate JavaScript. Check console for details.', 'JavaScript Generation');
+		const errorMessage = t(
+			"settings.generation.javascript.error",
+			"Failed to generate JavaScript. Check console for details."
+		);
+		const toastTitle = t("settings.generation.javascript.toastTitle", "JavaScript Generation");
+		toastr.error(errorMessage, toastTitle);
 	}
 }
 
@@ -2054,7 +2172,7 @@ function onTrackerPromptResetClick() {
         resetLabel = $("<label>").insertBefore(resetButton);
     }
 
-    resetLabel.text("Click again to confirm");
+    resetLabel.text(t("settings.reset.confirmationHint", "Click again to confirm"));
 
     // Remove the current click event to avoid duplicate bindings
     resetButton.off("click");
@@ -2107,11 +2225,15 @@ function onTrackerPromptResetClick() {
 			// Save the reset settings
 			saveSettingsDebounced();
 			
-			toastr.success("Defaults restored. Custom presets and backups were preserved.");
+			toastr.success(
+				t("settings.reset.success", "Defaults restored. Custom presets and backups were preserved.")
+			);
 			
 		} catch (error) {
 			console.error("Failed to reset settings:", error);
-			toastr.error("Failed to reset settings. Check console for details.");
+			toastr.error(
+				t("settings.reset.error", "Failed to reset settings. Check console for details.")
+			);
 		}
 
         // Restore the original behavior
