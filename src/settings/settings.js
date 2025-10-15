@@ -3,6 +3,7 @@ import { getContext } from '../../../../../../scripts/extensions.js';
 
 import { extensionFolderPath, extensionSettings } from "../../index.js";
 import { error, debug, warn, toTitleCase } from "../../lib/utils.js";
+import { analyzePresetSnapshot, analyzeTrackerDefinition, buildCanonicalFieldMap, generateLegacyPresetName, setLegacyRegistryLogger } from "../../lib/legacyRegistry.js";
 import { getSupportedLocales, setLocale, t, translateHtml, onLocaleChange, getCurrentLocale } from "../../lib/i18n.js";
 import { DEFAULT_PRESET_NAME, defaultSettings, automationTargets, participantTargets } from "./defaultSettings.js";
 import { generationCaptured } from "../../lib/interconnection.js";
@@ -19,122 +20,13 @@ let settingsRootElement = null;
 let localeListenerRegistered = false;
 const BUILTIN_PRESET_NAMES = new Set([DEFAULT_PRESET_NAME]);
 const BUILTIN_PRESET_TEMPLATES = new Map();
-const BACKUP_PRESET_PREFIX = "❌ Backup";
-const legacyPresetNames = new Set();
 const CANONICAL_FIELD_MAP = buildCanonicalFieldMap(defaultSettings.trackerDef);
 let activePresetName = null;
 let activePresetBaseline = null;
 let presetDirty = false;
 let lastAppliedPresetName = null;
 
-function normalizeMetadata(metadata = {}) {
-	const normalized = {
-		internal: metadata.internal === true,
-		external: metadata.external !== false,
-		internalKeyId: typeof metadata.internalKeyId === "string" ? metadata.internalKeyId : null,
-	};
-	if (Object.prototype.hasOwnProperty.call(metadata, "internalOnly")) {
-		normalized.internalOnly = Boolean(metadata.internalOnly);
-	} else {
-		normalized.internalOnly = normalized.internal && !normalized.external;
-	}
-	return normalized;
-}
-
-function metadataEquals(a = {}, b = {}) {
-	return (
-		a.internal === b.internal &&
-		a.external === b.external &&
-		(a.internalKeyId || null) === (b.internalKeyId || null) &&
-		a.internalOnly === b.internalOnly
-	);
-}
-
-function buildCanonicalFieldMap(definition) {
-	const map = new Map();
-	if (!definition || typeof definition !== "object") {
-		return map;
-	}
-	for (const [fieldId, field] of Object.entries(definition)) {
-		if (!field || typeof field !== "object") {
-			continue;
-		}
-		map.set(fieldId, {
-			metadata: normalizeMetadata(field.metadata || {}),
-			nested: buildCanonicalFieldMap(field.nestedFields || {}),
-		});
-	}
-	return map;
-}
-
-function normalizeFieldPresence(field, context) {
-	if (!field || typeof field !== "object") {
-		return;
-	}
-
-	const rawPresence = typeof field.presence === "string" ? field.presence.toUpperCase() : null;
-	const normalizedPresence = rawPresence === "STATIC" ? "STATIC" : "DYNAMIC";
-	if (field.presence !== normalizedPresence) {
-		field.presence = normalizedPresence;
-		if (context) {
-			context.changed = true;
-		}
-	}
-}
-
-function alignTrackerFields(fields, canonicalMap, context) {
-	if (!fields || typeof fields !== "object") {
-		if (canonicalMap && canonicalMap.size > 0) {
-			context.legacyDetected = true;
-		}
-		return;
-	}
-
-	for (const [fieldId, canonicalField] of canonicalMap.entries()) {
-		const field = fields[fieldId];
-		if (!field || typeof field !== "object") {
-			context.legacyDetected = true;
-			continue;
-		}
-
-		normalizeFieldPresence(field, context);
-		const canonicalMetadata = canonicalField.metadata;
-		const normalized = normalizeMetadata(field.metadata || {});
-		if (!metadataEquals(normalized, canonicalMetadata)) {
-			field.metadata = { ...canonicalMetadata };
-			context.changed = true;
-		} else if (!metadataEquals(field.metadata || {}, normalized)) {
-			field.metadata = normalized;
-			context.changed = true;
-		}
-
-		if (canonicalField.nested.size > 0) {
-			if (!field.nestedFields || typeof field.nestedFields !== "object") {
-				context.legacyDetected = true;
-			} else {
-				alignTrackerFields(field.nestedFields, canonicalField.nested, context);
-			}
-		}
-	}
-
-	for (const [fieldId, field] of Object.entries(fields)) {
-		if (!field || typeof field !== "object") {
-			continue;
-		}
-		const canonicalField = canonicalMap.get(fieldId);
-		normalizeFieldPresence(field, context);
-		if (!canonicalField) {
-			const normalized = normalizeMetadata(field.metadata || {});
-			if (!metadataEquals(field.metadata || {}, normalized)) {
-				field.metadata = normalized;
-				context.changed = true;
-			}
-			if (field.nestedFields && typeof field.nestedFields === "object") {
-				alignTrackerFields(field.nestedFields, new Map(), context);
-			}
-		}
-	}
-}
+setLegacyRegistryLogger(debug);
 
 function registerBuiltInPresetTemplate(name, presetValues) {
 	if (!name || typeof name !== "string" || !presetValues) {
@@ -153,10 +45,6 @@ function isBuiltInPresetName(name) {
 	return Boolean(name && BUILTIN_PRESET_NAMES.has(name));
 }
 
-function isBackupPresetName(name) {
-	return Boolean(name && name.startsWith(`${BACKUP_PRESET_PREFIX} `));
-}
-
 function ensureUniquePresetName(baseName, existingPresets) {
 	let candidate = baseName;
 	let counter = 2;
@@ -164,20 +52,6 @@ function ensureUniquePresetName(baseName, existingPresets) {
 		candidate = `${baseName} (${counter++})`;
 	}
 	return candidate;
-}
-
-function formatBackupTimestamp() {
-	const now = new Date();
-	const iso = now.toISOString();
-	const date = iso.slice(0, 10);
-	const time = iso.slice(11, 16);
-	return `${date} ${time}`;
-}
-
-function buildBackupPresetName(originalName, existingPresets = {}) {
-	const timestamp = formatBackupTimestamp();
-	const base = `${BACKUP_PRESET_PREFIX} ${timestamp} ${originalName}`;
-	return ensureUniquePresetName(base, existingPresets);
 }
 
 function refreshPresetOptionLabels() {
@@ -284,13 +158,12 @@ function handleSettingsMutation(options = {}) {
 }
 
 function sanitizeTrackerDefinition(definition) {
-	const clone = deepClone(definition);
-	const context = { changed: false, legacyDetected: false };
-	alignTrackerFields(clone, CANONICAL_FIELD_MAP, context);
+	const analysis = analyzeTrackerDefinition(definition, { canonicalMap: CANONICAL_FIELD_MAP });
 	return {
-		definition: clone,
-		changed: Boolean(context.changed),
-		legacyDetected: Boolean(context.legacyDetected),
+		definition: analysis.normalizedDefinition,
+		changed: Boolean(analysis.changed),
+		legacyDetected: Boolean(analysis.isLegacy),
+		reasons: analysis.reasons,
 	};
 }
 
@@ -307,120 +180,251 @@ function createBuiltInPresetSnapshot(name, sourcePreset) {
 	return cloned;
 }
 
-function handleLegacyTrackerPresets() {
-	legacyPresetNames.clear();
-	const report = {
-		replacedBuiltIns: [],
-		backedUpPresets: [],
-		rootChanged: false,
-	};
+const LEGACY_PRESET_SUMMARY_LIMIT = 5;
+const LEGACY_EXPORT_SUFFIX = " (legacy)";
 
-	if (extensionSettings.trackerDef) {
-		const rootAnalysis = sanitizeTrackerDefinition(extensionSettings.trackerDef);
-		if (rootAnalysis.changed || rootAnalysis.legacyDetected) {
-			report.rootChanged = true;
-		}
-		extensionSettings.trackerDef = rootAnalysis.definition;
+function normalizeLegacyPresetStore(existingStore) {
+	const normalized = {};
+	if (!existingStore || typeof existingStore !== "object" || Array.isArray(existingStore)) {
+		return normalized;
 	}
-
-	const presets = extensionSettings.presets || {};
-	const updatedPresets = {};
-	const originalSelectedPreset = extensionSettings.selectedPreset;
-	let selectedPreset = originalSelectedPreset;
-
-	for (const [presetName, presetValue] of Object.entries(presets)) {
-		if (!presetValue || typeof presetValue !== "object") {
-			updatedPresets[presetName] = presetValue;
+	for (const [key, entry] of Object.entries(existingStore)) {
+		if (!entry || typeof entry !== "object") {
+			normalized[key] = {
+				originalName: key,
+				quarantinedAt: null,
+				reasons: [],
+				preset: deepClone(entry),
+			};
 			continue;
 		}
-
-		const presetClone = deepClone(presetValue);
-		if (!presetClone.trackerDef) {
-			updatedPresets[presetName] = presetClone;
-			continue;
-		}
-
-		const analysis = sanitizeTrackerDefinition(presetClone.trackerDef);
-		const requiresBackup = analysis.changed || analysis.legacyDetected;
-
-		if (requiresBackup && isBuiltInPresetName(presetName)) {
-			const template = BUILTIN_PRESET_TEMPLATES.get(presetName) || createBuiltInPresetSnapshot(presetName, presetClone);
-			updatedPresets[presetName] = deepClone(template || presetClone);
-			registerBuiltInPresetTemplate(presetName, updatedPresets[presetName]);
-			report.replacedBuiltIns.push(presetName);
-			continue;
-		}
-
-		if (requiresBackup && isBackupPresetName(presetName)) {
-			presetClone.trackerDef = analysis.definition;
-			updatedPresets[presetName] = presetClone;
-			legacyPresetNames.add(presetName);
-			continue;
-		}
-
-		if (requiresBackup) {
-			const uniquenessContext = { ...presets, ...updatedPresets };
-			const backupName = buildBackupPresetName(presetName, uniquenessContext);
-			const backupPreset = deepClone(presetClone);
-			backupPreset.trackerDef = analysis.definition;
-			updatedPresets[backupName] = backupPreset;
-			legacyPresetNames.add(backupName);
-			report.backedUpPresets.push({ originalName: presetName, backupName });
-			if (selectedPreset === presetName) {
-				selectedPreset = backupName;
-			}
-			continue;
-		}
-
-		presetClone.trackerDef = analysis.definition;
-		updatedPresets[presetName] = presetClone;
-		if (isBuiltInPresetName(presetName)) {
-			registerBuiltInPresetTemplate(presetName, presetClone);
-		}
-		if (isBackupPresetName(presetName)) {
-			legacyPresetNames.add(presetName);
-		}
+		const originalName = typeof entry.originalName === "string"
+			? entry.originalName
+			: typeof entry.name === "string"
+				? entry.name
+				: key;
+		const quarantinedAt = typeof entry.quarantinedAt === "string"
+			? entry.quarantinedAt
+			: typeof entry.timestamp === "string"
+				? entry.timestamp
+				: null;
+		const reasons = Array.isArray(entry.reasons) ? entry.reasons.slice() : [];
+		const payload = entry.preset ?? entry.payload ?? entry.snapshot ?? entry;
+		normalized[key] = {
+			originalName,
+			quarantinedAt,
+			reasons,
+			preset: deepClone(payload),
+		};
 	}
-
-	extensionSettings.presets = updatedPresets;
-	extensionSettings.selectedPreset = selectedPreset in updatedPresets ? selectedPreset : DEFAULT_PRESET_NAME;
-	const finalSelectedPreset = extensionSettings.selectedPreset;
-	if (finalSelectedPreset && updatedPresets[finalSelectedPreset]) {
-		Object.assign(extensionSettings, deepClone(updatedPresets[finalSelectedPreset]));
-	}
-
-	return report;
+	return normalized;
 }
 
-function notifyPresetMaintenance(report = {}) {
-	const replaced = report.replacedBuiltIns || [];
-	const backups = report.backedUpPresets || [];
-	if (backups.length === 0) {
-		if (replaced.length > 0) {
-			debug("Legacy tracker presets refreshed without needing backups", { replaced });
+function quarantineExtensionPresets(options = {}) {
+	const timestamp = options.timestamp instanceof Date ? options.timestamp : new Date();
+	const isoTimestamp = timestamp.toISOString();
+	const legacyStore = normalizeLegacyPresetStore(extensionSettings.legacyPresets);
+	const legacyNameSet = new Set([
+		...Object.keys(legacyStore),
+		...Object.keys(extensionSettings.presets || {}),
+	]);
+	const newlyQuarantined = [];
+	const validPresets = {};
+	const presetEntries = Object.entries(extensionSettings.presets || {});
+	const canonicalOptions = { canonicalMap: CANONICAL_FIELD_MAP };
+
+	for (const [presetName, presetValue] of presetEntries) {
+		if (!presetValue || typeof presetValue !== "object") {
+			validPresets[presetName] = presetValue;
+			continue;
 		}
+
+		const analysis = analyzePresetSnapshot(presetName, presetValue, canonicalOptions);
+		if (analysis.isLegacy) {
+			const legacyLabel = generateLegacyPresetName(presetName, legacyNameSet, { timestamp });
+			legacyNameSet.add(legacyLabel);
+			legacyStore[legacyLabel] = {
+				originalName: presetName,
+				quarantinedAt: isoTimestamp,
+				reasons: analysis.reasons,
+				preset: deepClone(presetValue),
+			};
+			newlyQuarantined.push({
+				originalName: presetName,
+				legacyLabel,
+				reasonCodes: analysis.reasons.map((entry) => entry.code),
+			});
+			continue;
+		}
+
+		const normalizedSnapshot = analysis.normalizedSnapshot || deepClone(presetValue);
+		validPresets[presetName] = normalizedSnapshot;
+		if (isBuiltInPresetName(presetName)) {
+			registerBuiltInPresetTemplate(presetName, normalizedSnapshot);
+		}
+	}
+
+	const replacedBuiltIns = [];
+	for (const builtInName of BUILTIN_PRESET_NAMES) {
+		if (!Object.prototype.hasOwnProperty.call(validPresets, builtInName)) {
+			const template =
+				BUILTIN_PRESET_TEMPLATES.get(builtInName) ||
+				createBuiltInPresetSnapshot(builtInName, defaultSettings.presets?.[builtInName]);
+			if (template) {
+				validPresets[builtInName] = deepClone(template);
+				registerBuiltInPresetTemplate(builtInName, template);
+				replacedBuiltIns.push(builtInName);
+			}
+		}
+	}
+
+	const rootAnalysis = analyzeTrackerDefinition(extensionSettings.trackerDef, { canonicalMap: CANONICAL_FIELD_MAP });
+	let trackerDefinition = rootAnalysis.normalizedDefinition;
+	let trackerReplacedWithDefault = false;
+	if (rootAnalysis.isLegacy) {
+		trackerDefinition = deepClone(defaultSettings.trackerDef);
+		trackerReplacedWithDefault = true;
+	}
+	extensionSettings.trackerDef = trackerDefinition;
+
+	extensionSettings.presets = validPresets;
+	extensionSettings.legacyPresets = legacyStore;
+
+	const previousSelected = extensionSettings.selectedPreset;
+	let selectedPreset = previousSelected && Object.prototype.hasOwnProperty.call(validPresets, previousSelected)
+		? previousSelected
+		: null;
+
+	if (!selectedPreset) {
+		if (lastAppliedPresetName && Object.prototype.hasOwnProperty.call(validPresets, lastAppliedPresetName)) {
+			selectedPreset = lastAppliedPresetName;
+		} else if (Object.prototype.hasOwnProperty.call(validPresets, DEFAULT_PRESET_NAME)) {
+			selectedPreset = DEFAULT_PRESET_NAME;
+		} else {
+			selectedPreset = Object.keys(validPresets)[0] || null;
+		}
+	}
+
+	if (selectedPreset) {
+		extensionSettings.selectedPreset = selectedPreset;
+	} else {
+		delete extensionSettings.selectedPreset;
+	}
+
+	activePresetName = selectedPreset || null;
+	activePresetBaseline = selectedPreset ? deepClone(validPresets[selectedPreset]) : null;
+	lastAppliedPresetName = selectedPreset || null;
+	presetDirty = false;
+
+	if (selectedPreset && validPresets[selectedPreset]) {
+		Object.assign(extensionSettings, deepClone(validPresets[selectedPreset]));
+	}
+
+	return {
+		newlyQuarantined,
+		replacedBuiltIns,
+		rootChanged: Boolean(rootAnalysis.changed),
+		rootIsLegacy: Boolean(rootAnalysis.isLegacy),
+		trackerReplacedWithDefault,
+		selectedPresetChanged: previousSelected !== selectedPreset,
+		selectedPreset,
+		validPresetCount: Object.keys(validPresets).length,
+		legacyPresetCount: Object.keys(legacyStore).length,
+	};
+}
+
+function announcePresetQuarantine(summary = {}, options = {}) {
+	const context = options.context || "init";
+	const quarantined = summary.newlyQuarantined || [];
+	const replacedBuiltIns = summary.replacedBuiltIns || [];
+	const notifications = [];
+	const hasVisibleChanges = quarantined.length || replacedBuiltIns.length || summary.trackerReplacedWithDefault || summary.selectedPresetChanged;
+	const hasAnyChanges = hasVisibleChanges || summary.rootChanged || summary.rootIsLegacy;
+
+	if (!hasAnyChanges) {
+		debug("Preset quarantine completed without changes", {
+			context,
+			rootChanged: summary.rootChanged,
+			validPresetCount: summary.validPresetCount,
+			legacyPresetCount: summary.legacyPresetCount,
+		});
 		return;
 	}
 
-	const replacedSummary = replaced.length > 0 ? `Replaced with fresh defaults: ${replaced.join(", ")}` : "";
-	const backupSummary = backups.length > 0
-		? `Backed up outdated presets:<br>${backups.map(({ originalName, backupName }) => `- ${originalName} -> ${backupName}`).join("<br>")}`
-		: "";
+	debug("Preset quarantine results", {
+		context,
+		quarantined,
+		replacedBuiltIns,
+		rootChanged: summary.rootChanged,
+		rootIsLegacy: summary.rootIsLegacy,
+		trackerReplacedWithDefault: summary.trackerReplacedWithDefault,
+		selectedPreset: summary.selectedPreset,
+		validPresetCount: summary.validPresetCount,
+		legacyPresetCount: summary.legacyPresetCount,
+	});
 
-	debug("Legacy tracker presets processed", { replaced, backups });
-
-	if (typeof toastr === "undefined") {
+	if (!hasVisibleChanges) {
 		return;
 	}
 
-	const message = [replacedSummary, backupSummary, "Select a ❌ Backup entry to review old settings. Rebuild presets from the refreshed defaults for long-term use."].filter(Boolean).join("<br><br>");
+	if (quarantined.length) {
+		const preview = quarantined
+			.slice(0, LEGACY_PRESET_SUMMARY_LIMIT)
+			.map((entry) => `${entry.originalName} → ${entry.legacyLabel}`)
+			.join("<br>");
+		notifications.push(
+			[
+				`Quarantined ${quarantined.length} preset${quarantined.length === 1 ? "" : "s"}:`,
+				preview,
+				quarantined.length > LEGACY_PRESET_SUMMARY_LIMIT
+					? `…and ${quarantined.length - LEGACY_PRESET_SUMMARY_LIMIT} more.`
+					: null,
+			]
+				.filter(Boolean)
+				.join("<br>")
+		);
+	}
 
-	toastr.info(message, "Tracker Enhanced Presets Updated", {
+	if (replacedBuiltIns.length) {
+		notifications.push(`Reinstalled built-in defaults for: ${replacedBuiltIns.join(", ")}`);
+	}
+
+	if (summary.trackerReplacedWithDefault) {
+		notifications.push("Active tracker definition reset to the canonical default.");
+	}
+
+	if (summary.selectedPresetChanged && summary.selectedPreset) {
+		notifications.push(`Active preset switched to ${summary.selectedPreset}.`);
+	}
+
+	if (typeof toastr === "undefined" || notifications.length === 0) {
+		return;
+	}
+
+	const message = notifications.join("<br><br>");
+	toastr.info(message, "Tracker Enhanced Presets", {
 		closeButton: true,
 		timeOut: 0,
 		extendedTimeOut: 0,
 		escapeHtml: false,
 	});
+}
+
+function getLegacyPresetSnapshot(name) {
+	const legacyStore = extensionSettings.legacyPresets;
+	if (!legacyStore || typeof legacyStore !== "object" || Array.isArray(legacyStore)) {
+		return null;
+	}
+	const record = legacyStore[name];
+	if (!record || typeof record !== "object") {
+		return null;
+	}
+	const presetPayload = record.preset ?? record.payload ?? record.snapshot ?? record;
+	return {
+		originalName: typeof record.originalName === "string" ? record.originalName : name,
+		reasons: Array.isArray(record.reasons) ? record.reasons : [],
+		preset: presetPayload,
+	};
 }
 
 const targetOptionLabelKeys = {
@@ -511,8 +515,8 @@ export async function initSettings() {
 
 	await ensureLocalePresetsRegistered();
 	registerBuiltInPresetTemplate(DEFAULT_PRESET_NAME, defaultSettings.presets?.[DEFAULT_PRESET_NAME]);
-	const legacyReport = handleLegacyTrackerPresets();
-	notifyPresetMaintenance(legacyReport);
+	const quarantineSummary = quarantineExtensionPresets({ timestamp: new Date() });
+	announcePresetQuarantine(quarantineSummary, { context: "init" });
 
 	saveSettingsDebounced();
 
@@ -537,24 +541,6 @@ function migrateIsDynamicToPresence(obj) {
 			migrateIsDynamicToPresence(obj[key]);
 		}
 	}
-}
-
-function ensurePresetsMetadata(presets) {
-	const result = { changed: false, legacyDetected: false };
-	if (!presets || typeof presets !== "object") return result;
-
-	for (const [presetName, preset] of Object.entries(presets)) {
-		if (preset && typeof preset === "object" && preset.trackerDef) {
-			const sanitized = sanitizeTrackerDefinition(preset.trackerDef);
-			result.changed = result.changed || sanitized.changed || sanitized.legacyDetected;
-			preset.trackerDef = sanitized.definition;
-			if (isBackupPresetName(presetName)) {
-				legacyPresetNames.add(presetName);
-			}
-		}
-	}
-
-	return result;
 }
 
 /**
@@ -656,18 +642,28 @@ async function ensureLocalePresetsRegistered(options = {}) {
 
 async function seedLocalePresetEntries() {
 	extensionSettings.presets = extensionSettings.presets || {};
+	const legacyStore = normalizeLegacyPresetStore(extensionSettings.legacyPresets);
+	extensionSettings.legacyPresets = legacyStore;
 	const existingPresetNames = new Set(Object.keys(extensionSettings.presets));
+	const legacyNameSet = new Set([
+		...existingPresetNames,
+		...Object.keys(legacyStore),
+	]);
 	const localeCatalog = new Map();
 	const localeIds = [];
-	let presetAdded = false;
+	const timestamp = new Date();
+	const isoTimestamp = timestamp.toISOString();
+	let changesMade = false;
+	const quarantinedLocales = [];
 
 	const builtInPresetDefinition = defaultSettings.presets?.[DEFAULT_PRESET_NAME];
 	if (builtInPresetDefinition) {
 		if (!existingPresetNames.has(DEFAULT_PRESET_NAME)) {
 			const snapshot = createBuiltInPresetSnapshot(DEFAULT_PRESET_NAME, builtInPresetDefinition);
 			extensionSettings.presets[DEFAULT_PRESET_NAME] = snapshot;
-			presetAdded = true;
+			changesMade = true;
 			existingPresetNames.add(DEFAULT_PRESET_NAME);
+			legacyNameSet.add(DEFAULT_PRESET_NAME);
 		} else {
 			registerBuiltInPresetTemplate(DEFAULT_PRESET_NAME, extensionSettings.presets[DEFAULT_PRESET_NAME]);
 		}
@@ -700,18 +696,38 @@ async function seedLocalePresetEntries() {
 				registerBuiltInPresetTemplate(presetTitle, extensionSettings.presets[presetTitle]);
 				return;
 			}
-			const sanitizedValues = sanitizePresetValues(definition.values);
-			if (Object.keys(sanitizedValues).length === 0) {
+			const localeAnalysis = buildLocalePresetAnalysis(presetTitle, definition.values);
+			if (!localeAnalysis || !localeAnalysis.normalizedSnapshot) {
 				return;
 			}
-			extensionSettings.presets[presetTitle] = sanitizedValues;
-			registerBuiltInPresetTemplate(presetTitle, sanitizedValues);
-			presetAdded = true;
+			if (localeAnalysis.isLegacy) {
+				const legacyLabel = generateLegacyPresetName(presetTitle, legacyNameSet, { timestamp });
+				legacyNameSet.add(legacyLabel);
+				legacyStore[legacyLabel] = {
+					originalName: presetTitle,
+					quarantinedAt: isoTimestamp,
+					reasons: localeAnalysis.reasons,
+					preset: deepClone(definition.values),
+				};
+				quarantinedLocales.push({ originalName: presetTitle, legacyLabel, localeId });
+				changesMade = true;
+				return;
+			}
+			const normalizedSnapshot = deepClone(localeAnalysis.normalizedSnapshot);
+			extensionSettings.presets[presetTitle] = normalizedSnapshot;
+			registerBuiltInPresetTemplate(presetTitle, normalizedSnapshot);
+			changesMade = true;
 			existingPresetNames.add(presetTitle);
+			legacyNameSet.add(presetTitle);
 		})
 	);
 
-	if (presetAdded) {
+	if (quarantinedLocales.length) {
+		debug("Locale presets quarantined", { entries: quarantinedLocales });
+	}
+
+	if (changesMade) {
+		extensionSettings.legacyPresets = legacyStore;
 		saveSettingsDebounced();
 	}
 }
@@ -737,18 +753,21 @@ function getFallbackPresetTitle(localeId, localeLabel) {
 	return `Locale Default (${localeId})`;
 }
 
-function sanitizePresetValues(values = {}) {
+function buildLocalePresetAnalysis(presetName, values = {}) {
+	if (!values || typeof values !== "object") {
+		return null;
+	}
 	const sanitized = {};
 	for (const key of PRESET_VALUE_KEYS) {
 		if (Object.prototype.hasOwnProperty.call(values, key)) {
 			sanitized[key] = deepClone(values[key]);
 		}
 	}
-	if (sanitized.trackerDef) {
-		const analysis = sanitizeTrackerDefinition(sanitized.trackerDef);
-		sanitized.trackerDef = analysis.definition;
+	if (Object.keys(sanitized).length === 0) {
+		return null;
 	}
-	return sanitized;
+	migrateIsDynamicToPresence(sanitized);
+	return analyzePresetSnapshot(presetName, sanitized, { canonicalMap: CANONICAL_FIELD_MAP });
 }
 
 function deepClone(value) {
@@ -1196,14 +1215,20 @@ function updatePresetDropdown() {
  */
 function onPresetSelectChange() {
 	const selectedPreset = $(this).val();
-	if (isBackupPresetName(selectedPreset)) {
+	if (!selectedPreset) {
+		return;
+	}
+
+	const legacySnapshot = getLegacyPresetSnapshot(selectedPreset);
+	if (legacySnapshot) {
 		const fallbackPreset =
 			(lastAppliedPresetName && extensionSettings.presets[lastAppliedPresetName] && lastAppliedPresetName) ||
 			(activePresetName && extensionSettings.presets[activePresetName] && activePresetName) ||
-			DEFAULT_PRESET_NAME;
-		$(this).val(fallbackPreset);
+			(Object.prototype.hasOwnProperty.call(extensionSettings.presets, DEFAULT_PRESET_NAME) ? DEFAULT_PRESET_NAME : Object.keys(extensionSettings.presets)[0]);
+		if (fallbackPreset) {
+			$(this).val(fallbackPreset);
+		}
 		refreshPresetOptionLabels();
-		const presetData = extensionSettings.presets[selectedPreset];
 		if (typeof toastr !== "undefined") {
 			const message = t(
 				"settings.presets.toast.legacyReadOnly",
@@ -1211,8 +1236,8 @@ function onPresetSelectChange() {
 			);
 			toastr.info(message, "Legacy Tracker Preset");
 		}
-		if (presetData) {
-			legacyPresetViewer.show(selectedPreset, presetData);
+		if (legacySnapshot.preset) {
+			legacyPresetViewer.show(selectedPreset, legacySnapshot.preset);
 		} else {
 			warn("Legacy preset missing payload", { preset: selectedPreset });
 		}
@@ -1376,21 +1401,32 @@ function onPresetExportClick() {
 		toastr.error("No preset selected for export.");
 		return;
 	}
-	
+
 	const presetData = extensionSettings.presets[presetName];
-	if (!presetData) {
+	const legacySnapshot = presetData ? null : getLegacyPresetSnapshot(presetName);
+	let exportPresetName = presetName;
+	let exportPayload = null;
+	let exportKind = "valid";
+
+	if (presetData) {
+		exportPayload = deepClone(presetData);
+		if (isBuiltInPresetName(presetName)) {
+			const suffix = t("settings.presets.copySuffix", "copy");
+			const baseName = `${presetName} (${suffix})`;
+			exportPresetName = ensureUniquePresetName(baseName, extensionSettings.presets);
+		}
+	} else if (legacySnapshot && legacySnapshot.preset) {
+		exportKind = "legacy";
+		exportPayload = deepClone(legacySnapshot.preset);
+		if (!exportPresetName.endsWith(LEGACY_EXPORT_SUFFIX)) {
+			exportPresetName = `${exportPresetName}${LEGACY_EXPORT_SUFFIX}`;
+		}
+	} else {
 		toastr.error(`Preset "${presetName}" not found.`);
 		return;
 	}
 
-	let exportPresetName = presetName;
-	if (isBuiltInPresetName(presetName)) {
-		const suffix = t("settings.presets.copySuffix", "copy");
-		const baseName = `${presetName} (${suffix})`;
-		exportPresetName = ensureUniquePresetName(baseName, extensionSettings.presets);
-	}
-
-	const dataStr = JSON.stringify({ [exportPresetName]: presetData }, null, 2);
+	const dataStr = JSON.stringify({ [exportPresetName]: exportPayload }, null, 2);
 	const blob = new Blob([dataStr], { type: "application/json" });
 	const url = URL.createObjectURL(blob);
 
@@ -1399,11 +1435,15 @@ function onPresetExportClick() {
 	a[0].click();
 	a.remove();
 	URL.revokeObjectURL(url);
-	if (exportPresetName !== presetName) {
-		toastr.success(`Preset "${presetName}" exported as "${exportPresetName}".`);
+	const toastTitle = "Tracker Enhanced Export";
+	if (exportKind === "legacy") {
+		toastr.info(`Legacy preset "${presetName}" exported as "${exportPresetName}".`, toastTitle);
+	} else if (exportPresetName !== presetName) {
+		toastr.success(`Preset "${presetName}" exported as "${exportPresetName}".`, toastTitle);
 	} else {
-		toastr.success(`Preset "${presetName}" exported successfully.`);
+		toastr.success(`Preset "${presetName}" exported successfully.`, toastTitle);
 	}
+	debug("Preset export completed", { presetName, exportPresetName, exportKind });
 }
 
 /**
@@ -1428,30 +1468,93 @@ function onPresetImportChange(event) {
 			const importedPresets = JSON.parse(e.target.result);
 
 			migrateIsDynamicToPresence(importedPresets);
-			
+			if (!importedPresets || typeof importedPresets !== "object" || Array.isArray(importedPresets)) {
+				throw new Error("Preset file must contain an object map.");
+			}
+			const timestamp = new Date();
+			const canonicalOptions = { canonicalMap: CANONICAL_FIELD_MAP };
+			const legacyStore = normalizeLegacyPresetStore(extensionSettings.legacyPresets);
+			const legacyNameSet = new Set([
+				...Object.keys(extensionSettings.presets || {}),
+				...Object.keys(legacyStore),
+			]);
+			const isoTimestamp = timestamp.toISOString();
 			const skippedBuiltIns = [];
-			let importedAny = false;
-			for (const presetName in importedPresets) {
+			const importedPresetsList = [];
+			const quarantinedPresets = [];
+
+			for (const [presetName, presetValue] of Object.entries(importedPresets || {})) {
 				if (isBuiltInPresetName(presetName)) {
 					skippedBuiltIns.push(presetName);
 					continue;
 				}
-				if (!extensionSettings.presets[presetName] || confirm(`Preset "${presetName}" already exists. Overwrite?`)) {
-					extensionSettings.presets[presetName] = importedPresets[presetName];
-					importedAny = true;
+
+				if (extensionSettings.presets[presetName] && !confirm(`Preset "${presetName}" already exists. Overwrite?`)) {
+					continue;
 				}
+
+				const analysis = analyzePresetSnapshot(presetName, presetValue, canonicalOptions);
+				if (analysis.isLegacy) {
+					const legacyLabel = generateLegacyPresetName(presetName, legacyNameSet, { timestamp });
+					legacyNameSet.add(legacyLabel);
+					legacyStore[legacyLabel] = {
+						originalName: presetName,
+						quarantinedAt: isoTimestamp,
+						reasons: analysis.reasons,
+						preset: deepClone(presetValue),
+					};
+					quarantinedPresets.push({ originalName: presetName, legacyLabel });
+					continue;
+				}
+
+				const normalizedSnapshot = analysis.normalizedSnapshot || deepClone(presetValue);
+				extensionSettings.presets[presetName] = normalizedSnapshot;
+				importedPresetsList.push(presetName);
+				legacyNameSet.add(presetName);
 			}
-			ensurePresetsMetadata(extensionSettings.presets);
+
+			extensionSettings.legacyPresets = legacyStore;
+
+			let quarantineSummary = null;
+			if (importedPresetsList.length || quarantinedPresets.length) {
+				quarantineSummary = quarantineExtensionPresets({ timestamp });
+				announcePresetQuarantine(quarantineSummary, { context: "import" });
+			}
+
 			updatePresetDropdown();
 			saveSettingsDebounced();
+
+			debug("Preset import completed", {
+				imported: importedPresetsList,
+				quarantined: quarantinedPresets,
+				skippedBuiltIns,
+			});
+
 			if (typeof toastr !== "undefined") {
 				if (skippedBuiltIns.length > 0) {
 					toastr.warning(`Skipped built-in preset names: ${skippedBuiltIns.join(", ")}.`, "Tracker Enhanced Import");
-				} else if (importedAny) {
-					toastr.success("Presets imported successfully.");
+				}
+				if (importedPresetsList.length || quarantinedPresets.length) {
+					const parts = [];
+					if (importedPresetsList.length) {
+						parts.push(`Imported ${importedPresetsList.length} preset${importedPresetsList.length === 1 ? "" : "s"}.`);
+					}
+					if (quarantinedPresets.length) {
+						parts.push(`Quarantined ${quarantinedPresets.length} legacy preset${quarantinedPresets.length === 1 ? "" : "s"}.`);
+					}
+					const toastMessage = parts.join(" ");
+					const toastTitle = "Tracker Enhanced Import";
+					if (importedPresetsList.length) {
+						toastr.success(toastMessage, toastTitle);
+					} else {
+						toastr.info(toastMessage, toastTitle);
+					}
+				} else if (skippedBuiltIns.length === 0) {
+					toastr.info("No presets were imported.", "Tracker Enhanced Import");
 				}
 			}
 		} catch (err) {
+			error("Failed to import presets", err);
 			alert("Failed to import presets: " + err.message);
 		}
 	};
@@ -1767,18 +1870,19 @@ function onTrackerPromptResetClick() {
 					customPresets[name] = deepClone(preset);
 				}
 			}
+			const preservedLegacyPresets = extensionSettings.legacyPresets ? deepClone(extensionSettings.legacyPresets) : {};
 
 			Object.assign(extensionSettings, defaultsClone);
 			await ensureLocalePresetsRegistered({ force: true });
 			Object.assign(extensionSettings, preservedSettings);
+			extensionSettings.legacyPresets = preservedLegacyPresets;
 			extensionSettings.presets = {
 				...extensionSettings.presets,
 				...customPresets,
 			};
-			ensurePresetsMetadata(extensionSettings.presets);
-			const legacyReport = handleLegacyTrackerPresets();
-			notifyPresetMaintenance(legacyReport);
 			extensionSettings.selectedPreset = DEFAULT_PRESET_NAME;
+			const quarantineSummary = quarantineExtensionPresets({ timestamp: new Date() });
+			announcePresetQuarantine(quarantineSummary, { context: "reset" });
 			setSettingsInitialValues();
 			processTrackerJavascript();
 			
