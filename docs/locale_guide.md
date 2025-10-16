@@ -28,7 +28,7 @@ SillyTavern currently exposes the following locale identifiers. The extension al
 
 > **Need a new locale?** Add it to SillyTavern first (so it appears in `translationManager.getAvailableLocales()`), then follow the file guidelines below.
 
-> Maintainers review any pull requests that add new locales. Feel free to fork or keep custom translations locally—upstream merges are vetted for accuracy and structure.
+> Maintainers review any pull requests that add new locales. Feel free to fork or keep custom translations locally—upstream merges are vetted for accuracy and structure. The extension reads SillyTavern’s locale registry (via `translationManager` when available, or `/locales/lang.json` as a fallback) each time it loads.
 
 ## File Layout & Naming Rules
 
