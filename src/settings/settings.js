@@ -4,7 +4,7 @@ import { getContext } from '../../../../../../scripts/extensions.js';
 import { extensionFolderPath, extensionSettings } from "../../index.js";
 import { error, debug, warn, toTitleCase } from "../../lib/utils.js";
 import { analyzePresetSnapshot, analyzeTrackerDefinition, buildCanonicalFieldMap, generateLegacyPresetName, setLegacyRegistryLogger } from "../../lib/legacyRegistry.js";
-import { getSupportedLocales, setLocale, t, translateHtml, onLocaleChange, getCurrentLocale, getSillyTavernLocale } from "../../lib/i18n.js";
+import { getSupportedLocales, setLocale, t, translateHtml, onLocaleChange, getCurrentLocale, getSillyTavernLocale, ensureLocalesLoaded } from "../../lib/i18n.js";
 import { DEFAULT_PRESET_NAME, defaultSettings, automationTargets, participantTargets, LEGACY_DEFAULT_PRESET_NAME } from "./defaultSettings.js";
 import { generationCaptured } from "../../lib/interconnection.js";
 import { TrackerPromptMakerModal } from "../ui/trackerPromptMakerModal.js";
@@ -21,6 +21,7 @@ const AUTO_PRESET_OPTION = "__auto_locale__";
 const FALLBACK_LOCALE = "en";
 const localePresetMap = new Map();
 const canonicalLocalePresetNames = new Set([DEFAULT_PRESET_NAME]);
+const presetFilePathCache = new Map();
 
 let settingsRootElement = null;
 let localeListenerRegistered = false;
@@ -65,13 +66,17 @@ function registerLocalePresetMapping(localeId, presetName) {
 	if (!localeId || !presetName) {
 		return;
 	}
-	localePresetMap.set(localeId, presetName);
+	const normalizedLocale = String(localeId).trim().toLowerCase();
+	if (!normalizedLocale) {
+		return;
+	}
+	localePresetMap.set(normalizedLocale, presetName);
 	canonicalLocalePresetNames.add(presetName);
 }
 
 function resolvePresetNameForLocale(localeId) {
 	const presets = extensionSettings.presets || {};
-	const normalizedLocale = localeId || FALLBACK_LOCALE;
+	const normalizedLocale = (localeId ? String(localeId) : FALLBACK_LOCALE).trim().toLowerCase() || FALLBACK_LOCALE;
 	const directMatch = localePresetMap.get(normalizedLocale);
 	if (directMatch && Object.prototype.hasOwnProperty.call(presets, directMatch)) {
 		return directMatch;
@@ -807,6 +812,7 @@ async function loadSettingsUI() {
 		debug("Settings UI HTML appended successfully");
 
 		settingsRootElement = document.getElementById("tracker_enhanced_settings");
+		await ensureLocalesLoaded();
 		const currentLocale = getCurrentLocale();
 		applySettingsLocalization(currentLocale);
 
@@ -889,12 +895,14 @@ async function ensureLocalePresetsRegistered(options = {}) {
 	}
 
 	if (!localePresetRegistrationPromise) {
-		localePresetRegistrationPromise = seedLocalePresetEntries();
+		localePresetRegistrationPromise = seedLocalePresetEntries(options);
 	}
 	return localePresetRegistrationPromise;
 }
 
-async function seedLocalePresetEntries() {
+async function seedLocalePresetEntries(options = {}) {
+	const forceDiscovery = Boolean(options?.force);
+	await ensureLocalesLoaded({ force: forceDiscovery });
 	localePresetMap.clear();
 	canonicalLocalePresetNames.clear();
 	canonicalLocalePresetNames.add(DEFAULT_PRESET_NAME);
@@ -942,9 +950,13 @@ async function seedLocalePresetEntries() {
 		if (!locale || !locale.id || locale.id === "auto") {
 			continue;
 		}
-		localeIds.push(locale.id);
+		const normalizedLocaleId = String(locale.id).trim().toLowerCase();
+		if (!normalizedLocaleId) {
+			continue;
+		}
+		localeIds.push(normalizedLocaleId);
 		if (locale.label) {
-			localeCatalog.set(locale.id, locale.label);
+			localeCatalog.set(normalizedLocaleId, locale.label);
 		}
 	}
 
@@ -1002,18 +1014,61 @@ async function seedLocalePresetEntries() {
 	}
 }
 
-async function loadLocalePresetDefinition(localeId) {
-	try {
-		const response = await fetch(`${extensionFolderPath}/presets/${localeId}.json`);
-		if (!response.ok) {
-			warn("Locale preset not found", { locale: localeId, status: response.status });
-			return null;
+function getPresetFileCandidates(localeId) {
+	const normalized = (localeId ? String(localeId) : "").trim().toLowerCase() || FALLBACK_LOCALE;
+	const candidates = [];
+	const seen = new Set();
+
+	function addCandidate(candidate) {
+		const normalizedCandidate = candidate ? String(candidate).trim() : "";
+		if (!normalizedCandidate || seen.has(normalizedCandidate)) {
+			return;
 		}
-		return await response.json();
-	} catch (err) {
-		warn("Failed to load locale preset", { locale: localeId, error: err });
-		return null;
+		seen.add(normalizedCandidate);
+		candidates.push(normalizedCandidate);
 	}
+
+	const cached = presetFilePathCache.get(normalized);
+	if (cached) {
+		addCandidate(cached);
+	}
+
+	addCandidate(normalized);
+
+	if (normalized.includes("_")) {
+		addCandidate(normalized.replace(/_/g, "-"));
+	}
+
+	const segments = normalized.split("-");
+	if (segments.length >= 2) {
+		const upperVariant = `${segments[0]}-${segments.slice(1).map((part) => part.toUpperCase()).join("-")}`;
+		addCandidate(upperVariant);
+	}
+
+	return candidates;
+}
+
+async function loadLocalePresetDefinition(localeId) {
+	const normalized = (localeId ? String(localeId) : "").trim().toLowerCase() || FALLBACK_LOCALE;
+	const attempts = [];
+
+	for (const candidate of getPresetFileCandidates(normalized)) {
+		try {
+			const response = await fetch(`${extensionFolderPath}/presets/${candidate}.json`);
+			if (!response.ok) {
+				attempts.push({ candidate, status: response.status });
+				continue;
+			}
+			const json = await response.json();
+			presetFilePathCache.set(normalized, candidate);
+			return json;
+		} catch (err) {
+			attempts.push({ candidate, error: err?.message || String(err) });
+		}
+	}
+
+	warn("Locale preset not found", { locale: normalized, attempts });
+	return null;
 }
 
 function getFallbackPresetTitle(localeId, localeLabel) {

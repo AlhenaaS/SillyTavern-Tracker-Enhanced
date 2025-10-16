@@ -20,7 +20,7 @@
 - Settings and modal markup use `data-i18n-key` for every translatable string; avoid mixing in legacy `for`-selector lookups.
 - Attribute translations piggyback on `data-i18n-target="attr:foo"` (or `attr:title`, `attr:value`, etc.), and multiple attributes can be hooked with dedicated `data-i18n-key-*`/`data-i18n-target-*` pairs.
 - When labels need to control inputs, keep `for`/`aria-labelledby` in place for accessibility—the localization hook lives alongside those attributes.
-- Locale bundles (`locales/en.json`, `locales/zh-CN.json`) stay in identical key order to simplify diffs and reduce merge errors; update both together whenever strings change.
+- Locale bundles (`locales/en.json`, `locales/zh-cn.json`, plus any additional `locales/<locale>.json`) stay in identical key order to simplify diffs and reduce merge errors. Tracker Enhanced pulls the locale list from SillyTavern at runtime—consult `docs/locale_guide.md` before adding or reviewing translations.
 
 ## Tracker Behaviour Notes
 - Tracker auto-generation hooks fire from `onGenerateAfterCommands`, `onMessageSent/Received`, and render callbacks. SillyTavern emits a `generation_after_commands` dry-run immediately after `chat_id_changed`; we now bail early and log `GENERATION_AFTER_COMMANDS dry run skip { type: "normal", dryRun: true, ... }` to confirm no request is sent.
@@ -54,7 +54,7 @@
 ## Tracker Schema Maintenance
 - The canonical tracker schema now lives entirely in `src/settings/defaultSettings.js` as an explicit `trackerDef`. We removed the old prefix/metadata auto-upgrade helpers, so update that structure directly when fields change.
 - Tracker fields now declare separate `id` and `label` values (metadata version 4). IDs stay machine-safe for prompts/templates, while labels surface localized display text; follow-up phases must migrate runtime accessors off the old `name` property.
-- Locale presets must mirror the canonical field IDs/metadata. When adjusting defaults, copy the same structure into JSON presets (e.g. `presets/zh-CN.json`) and translate prompts there.
+- Locale presets must mirror the canonical field IDs/metadata. When adjusting defaults, copy the same structure into JSON presets (e.g. `presets/zh-cn.json`) and translate prompts there.
 - `sanitizeTrackerDefinition` now only normalises metadata against the canonical map. It no longer injects missing fields, so missing required keys are treated as legacy presets and routed to the auto-backup flow.
 - Tracker field presence is now a read-only attribute: `DYNAMIC` fields are generated each turn, while `STATIC` fields are reserved for engine-managed state. The prompt maker shows this as a badge instead of an editable dropdown, and the deprecated `EPHEMERAL` presence automatically maps to `DYNAMIC` during schema sanitisation.
 
@@ -81,5 +81,5 @@
 ## Preset Behaviour Updates
 - Presets now store tracker runtime flags (`automationTarget`, `participantTarget`, `showPopupFor`, `trackerFormat`, `devToolsEnabled`, `debugMode`, `trackerInjectionEnabled`, `toolbarIndicatorEnabled`) so loading a preset realigns both prompts and toggles.
 - The settings reset button is labelled “Reset Extension Defaults” and simply reapplies `defaultSettings` while preserving connection/profile settings and custom presets; built-in templates refresh automatically on reload.
-- Locale defaults are bundled as JSON snapshots (`presets/en.json`, `presets/zh-CN.json`). `defaultSettings.js` keeps the English preset only as a fallback so initialization still works if the JSON bundle is missing.
+- Locale defaults are bundled as JSON snapshots (`presets/en.json`, `presets/zh-cn.json`). `defaultSettings.js` keeps the English preset only as a fallback so initialization still works if the JSON bundle is missing.
 - `defaultSettings.presetAutoMode` now defaults to `true`. The preset dropdown sorts names alphabetically, prepends an **Auto (Follow SillyTavern Language)** entry, and resolves that option through SillyTavern’s live `getCurrentLocale()` with an English fallback. Locale changes and the Reset flow both reapply the resolved snapshot so prompts/UI stay aligned without manual intervention. When Auto is active, the dropdown label reflects the resolved preset name so it’s clear which locale bundle is running.
