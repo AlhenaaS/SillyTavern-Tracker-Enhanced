@@ -1,5 +1,6 @@
 import { t } from "../../lib/i18n.js";
-export const DEFAULT_PRESET_NAME = "Default Built-In (EN)";
+export const DEFAULT_PRESET_NAME = "Locale Default (English)";
+export const LEGACY_DEFAULT_PRESET_NAME = "Default Built-In (EN)";
 //#region Setting Enums
 const TARGET_VALUES = {
 	BOTH: "both",
@@ -1077,6 +1078,7 @@ export const defaultSettings = {
 	minimumDepth: minimumDepth,
 	responseLength: responseLength,
 	roleplayPrompt: roleplayPrompt,
+	presetAutoMode: true,
 	selectedPreset: DEFAULT_PRESET_NAME,
 	presets: {
 		[DEFAULT_PRESET_NAME]: {

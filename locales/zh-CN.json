@@ -76,6 +76,8 @@
   "settings.presets.import.error.invalidPayload": "预设文件必须是对象映射。",
   "settings.presets.import.alert.failed": "导入预设失败：{{error}}",
   "settings.presets.label": "预设",
+  "settings.presets.option.auto": "自动（跟随 SillyTavern 语言）",
+  "settings.presets.option.autoCurrent": "自动（当前预设：{{preset}}）",
   "settings.presets.unsaved.tip": "* 有未保存的更改",
   "settings.presets.copySuffix": "副本",
   "settings.presets.prompt.new": "请输入新预设的名称：",

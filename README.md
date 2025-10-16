@@ -155,6 +155,8 @@ When selecting a "Dedicated Completion Preset", you'll see compatibility indicat
 - Built-in presets (including locale defaults) stay selected while you experiment. The dropdown shows `*` to flag unsaved edits, and the first time you press **Save** we clone the preset to `Preset Name (copy)` (translated) so the factory defaults remain intact.
 - The presets dropdown appends `*` to the active name when the current settings diverge from the saved snapshot. The hint below the dropdown reminds you what the marker means.
 - ❌ Backup presets open in a read-only viewer instead of being applied. Use the “Copy JSON” button if you need to port values into a modern preset manually.
+- Bundled locale defaults now live in JSON snapshots (`presets/en.json`, `presets/zh-CN.json`). `src/settings/defaultSettings.js` keeps the English template only as a fallback so the extension can still boot if the JSON bundle is missing.
+- The preset dropdown is sorted alphabetically, inserts an **Auto (Follow SillyTavern Language)** option at the top, and automatically resolves to SillyTavern’s active UI locale with an English fallback. Locale changes and **Reset Extension Defaults** both reapply the resolved preset so the UI, prompt text, and tracker schema stay aligned without manual intervention. While Auto is active, the dropdown shows the resolved preset name so you always know which locale snapshot is driving tracker generation.
 
 ## 🧰 Legacy Preset Quarantine
 - Presets now resolve to either **compatible** (matches the canonical `trackerDef`) or **legacy**. Initialization, locale seeding, imports, and the “Reset Extension Defaults” flow all run through the legacy registry so incompatible payloads are quarantined before they touch live settings.

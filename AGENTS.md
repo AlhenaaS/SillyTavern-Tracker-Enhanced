@@ -79,5 +79,7 @@
 - Selecting a ❌ Backup preset no longer applies it—users get a modal with pretty-printed JSON plus a copy button instead. Any future migration tooling should hook into that same viewer rather than re-introducing partial support.
 
 ## Preset Behaviour Updates
- - Presets now store tracker runtime flags (`automationTarget`, `participantTarget`, `showPopupFor`, `trackerFormat`, `devToolsEnabled`, `debugMode`, `trackerInjectionEnabled`, `toolbarIndicatorEnabled`) so loading a preset realigns both prompts and toggles.
+- Presets now store tracker runtime flags (`automationTarget`, `participantTarget`, `showPopupFor`, `trackerFormat`, `devToolsEnabled`, `debugMode`, `trackerInjectionEnabled`, `toolbarIndicatorEnabled`) so loading a preset realigns both prompts and toggles.
 - The settings reset button is labelled “Reset Extension Defaults” and simply reapplies `defaultSettings` while preserving connection/profile settings and custom presets; built-in templates refresh automatically on reload.
+- Locale defaults are bundled as JSON snapshots (`presets/en.json`, `presets/zh-CN.json`). `defaultSettings.js` keeps the English preset only as a fallback so initialization still works if the JSON bundle is missing.
+- `defaultSettings.presetAutoMode` now defaults to `true`. The preset dropdown sorts names alphabetically, prepends an **Auto (Follow SillyTavern Language)** entry, and resolves that option through SillyTavern’s live `getCurrentLocale()` with an English fallback. Locale changes and the Reset flow both reapply the resolved snapshot so prompts/UI stay aligned without manual intervention. When Auto is active, the dropdown label reflects the resolved preset name so it’s clear which locale bundle is running.

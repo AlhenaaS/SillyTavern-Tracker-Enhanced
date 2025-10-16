@@ -76,6 +76,8 @@
   "settings.presets.import.error.invalidPayload": "Preset file must contain an object map.",
   "settings.presets.import.alert.failed": "Failed to import presets: {{error}}",
   "settings.presets.label": "Presets",
+  "settings.presets.option.auto": "Auto (Follow SillyTavern Language)",
+  "settings.presets.option.autoCurrent": "Auto (Current preset: {{preset}})",
   "settings.presets.unsaved.tip": "* Unsaved changes",
   "settings.presets.copySuffix": "copy",
   "settings.presets.prompt.new": "Enter a name for the new preset:",

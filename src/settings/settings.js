@@ -4,8 +4,8 @@ import { getContext } from '../../../../../../scripts/extensions.js';
 import { extensionFolderPath, extensionSettings } from "../../index.js";
 import { error, debug, warn, toTitleCase } from "../../lib/utils.js";
 import { analyzePresetSnapshot, analyzeTrackerDefinition, buildCanonicalFieldMap, generateLegacyPresetName, setLegacyRegistryLogger } from "../../lib/legacyRegistry.js";
-import { getSupportedLocales, setLocale, t, translateHtml, onLocaleChange, getCurrentLocale } from "../../lib/i18n.js";
-import { DEFAULT_PRESET_NAME, defaultSettings, automationTargets, participantTargets } from "./defaultSettings.js";
+import { getSupportedLocales, setLocale, t, translateHtml, onLocaleChange, getCurrentLocale, getSillyTavernLocale } from "../../lib/i18n.js";
+import { DEFAULT_PRESET_NAME, defaultSettings, automationTargets, participantTargets, LEGACY_DEFAULT_PRESET_NAME } from "./defaultSettings.js";
 import { generationCaptured } from "../../lib/interconnection.js";
 import { TrackerPromptMakerModal } from "../ui/trackerPromptMakerModal.js";
 import { TrackerTemplateGenerator } from "../ui/components/trackerTemplateGenerator.js";
@@ -17,15 +17,21 @@ import { DevelopmentTestUI } from "../ui/developmentTestUI.js";
 
 export { automationTargets, participantTargets, trackerFormat } from "./defaultSettings.js";
 
+const AUTO_PRESET_OPTION = "__auto_locale__";
+const FALLBACK_LOCALE = "en";
+const localePresetMap = new Map();
+const canonicalLocalePresetNames = new Set([DEFAULT_PRESET_NAME]);
+
 let settingsRootElement = null;
 let localeListenerRegistered = false;
-const BUILTIN_PRESET_NAMES = new Set([DEFAULT_PRESET_NAME]);
+const BUILTIN_PRESET_NAMES = new Set([DEFAULT_PRESET_NAME, LEGACY_DEFAULT_PRESET_NAME]);
 const BUILTIN_PRESET_TEMPLATES = new Map();
 const CANONICAL_FIELD_MAP = buildCanonicalFieldMap(defaultSettings.trackerDef);
 let activePresetName = null;
 let activePresetBaseline = null;
 let presetDirty = false;
 let lastAppliedPresetName = null;
+let lastAutoResolvedPresetName = null;
 
 setLegacyRegistryLogger(debug);
 
@@ -55,18 +61,118 @@ function ensureUniquePresetName(baseName, existingPresets) {
 	return candidate;
 }
 
+function registerLocalePresetMapping(localeId, presetName) {
+	if (!localeId || !presetName) {
+		return;
+	}
+	localePresetMap.set(localeId, presetName);
+	canonicalLocalePresetNames.add(presetName);
+}
+
+function resolvePresetNameForLocale(localeId) {
+	const presets = extensionSettings.presets || {};
+	const normalizedLocale = localeId || FALLBACK_LOCALE;
+	const directMatch = localePresetMap.get(normalizedLocale);
+	if (directMatch && Object.prototype.hasOwnProperty.call(presets, directMatch)) {
+		return directMatch;
+	}
+
+	if (normalizedLocale !== FALLBACK_LOCALE) {
+		const fallbackMatch = localePresetMap.get(FALLBACK_LOCALE);
+		if (fallbackMatch && Object.prototype.hasOwnProperty.call(presets, fallbackMatch)) {
+			return fallbackMatch;
+		}
+	}
+
+	if (Object.prototype.hasOwnProperty.call(presets, DEFAULT_PRESET_NAME)) {
+		return DEFAULT_PRESET_NAME;
+	}
+
+	const presetNames = Object.keys(presets);
+	return presetNames[0] || null;
+}
+
+function getResolvedAutoPresetDisplayName() {
+	if (!extensionSettings.presetAutoMode) {
+		return null;
+	}
+	const presets = extensionSettings.presets || {};
+	const selected = extensionSettings.selectedPreset;
+	if (selected && Object.prototype.hasOwnProperty.call(presets, selected) && canonicalLocalePresetNames.has(selected)) {
+		return selected;
+	}
+	const remembered = lastAutoResolvedPresetName;
+	if (remembered && Object.prototype.hasOwnProperty.call(presets, remembered) && canonicalLocalePresetNames.has(remembered)) {
+		return remembered;
+	}
+	const resolved = resolvePresetNameForLocale(getSillyTavernLocale());
+	if (resolved && Object.prototype.hasOwnProperty.call(presets, resolved) && canonicalLocalePresetNames.has(resolved)) {
+		return resolved;
+	}
+	if (Object.prototype.hasOwnProperty.call(presets, DEFAULT_PRESET_NAME) && canonicalLocalePresetNames.has(DEFAULT_PRESET_NAME)) {
+		return DEFAULT_PRESET_NAME;
+	}
+	return null;
+}
+
+function reapplyAutoPreset(options = {}) {
+	if (!extensionSettings.presetAutoMode) {
+		return null;
+	}
+	const localeId = options.localeId || getSillyTavernLocale();
+	const resolvedPresetName = resolvePresetNameForLocale(localeId);
+	if (!resolvedPresetName) {
+		warn("Auto preset resolution failed - no presets available", { localeId });
+		return null;
+	}
+
+	lastAutoResolvedPresetName = resolvedPresetName;
+
+	if (extensionSettings.selectedPreset === resolvedPresetName && !options.force) {
+		refreshPresetBaseline();
+		updatePresetDirtyState();
+		refreshPresetOptionLabels();
+		return resolvedPresetName;
+	}
+
+	const presets = extensionSettings.presets || {};
+	if (!Object.prototype.hasOwnProperty.call(presets, resolvedPresetName)) {
+		warn("Auto preset resolution missing preset snapshot", { resolvedPresetName, presets: Object.keys(presets) });
+		return null;
+	}
+
+	extensionSettings.presetAutoMode = true;
+	applyPreset(resolvedPresetName);
+	return resolvedPresetName;
+}
+
 function refreshPresetOptionLabels() {
 	const presetSelect = $("#tracker_enhanced_preset_select");
 	if (!presetSelect.length) {
 		return;
 	}
+	const autoMode = Boolean(extensionSettings.presetAutoMode);
 	presetSelect.find("option").each((_, option) => {
 		const baseLabel = option.dataset.baseLabel || option.value;
-		if (option.value === activePresetName && presetDirty) {
-			option.text = `${baseLabel}*`;
-		} else {
-			option.text = baseLabel;
+		let label = baseLabel;
+		if (option.value === AUTO_PRESET_OPTION) {
+			if (autoMode) {
+				const resolvedName = getResolvedAutoPresetDisplayName();
+				if (resolvedName) {
+					const template = t(
+						"settings.presets.option.autoCurrent",
+						"Auto (Current preset: {{preset}})"
+					);
+					label = template.replace("{{preset}}", resolvedName);
+				}
+			}
+			if (autoMode && presetDirty) {
+				label = `${label}*`;
+			}
+		} else if (!autoMode && option.value === activePresetName && presetDirty) {
+			label = `${baseLabel}*`;
 		}
+		option.text = label;
 	});
 }
 
@@ -104,6 +210,9 @@ function refreshPresetBaseline() {
 	if (presetName) {
 		lastAppliedPresetName = presetName;
 	}
+	if (extensionSettings.presetAutoMode) {
+		lastAutoResolvedPresetName = presetName || null;
+	}
 	presetDirty = false;
 	refreshPresetOptionLabels();
 }
@@ -139,6 +248,10 @@ function ensureEditablePreset() {
 	extensionSettings.selectedPreset = duplicateName;
 	activePresetName = duplicateName;
 	lastAppliedPresetName = duplicateName;
+	if (extensionSettings.presetAutoMode) {
+		extensionSettings.presetAutoMode = false;
+		lastAutoResolvedPresetName = null;
+	}
 	updatePresetDropdown();
 	refreshPresetBaseline();
 	if (typeof toastr !== "undefined") {
@@ -640,6 +753,10 @@ export async function initSettings() {
 
 	delete extensionSettings.localePresetSnapshot;
 
+	if (typeof extensionSettings.presetAutoMode !== "boolean") {
+		extensionSettings.presetAutoMode = Boolean(defaultSettings.presetAutoMode);
+	}
+
 	if (!extensionSettings.selectedPreset) {
 		extensionSettings.selectedPreset = defaultSettings.selectedPreset || DEFAULT_PRESET_NAME;
 	}
@@ -648,6 +765,10 @@ export async function initSettings() {
 	registerBuiltInPresetTemplate(DEFAULT_PRESET_NAME, defaultSettings.presets?.[DEFAULT_PRESET_NAME]);
 	const quarantineSummary = quarantineExtensionPresets({ timestamp: new Date() });
 	announcePresetQuarantine(quarantineSummary, { context: "init" });
+
+	if (extensionSettings.presetAutoMode) {
+		reapplyAutoPreset({ force: true });
+	}
 
 	saveSettingsDebounced();
 
@@ -692,6 +813,9 @@ async function loadSettingsUI() {
 		if (!localeListenerRegistered) {
 			onLocaleChange((locale) => {
 				applySettingsLocalization(locale);
+				if (extensionSettings.presetAutoMode) {
+					reapplyAutoPreset();
+				}
 			});
 			localeListenerRegistered = true;
 		}
@@ -758,7 +882,6 @@ function localizeStaticSettingsContent() {
 	}
 }
 let localePresetRegistrationPromise = null;
-const BUILTIN_PRESET_LOCALES = new Set(["en"]);
 
 async function ensureLocalePresetsRegistered(options = {}) {
 	if (options.force) {
@@ -772,33 +895,47 @@ async function ensureLocalePresetsRegistered(options = {}) {
 }
 
 async function seedLocalePresetEntries() {
+	localePresetMap.clear();
+	canonicalLocalePresetNames.clear();
+	canonicalLocalePresetNames.add(DEFAULT_PRESET_NAME);
 	extensionSettings.presets = extensionSettings.presets || {};
 	const legacyStore = normalizeLegacyPresetStore(extensionSettings.legacyPresets);
 	extensionSettings.legacyPresets = legacyStore;
 	refreshLegacyPresetManager();
-	const existingPresetNames = new Set(Object.keys(extensionSettings.presets));
+
+	let changesMade = false;
 	const legacyNameSet = new Set([
-		...existingPresetNames,
+		...Object.keys(extensionSettings.presets),
 		...Object.keys(legacyStore),
 	]);
 	const localeCatalog = new Map();
 	const localeIds = [];
 	const timestamp = new Date();
 	const isoTimestamp = timestamp.toISOString();
-	let changesMade = false;
 	const quarantinedLocales = [];
+
+	if (Object.prototype.hasOwnProperty.call(extensionSettings.presets, LEGACY_DEFAULT_PRESET_NAME)) {
+		const legacySnapshot = extensionSettings.presets[LEGACY_DEFAULT_PRESET_NAME];
+		if (!Object.prototype.hasOwnProperty.call(extensionSettings.presets, DEFAULT_PRESET_NAME) && legacySnapshot) {
+			extensionSettings.presets[DEFAULT_PRESET_NAME] = deepClone(legacySnapshot);
+		}
+		delete extensionSettings.presets[LEGACY_DEFAULT_PRESET_NAME];
+		legacyNameSet.add(DEFAULT_PRESET_NAME);
+		changesMade = true;
+		if (extensionSettings.selectedPreset === LEGACY_DEFAULT_PRESET_NAME) {
+			extensionSettings.selectedPreset = DEFAULT_PRESET_NAME;
+		}
+	}
 
 	const builtInPresetDefinition = defaultSettings.presets?.[DEFAULT_PRESET_NAME];
 	if (builtInPresetDefinition) {
-		if (!existingPresetNames.has(DEFAULT_PRESET_NAME)) {
-			const snapshot = createBuiltInPresetSnapshot(DEFAULT_PRESET_NAME, builtInPresetDefinition);
-			extensionSettings.presets[DEFAULT_PRESET_NAME] = snapshot;
+		const fallbackSnapshot = createBuiltInPresetSnapshot(DEFAULT_PRESET_NAME, builtInPresetDefinition);
+		if (!Object.prototype.hasOwnProperty.call(extensionSettings.presets, DEFAULT_PRESET_NAME) && fallbackSnapshot) {
+			extensionSettings.presets[DEFAULT_PRESET_NAME] = fallbackSnapshot;
 			changesMade = true;
-			existingPresetNames.add(DEFAULT_PRESET_NAME);
-			legacyNameSet.add(DEFAULT_PRESET_NAME);
-		} else {
-			registerBuiltInPresetTemplate(DEFAULT_PRESET_NAME, extensionSettings.presets[DEFAULT_PRESET_NAME]);
 		}
+	} else if (extensionSettings.presets[DEFAULT_PRESET_NAME]) {
+		registerBuiltInPresetTemplate(DEFAULT_PRESET_NAME, extensionSettings.presets[DEFAULT_PRESET_NAME]);
 	}
 
 	for (const locale of getSupportedLocales()) {
@@ -813,19 +950,12 @@ async function seedLocalePresetEntries() {
 
 	await Promise.all(
 		localeIds.map(async (localeId) => {
-			if (BUILTIN_PRESET_LOCALES.has(localeId)) {
-				return;
-			}
 			const definition = await loadLocalePresetDefinition(localeId);
 			if (!definition || !definition.values) {
 				return;
 			}
 			const presetTitle = (definition.title || "").trim() || getFallbackPresetTitle(localeId, localeCatalog.get(localeId));
 			if (!presetTitle) {
-				return;
-			}
-			if (existingPresetNames.has(presetTitle)) {
-				registerBuiltInPresetTemplate(presetTitle, extensionSettings.presets[presetTitle]);
 				return;
 			}
 			const localeAnalysis = buildLocalePresetAnalysis(presetTitle, definition.values);
@@ -846,13 +976,20 @@ async function seedLocalePresetEntries() {
 				return;
 			}
 			const normalizedSnapshot = deepClone(localeAnalysis.normalizedSnapshot);
+			const previousSnapshot = extensionSettings.presets[presetTitle];
 			extensionSettings.presets[presetTitle] = normalizedSnapshot;
 			registerBuiltInPresetTemplate(presetTitle, normalizedSnapshot);
-			changesMade = true;
-			existingPresetNames.add(presetTitle);
+			registerLocalePresetMapping(localeId, presetTitle);
 			legacyNameSet.add(presetTitle);
+			if (!previousSnapshot || JSON.stringify(previousSnapshot) !== JSON.stringify(normalizedSnapshot)) {
+				changesMade = true;
+			}
 		})
 	);
+
+	if (!localePresetMap.has(FALLBACK_LOCALE) && Object.prototype.hasOwnProperty.call(extensionSettings.presets, DEFAULT_PRESET_NAME)) {
+		registerLocalePresetMapping(FALLBACK_LOCALE, DEFAULT_PRESET_NAME);
+	}
 
 	if (quarantinedLocales.length) {
 		debug("Locale presets quarantined", { entries: quarantinedLocales });
@@ -952,6 +1089,9 @@ function refreshLanguageOverrideDropdown() {
  */
 function setSettingsInitialValues() {
 	refreshLanguageOverrideDropdown();
+	if (typeof extensionSettings.presetAutoMode !== "boolean") {
+		extensionSettings.presetAutoMode = Boolean(defaultSettings.presetAutoMode);
+	}
 	// Populate presets dropdown
 	updatePresetDropdown();
 	initializeOverridesDropdowns();
@@ -1333,14 +1473,30 @@ function onCompletionPresetSelectChange() {
 function updatePresetDropdown() {
 	const presetSelect = $("#tracker_enhanced_preset_select");
 	presetSelect.empty();
-	for (const presetName in extensionSettings.presets) {
+	const autoLabel = t("settings.presets.option.auto", "Auto (Follow SillyTavern Language)");
+	const autoOption = $("<option>").val(AUTO_PRESET_OPTION).text(autoLabel);
+	autoOption.attr("data-base-label", autoLabel);
+	presetSelect.append(autoOption);
+
+	const presetNames = Object.keys(extensionSettings.presets || {}).sort((a, b) =>
+		a.localeCompare(b, undefined, { sensitivity: "base" })
+	);
+
+	for (const presetName of presetNames) {
 		const option = $("<option>").val(presetName).text(presetName);
 		option.attr("data-base-label", presetName);
-		if (presetName === extensionSettings.selectedPreset) {
-			option.attr("selected", "selected");
-		}
 		presetSelect.append(option);
 	}
+
+	let targetValue = extensionSettings.presetAutoMode ? AUTO_PRESET_OPTION : extensionSettings.selectedPreset;
+	if (targetValue !== AUTO_PRESET_OPTION) {
+		const hasPreset = targetValue && Object.prototype.hasOwnProperty.call(extensionSettings.presets || {}, targetValue);
+		if (!hasPreset) {
+			targetValue = presetNames[0] || AUTO_PRESET_OPTION;
+		}
+	}
+
+	presetSelect.val(targetValue || AUTO_PRESET_OPTION);
 	refreshPresetOptionLabels();
 }
 
@@ -1352,6 +1508,15 @@ function onPresetSelectChange() {
 	if (!selectedPreset) {
 		return;
 	}
+
+	if (selectedPreset === AUTO_PRESET_OPTION) {
+		extensionSettings.presetAutoMode = true;
+		reapplyAutoPreset({ force: true });
+		return;
+	}
+
+	extensionSettings.presetAutoMode = false;
+	lastAutoResolvedPresetName = null;
 
 	const legacySnapshot = getLegacyPresetSnapshot(selectedPreset);
 	if (legacySnapshot) {
@@ -1428,6 +1593,7 @@ function onPresetNewClick() {
 		const newPreset = deepClone(getCurrentPresetSettings());
 		extensionSettings.presets[presetName] = newPreset;
 		extensionSettings.selectedPreset = presetName;
+		extensionSettings.presetAutoMode = false;
 		updatePresetDropdown();
 		refreshPresetBaseline();
 		updatePresetDirtyState();
@@ -2216,10 +2382,28 @@ function onTrackerPromptResetClick() {
 				...extensionSettings.presets,
 				...customPresets,
 			};
-			extensionSettings.selectedPreset = DEFAULT_PRESET_NAME;
 			const quarantineSummary = quarantineExtensionPresets({ timestamp: new Date() });
 			announcePresetQuarantine(quarantineSummary, { context: "reset" });
-			setSettingsInitialValues();
+			let presetApplied = false;
+			if (extensionSettings.presetAutoMode) {
+				const resolved = reapplyAutoPreset({ force: true });
+				presetApplied = Boolean(resolved);
+			} else {
+				let resolvedPreset = extensionSettings.selectedPreset;
+				if (!resolvedPreset || !Object.prototype.hasOwnProperty.call(extensionSettings.presets, resolvedPreset)) {
+					resolvedPreset = Object.prototype.hasOwnProperty.call(extensionSettings.presets, DEFAULT_PRESET_NAME)
+						? DEFAULT_PRESET_NAME
+						: Object.keys(extensionSettings.presets)[0] || null;
+				}
+				if (resolvedPreset) {
+					applyPreset(resolvedPreset);
+					presetApplied = true;
+				}
+			}
+
+			if (!presetApplied) {
+				setSettingsInitialValues();
+			}
 			processTrackerJavascript();
 			
 			// Save the reset settings
