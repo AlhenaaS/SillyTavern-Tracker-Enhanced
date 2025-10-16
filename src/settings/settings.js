@@ -236,20 +236,25 @@ function updatePresetDirtyState() {
 	}
 }
 
-function ensureEditablePreset() {
+function ensureEditablePreset(options = {}) {
+	const forceDuplicate = Boolean(options?.forceDuplicate);
 	const presetName = extensionSettings.selectedPreset;
 	if (!presetName || !isBuiltInPresetName(presetName)) {
 		return false;
 	}
-	if (!presetDirty) {
+	if (!presetDirty && !forceDuplicate) {
 		return false;
 	}
 
-	const currentSnapshot = getCurrentPresetSettings();
+	const sourceSnapshot = presetDirty
+		? getCurrentPresetSettings()
+		: activePresetBaseline
+			? deepClone(activePresetBaseline)
+			: getCurrentPresetSettings();
 	const suffix = t("settings.presets.copySuffix", "copy");
 	const duplicateBaseName = `${presetName} (${suffix})`;
 	const duplicateName = ensureUniquePresetName(duplicateBaseName, extensionSettings.presets);
-	extensionSettings.presets[duplicateName] = deepClone(currentSnapshot);
+	extensionSettings.presets[duplicateName] = deepClone(sourceSnapshot);
 	extensionSettings.selectedPreset = duplicateName;
 	activePresetName = duplicateName;
 	lastAppliedPresetName = duplicateName;
@@ -1673,7 +1678,7 @@ function onPresetNewClick() {
  */
 function onPresetSaveClick() {
 	const originalPresetName = extensionSettings.selectedPreset;
-	const duplicated = ensureEditablePreset();
+	const duplicated = ensureEditablePreset({ forceDuplicate: true });
 	const presetName = extensionSettings.selectedPreset;
 	const updatedPreset = getCurrentPresetSettings();
 	extensionSettings.presets[presetName] = deepClone(updatedPreset);
