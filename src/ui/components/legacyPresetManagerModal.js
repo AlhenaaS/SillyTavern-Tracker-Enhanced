@@ -98,7 +98,7 @@ export class LegacyPresetManagerModal {
 		footer.className = "tracker-modal-footer tracker-legacy-preset-footer";
 
 		const closeButtonFooter = document.createElement("button");
-		closeButtonFooter.className = "tracker-modal-cancel-button menu_button interactable";
+		closeButtonFooter.className = "tracker-modal-cancel-button menu_button interactable tracker-legacy-close-button";
 		closeButtonFooter.textContent = t("settings.presets.viewer.close", "Close");
 		closeButtonFooter.addEventListener("click", () => this.close());
 		footer.appendChild(closeButtonFooter);

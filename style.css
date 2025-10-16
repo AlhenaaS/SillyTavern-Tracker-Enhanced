@@ -571,6 +571,13 @@ label[for=tracker_reset_presets] {
   justify-content: flex-end;
 }
 
+.tracker-legacy-close-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+}
+
 .tracker-legacy-preset-meta {
   display: flex;
   flex-wrap: wrap;
