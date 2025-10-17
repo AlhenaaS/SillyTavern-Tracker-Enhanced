@@ -3,9 +3,10 @@ import { getContext } from '../../../../../../scripts/extensions.js';
 
 import { extensionFolderPath, extensionSettings } from "../../index.js";
 import { error, debug, warn, toTitleCase } from "../../lib/utils.js";
-import { analyzePresetSnapshot, analyzeTrackerDefinition, buildCanonicalFieldMap, generateLegacyPresetName, setLegacyRegistryLogger } from "../../lib/legacyRegistry.js";
+import { analyzePresetSnapshot, analyzeTrackerDefinition, generateLegacyPresetName, setLegacyRegistryLogger } from "../../lib/legacyRegistry.js";
 import { getSupportedLocales, setLocale, t, translateHtml, onLocaleChange, getCurrentLocale, getSillyTavernLocale, ensureLocalesLoaded } from "../../lib/i18n.js";
 import { DEFAULT_PRESET_NAME, defaultSettings, automationTargets, participantTargets, LEGACY_DEFAULT_PRESET_NAME } from "./defaultSettings.js";
+import { ensureDefaultPresetSnapshot, getCanonicalFieldMap as getPresetCanonicalFieldMap, loadLocalePresetDefinition } from "./presetLoader.js";
 import { generationCaptured } from "../../lib/interconnection.js";
 import { TrackerPromptMakerModal } from "../ui/trackerPromptMakerModal.js";
 import { TrackerTemplateGenerator } from "../ui/components/trackerTemplateGenerator.js";
@@ -21,13 +22,13 @@ const AUTO_PRESET_OPTION = "__auto_locale__";
 const FALLBACK_LOCALE = "en";
 const localePresetMap = new Map();
 const canonicalLocalePresetNames = new Set([DEFAULT_PRESET_NAME]);
-const presetFilePathCache = new Map();
 
 let settingsRootElement = null;
 let localeListenerRegistered = false;
 const BUILTIN_PRESET_NAMES = new Set([DEFAULT_PRESET_NAME, LEGACY_DEFAULT_PRESET_NAME]);
 const BUILTIN_PRESET_TEMPLATES = new Map();
-const CANONICAL_FIELD_MAP = buildCanonicalFieldMap(defaultSettings.trackerDef);
+let canonicalFieldMap = new Map();
+let defaultPresetBaseline = null;
 let activePresetName = null;
 let activePresetBaseline = null;
 let presetDirty = false;
@@ -35,6 +36,21 @@ let lastAppliedPresetName = null;
 let lastAutoResolvedPresetName = null;
 
 setLegacyRegistryLogger(debug);
+
+function getCanonicalTrackerMap() {
+	return canonicalFieldMap;
+}
+
+function getDefaultPresetValue(key, fallback) {
+	if (defaultPresetBaseline && Object.prototype.hasOwnProperty.call(defaultPresetBaseline, key)) {
+		return defaultPresetBaseline[key];
+	}
+	return fallback;
+}
+
+function cloneDefaultPresetValues() {
+	return defaultPresetBaseline ? deepClone(defaultPresetBaseline) : null;
+}
 
 function registerBuiltInPresetTemplate(name, presetValues) {
 	if (!name || typeof name !== "string" || !presetValues) {
@@ -283,7 +299,7 @@ function handleSettingsMutation(options = {}) {
 }
 
 function sanitizeTrackerDefinition(definition) {
-	const analysis = analyzeTrackerDefinition(definition, { canonicalMap: CANONICAL_FIELD_MAP });
+	const analysis = analyzeTrackerDefinition(definition, { canonicalMap: getCanonicalTrackerMap() });
 	return {
 		definition: analysis.normalizedDefinition,
 		changed: Boolean(analysis.changed),
@@ -356,7 +372,7 @@ function quarantineExtensionPresets(options = {}) {
 	const newlyQuarantined = [];
 	const validPresets = {};
 	const presetEntries = Object.entries(extensionSettings.presets || {});
-	const canonicalOptions = { canonicalMap: CANONICAL_FIELD_MAP };
+	const canonicalOptions = { canonicalMap: getCanonicalTrackerMap() };
 
 	for (const [presetName, presetValue] of presetEntries) {
 		if (!presetValue || typeof presetValue !== "object") {
@@ -403,12 +419,15 @@ function quarantineExtensionPresets(options = {}) {
 		}
 	}
 
-	const rootAnalysis = analyzeTrackerDefinition(extensionSettings.trackerDef, { canonicalMap: CANONICAL_FIELD_MAP });
+	const rootAnalysis = analyzeTrackerDefinition(extensionSettings.trackerDef, { canonicalMap: getCanonicalTrackerMap() });
 	let trackerDefinition = rootAnalysis.normalizedDefinition;
 	let trackerReplacedWithDefault = false;
 	if (rootAnalysis.isLegacy) {
-		trackerDefinition = deepClone(defaultSettings.trackerDef);
-		trackerReplacedWithDefault = true;
+		const defaultTracker = defaultPresetBaseline?.trackerDef;
+		if (defaultTracker) {
+			trackerDefinition = deepClone(defaultTracker);
+			trackerReplacedWithDefault = true;
+		}
 	}
 	extensionSettings.trackerDef = trackerDefinition;
 
@@ -714,6 +733,22 @@ const PRESET_VALUE_KEYS = [
 	"trackerDef",
 ];
 
+function applyPresetSnapshotToSettings(target, presetValues, options = {}) {
+	if (!target || !presetValues || typeof presetValues !== "object") {
+		return;
+	}
+	const overwrite = options.overwrite !== false;
+	for (const key of PRESET_VALUE_KEYS) {
+		if (!Object.prototype.hasOwnProperty.call(presetValues, key)) {
+			continue;
+		}
+		if (!overwrite && typeof target[key] !== "undefined") {
+			continue;
+		}
+		target[key] = deepClone(presetValues[key]);
+	}
+}
+
 /**
  * Checks if the extension is enabled.
  * @returns {Promise<boolean>} True if enabled, false otherwise.
@@ -739,29 +774,76 @@ export async function toggleExtension(enable = true) {
 export async function initSettings() {
 	const currentSettings = { ...extensionSettings };
 
+	const defaultPresetSnapshot = await ensureDefaultPresetSnapshot();
+	defaultPresetBaseline = deepClone(defaultPresetSnapshot);
+	canonicalFieldMap = getPresetCanonicalFieldMap();
+
+	defaultSettings.presets = defaultSettings.presets || {};
+	defaultSettings.presets[DEFAULT_PRESET_NAME] = deepClone(defaultPresetBaseline);
+
+	const baseDefaults = deepClone(defaultSettings);
+	baseDefaults.presets = baseDefaults.presets || {};
+	baseDefaults.presets[DEFAULT_PRESET_NAME] = deepClone(defaultPresetBaseline);
+
+	const resetExtensionSettingsFromBase = () => {
+		for (const key of Object.keys(extensionSettings)) {
+			delete extensionSettings[key];
+		}
+		Object.assign(extensionSettings, deepClone(baseDefaults));
+	};
+
 	if (!currentSettings.trackerDef) {
-		const allowedKeys = ["enabled", "generateContextTemplate", "generateSystemPrompt", "generateRequestPrompt", "roleplayPrompt", "characterDescriptionTemplate", "mesTrackerTemplate", "numberOfMessages", "responseLength", "debugMode", "devToolsEnabled"];
+		const allowedKeys = [
+			"enabled",
+			"generateContextTemplate",
+			"generateSystemPrompt",
+			"generateRequestPrompt",
+			"roleplayPrompt",
+			"characterDescriptionTemplate",
+			"mesTrackerTemplate",
+			"numberOfMessages",
+			"responseLength",
+			"debugMode",
+			"devToolsEnabled",
+		];
 
-		const newSettings = {
-			...defaultSettings,
-			...Object.fromEntries(allowedKeys.map((key) => [key, currentSettings[key] || defaultSettings[key]])),
-			oldSettings: currentSettings,
-		};
+		resetExtensionSettingsFromBase();
+		applyPresetSnapshotToSettings(extensionSettings, defaultPresetBaseline, { overwrite: true });
 
-		for (const key in extensionSettings) {
-			if (!(key in newSettings)) {
-				delete extensionSettings[key];
+		if (currentSettings.presets && typeof currentSettings.presets === "object" && !Array.isArray(currentSettings.presets)) {
+			const preservedPresets = deepClone(currentSettings.presets);
+			extensionSettings.presets = {
+				...preservedPresets,
+				...extensionSettings.presets,
+			};
+		}
+
+		for (const key of allowedKeys) {
+			if (typeof currentSettings[key] !== "undefined") {
+				extensionSettings[key] = deepClone(currentSettings[key]);
 			}
 		}
 
-		Object.assign(extensionSettings, newSettings);
+		extensionSettings.oldSettings = currentSettings;
 	} else {
-		migrateIsDynamicToPresence(extensionSettings);
+		migrateIsDynamicToPresence(currentSettings);
 
-		Object.assign(extensionSettings, defaultSettings, currentSettings);
+		resetExtensionSettingsFromBase();
+		applyPresetSnapshotToSettings(extensionSettings, defaultPresetBaseline, { overwrite: true });
+		Object.assign(extensionSettings, currentSettings);
 	}
 
 	delete extensionSettings.localePresetSnapshot;
+
+	if (typeof extensionSettings.presets !== "object" || extensionSettings.presets === null || Array.isArray(extensionSettings.presets)) {
+		extensionSettings.presets = {};
+	}
+	if (!Object.prototype.hasOwnProperty.call(extensionSettings.presets, DEFAULT_PRESET_NAME)) {
+		const defaultPresetClone = cloneDefaultPresetValues();
+		if (defaultPresetClone) {
+			extensionSettings.presets[DEFAULT_PRESET_NAME] = defaultPresetClone;
+		}
+	}
 
 	if (typeof extensionSettings.presetAutoMode !== "boolean") {
 		extensionSettings.presetAutoMode = Boolean(defaultSettings.presetAutoMode);
@@ -772,7 +854,10 @@ export async function initSettings() {
 	}
 
 	await ensureLocalePresetsRegistered();
-	registerBuiltInPresetTemplate(DEFAULT_PRESET_NAME, defaultSettings.presets?.[DEFAULT_PRESET_NAME]);
+	const defaultPresetForRegistration = extensionSettings.presets?.[DEFAULT_PRESET_NAME];
+	if (defaultPresetForRegistration) {
+		registerBuiltInPresetTemplate(DEFAULT_PRESET_NAME, defaultPresetForRegistration);
+	}
 	const quarantineSummary = quarantineExtensionPresets({ timestamp: new Date() });
 	announcePresetQuarantine(quarantineSummary, { context: "init" });
 
@@ -940,15 +1025,20 @@ async function seedLocalePresetEntries(options = {}) {
 		}
 	}
 
-	const builtInPresetDefinition = defaultSettings.presets?.[DEFAULT_PRESET_NAME];
-	if (builtInPresetDefinition) {
-		const fallbackSnapshot = createBuiltInPresetSnapshot(DEFAULT_PRESET_NAME, builtInPresetDefinition);
-		if (!Object.prototype.hasOwnProperty.call(extensionSettings.presets, DEFAULT_PRESET_NAME) && fallbackSnapshot) {
+	const defaultPresetSource =
+		extensionSettings.presets[DEFAULT_PRESET_NAME] ||
+		defaultSettings.presets?.[DEFAULT_PRESET_NAME] ||
+		cloneDefaultPresetValues();
+	if (defaultPresetSource) {
+		const fallbackSnapshot = createBuiltInPresetSnapshot(DEFAULT_PRESET_NAME, defaultPresetSource);
+		if (fallbackSnapshot) {
+			const previousSnapshot = extensionSettings.presets[DEFAULT_PRESET_NAME];
+			const serializedPrevious = previousSnapshot ? JSON.stringify(previousSnapshot) : null;
 			extensionSettings.presets[DEFAULT_PRESET_NAME] = fallbackSnapshot;
-			changesMade = true;
+			if (!serializedPrevious || JSON.stringify(fallbackSnapshot) !== serializedPrevious) {
+				changesMade = true;
+			}
 		}
-	} else if (extensionSettings.presets[DEFAULT_PRESET_NAME]) {
-		registerBuiltInPresetTemplate(DEFAULT_PRESET_NAME, extensionSettings.presets[DEFAULT_PRESET_NAME]);
 	}
 
 	for (const locale of getSupportedLocales()) {
@@ -1019,63 +1109,6 @@ async function seedLocalePresetEntries(options = {}) {
 	}
 }
 
-function getPresetFileCandidates(localeId) {
-	const normalized = (localeId ? String(localeId) : "").trim().toLowerCase() || FALLBACK_LOCALE;
-	const candidates = [];
-	const seen = new Set();
-
-	function addCandidate(candidate) {
-		const normalizedCandidate = candidate ? String(candidate).trim() : "";
-		if (!normalizedCandidate || seen.has(normalizedCandidate)) {
-			return;
-		}
-		seen.add(normalizedCandidate);
-		candidates.push(normalizedCandidate);
-	}
-
-	const cached = presetFilePathCache.get(normalized);
-	if (cached) {
-		addCandidate(cached);
-	}
-
-	addCandidate(normalized);
-
-	if (normalized.includes("_")) {
-		addCandidate(normalized.replace(/_/g, "-"));
-	}
-
-	const segments = normalized.split("-");
-	if (segments.length >= 2) {
-		const upperVariant = `${segments[0]}-${segments.slice(1).map((part) => part.toUpperCase()).join("-")}`;
-		addCandidate(upperVariant);
-	}
-
-	return candidates;
-}
-
-async function loadLocalePresetDefinition(localeId) {
-	const normalized = (localeId ? String(localeId) : "").trim().toLowerCase() || FALLBACK_LOCALE;
-	const attempts = [];
-
-	for (const candidate of getPresetFileCandidates(normalized)) {
-		try {
-			const response = await fetch(`${extensionFolderPath}/presets/${candidate}.json`);
-			if (!response.ok) {
-				attempts.push({ candidate, status: response.status });
-				continue;
-			}
-			const json = await response.json();
-			presetFilePathCache.set(normalized, candidate);
-			return json;
-		} catch (err) {
-			attempts.push({ candidate, error: err?.message || String(err) });
-		}
-	}
-
-	warn("Locale preset not found", { locale: normalized, attempts });
-	return null;
-}
-
 function getFallbackPresetTitle(localeId, localeLabel) {
 	if (localeLabel && typeof localeLabel === "string") {
 		return `Locale Default (${localeLabel})`;
@@ -1097,7 +1130,7 @@ function buildLocalePresetAnalysis(presetName, values = {}) {
 		return null;
 	}
 	migrateIsDynamicToPresence(sanitized);
-	return analyzePresetSnapshot(presetName, sanitized, { canonicalMap: CANONICAL_FIELD_MAP });
+	return analyzePresetSnapshot(presetName, sanitized, { canonicalMap: getCanonicalTrackerMap() });
 }
 
 function deepClone(value) {
@@ -1157,21 +1190,25 @@ function setSettingsInitialValues() {
 	initializeOverridesDropdowns();
 
 	$("#tracker_enhanced_enable").prop("checked", extensionSettings.enabled);
+	const defaultAutomationTarget = getDefaultPresetValue("automationTarget", automationTargets.BOTH);
 	if (typeof extensionSettings.automationTarget === "undefined") {
-		extensionSettings.automationTarget = defaultSettings.automationTarget;
+		extensionSettings.automationTarget = defaultAutomationTarget;
 	}
+	const defaultParticipantTarget = getDefaultPresetValue("participantTarget", participantTargets.BOTH);
 	if (typeof extensionSettings.participantTarget === "undefined") {
-		extensionSettings.participantTarget = defaultSettings.participantTarget;
+		extensionSettings.participantTarget = defaultParticipantTarget;
 	}
+	const defaultGuidanceTemplate = getDefaultPresetValue("participantGuidanceTemplate", "");
 	if (typeof extensionSettings.participantGuidanceTemplate !== "string") {
-		extensionSettings.participantGuidanceTemplate = defaultSettings.participantGuidanceTemplate;
+		extensionSettings.participantGuidanceTemplate = defaultGuidanceTemplate;
 	}
-	const automationTarget = extensionSettings.automationTarget ?? defaultSettings.automationTarget;
-	const participantTarget = extensionSettings.participantTarget ?? defaultSettings.participantTarget;
-	const participantGuidanceTemplate = extensionSettings.participantGuidanceTemplate ?? defaultSettings.participantGuidanceTemplate ?? "";
+	const automationTarget = extensionSettings.automationTarget ?? defaultAutomationTarget;
+	const participantTarget = extensionSettings.participantTarget ?? defaultParticipantTarget;
+	const participantGuidanceTemplate = extensionSettings.participantGuidanceTemplate ?? defaultGuidanceTemplate ?? "";
 
 	updatePopupDropdown();
-	const popupTarget = extensionSettings.showPopupFor ?? defaultSettings.showPopupFor;
+	const defaultPopupTarget = getDefaultPresetValue("showPopupFor", automationTargets.NONE);
+	const popupTarget = extensionSettings.showPopupFor ?? defaultPopupTarget;
 
 	$("#tracker_enhanced_automation_target").val(automationTarget);
 	$("#tracker_enhanced_participant_target").val(participantTarget);
@@ -1931,7 +1968,7 @@ function onPresetImportChange(event) {
 				);
 			}
 			const timestamp = new Date();
-			const canonicalOptions = { canonicalMap: CANONICAL_FIELD_MAP };
+			const canonicalOptions = { canonicalMap: getCanonicalTrackerMap() };
 			const legacyStore = normalizeLegacyPresetStore(extensionSettings.legacyPresets);
 			const legacyNameSet = new Set([
 				...Object.keys(extensionSettings.presets || {}),
@@ -2504,7 +2541,8 @@ function onTrackerPromptResetClick() {
 function updatePopupDropdown() {
 	const showPopupForSelect = $("#tracker_enhanced_show_popup_for");
 	const availablePopupOptions = [];
-	const automationTarget = extensionSettings.automationTarget ?? defaultSettings.automationTarget;
+	const automationTargetDefault = getDefaultPresetValue("automationTarget", automationTargets.BOTH);
+	const automationTarget = extensionSettings.automationTarget ?? automationTargetDefault;
 	switch (automationTarget) {
 		case automationTargets.CHARACTER:
 			availablePopupOptions.push(automationTargets.USER);

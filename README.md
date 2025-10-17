@@ -3,6 +3,9 @@
 An advanced, feature-rich tracker extension for SillyTavern that provides comprehensive character and scene monitoring with intelligent automation, drag-and-drop field management, and dynamic template generation.
 
 ## Changelog
+14-10-2025
+- Default preset data now loads from the bundled JSON snapshots (`presets/<locale>.json`). `defaultSettings.js` only carries extension toggles; if `presets/en.json` fails to load we surface an error instead of silently falling back.
+
 13-10-2025
 - Locale discovery now mirrors SillyTavern’s translation catalogue. Drop `locales/<locale>.json` and `presets/<locale>.json` into the extension directory and Tracker Enhanced will pick them up automatically (English remains the fallback).
 - Added `docs/locale_guide.md` outlining translator prerequisites, file structure, and validation checks.
@@ -14,7 +17,7 @@ An advanced, feature-rich tracker extension for SillyTavern that provides compre
 	- When an outdated custom preset is detected, it is automatically renamed to ❌ Backup ….    
 	You can still load or export these backups to review their contents, but note that compatibility issues may occur.
 - Added locales for the prompt maker.
-- Replaced the legacy schema prefix/upgrade helpers with a single canonical `trackerDef` in `defaultSettings.js`; bundled presets (including zh-cn) now ship with the same field IDs and metadata as the default.
+- Replaced the legacy schema prefix/upgrade helpers with a single canonical tracker schema sourced from the bundled presets (`presets/en.json`, `presets/zh-cn.json`); snapshot analysis now keeps every locale aligned with the default metadata.
 - Added a configurable “Participant Guidance” template so you can edit the guidance snippet injected alongside seeded participant lists (supports the `{{participants}}` placeholder).
 - Split the old “Generation Target” into `Automation Target` (gates automatic runs and manual popup availability) and `Participant Focus` (controls prompt seeding guidance).
 
@@ -39,7 +42,7 @@ An advanced, feature-rich tracker extension for SillyTavern that provides compre
 06-10-2025
 - Introduced metadata for the tracker schema and object. Entries are now flagged as internal or external.    
 - Introduced `internalKeyId` for field anchoring so we can expand this extension to call internal functions based on tracking results later.
-- Embedded tracker field metadata directly into `src/settings/defaultSettings.js` and shipped presets, eliminating the hidden override map.
+- Embedded tracker field metadata directly into the bundled presets and eliminated the hidden override map.
 - Added a one-click metadata upgrade prompt (and `window.trackerEnhanced.upgradeTrackerMetadata()` helper) for legacy presets that still lack embedded metadata.
 - Tracker regeneration and slash command defaults now send the complete schema (`include=all`) so internal-only fields remain available to the tracker LLM.
 - Introduced a `StoryEvents.BirthEvents` structure so regeneration captures completed births; entries are parsed and logged for upcoming automation hooks.
@@ -160,7 +163,7 @@ When selecting a "Dedicated Completion Preset", you'll see compatibility indicat
 - Built-in presets (including locale defaults) stay selected while you experiment. The dropdown shows `*` to flag unsaved edits, and the first time you press **Save** we clone the preset to `Preset Name (copy)` (translated) so the factory defaults remain intact.
 - The presets dropdown appends `*` to the active name when the current settings diverge from the saved snapshot. The hint below the dropdown reminds you what the marker means.
 - ❌ Backup presets open in a read-only viewer instead of being applied. Use the “Copy JSON” button if you need to port values into a modern preset manually.
-- Bundled locale defaults now live in JSON snapshots (`presets/en.json`, `presets/zh-cn.json`). `src/settings/defaultSettings.js` keeps the English template only as a fallback so the extension can still boot if the JSON bundle is missing.
+- Bundled locale defaults now live in JSON snapshots (`presets/en.json`, `presets/zh-cn.json`). `src/settings/defaultSettings.js` only tracks extension-level toggles; if a locale preset is missing or invalid we surface an error instead of silently falling back.
 - The preset dropdown is sorted alphabetically, inserts an **Auto (Follow SillyTavern Language)** option at the top, and automatically resolves to SillyTavern’s active UI locale with an English fallback. Locale changes and **Reset Extension Defaults** both reapply the resolved preset so the UI, prompt text, and tracker schema stay aligned without manual intervention. While Auto is active, the dropdown shows the resolved preset name so you always know which locale snapshot is driving tracker generation.
 
 ## 🧰 Legacy Preset Quarantine

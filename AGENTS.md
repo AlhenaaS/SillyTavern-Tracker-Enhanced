@@ -52,7 +52,7 @@
 - Prompts instruct the LLM to advance `TimeAnchor` each turn (unless the story truly freezes time) and then describe the same moment in `LocalTime`.
 
 ## Tracker Schema Maintenance
-- The canonical tracker schema now lives entirely in `src/settings/defaultSettings.js` as an explicit `trackerDef`. We removed the old prefix/metadata auto-upgrade helpers, so update that structure directly when fields change.
+- The canonical tracker schema now loads from the bundled preset snapshots (`presets/en.json`, etc.) at runtime. `defaultSettings.js` only keeps extension-level toggles, so update the English preset when fields change.
 - Tracker fields now declare separate `id` and `label` values (metadata version 4). IDs stay machine-safe for prompts/templates, while labels surface localized display text; follow-up phases must migrate runtime accessors off the old `name` property.
 - Locale presets must mirror the canonical field IDs/metadata. When adjusting defaults, copy the same structure into JSON presets (e.g. `presets/zh-cn.json`) and translate prompts there.
 - `sanitizeTrackerDefinition` now only normalises metadata against the canonical map. It no longer injects missing fields, so missing required keys are treated as legacy presets and routed to the auto-backup flow.
@@ -81,5 +81,5 @@
 ## Preset Behaviour Updates
 - Presets now store tracker runtime flags (`automationTarget`, `participantTarget`, `showPopupFor`, `trackerFormat`, `devToolsEnabled`, `debugMode`, `trackerInjectionEnabled`, `toolbarIndicatorEnabled`) so loading a preset realigns both prompts and toggles.
 - The settings reset button is labelled “Reset Extension Defaults” and simply reapplies `defaultSettings` while preserving connection/profile settings and custom presets; built-in templates refresh automatically on reload.
-- Locale defaults are bundled as JSON snapshots (`presets/en.json`, `presets/zh-cn.json`). `defaultSettings.js` keeps the English preset only as a fallback so initialization still works if the JSON bundle is missing.
+- Locale defaults are bundled as JSON snapshots (`presets/en.json`, `presets/zh-cn.json`). Initialization now requires those files; missing or invalid presets surface an error instead of silently using embedded fallbacks.
 - `defaultSettings.presetAutoMode` now defaults to `true`. The preset dropdown sorts names alphabetically, prepends an **Auto (Follow SillyTavern Language)** entry, and resolves that option through SillyTavern’s live `getCurrentLocale()` with an English fallback. Locale changes and the Reset flow both reapply the resolved snapshot so prompts/UI stay aligned without manual intervention. When Auto is active, the dropdown label reflects the resolved preset name so it’s clear which locale bundle is running.
