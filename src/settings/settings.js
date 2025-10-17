@@ -5,7 +5,7 @@ import { extensionFolderPath, extensionSettings } from "../../index.js";
 import { error, debug, warn, toTitleCase } from "../../lib/utils.js";
 import { analyzePresetSnapshot, analyzeTrackerDefinition, generateLegacyPresetName, setLegacyRegistryLogger } from "../../lib/legacyRegistry.js";
 import { getSupportedLocales, setLocale, t, translateHtml, onLocaleChange, getCurrentLocale, getSillyTavernLocale, ensureLocalesLoaded } from "../../lib/i18n.js";
-import { DEFAULT_PRESET_NAME, defaultSettings, automationTargets, participantTargets, LEGACY_DEFAULT_PRESET_NAME } from "./defaultSettings.js";
+import { DEFAULT_PRESET_NAME, defaultSettings, automationTargets, participantTargets } from "./defaultSettings.js";
 import { ensureDefaultPresetSnapshot, getCanonicalFieldMap as getPresetCanonicalFieldMap, loadLocalePresetDefinition } from "./presetLoader.js";
 import { generationCaptured } from "../../lib/interconnection.js";
 import { TrackerPromptMakerModal } from "../ui/trackerPromptMakerModal.js";
@@ -25,7 +25,7 @@ const canonicalLocalePresetNames = new Set([DEFAULT_PRESET_NAME]);
 
 let settingsRootElement = null;
 let localeListenerRegistered = false;
-const BUILTIN_PRESET_NAMES = new Set([DEFAULT_PRESET_NAME, LEGACY_DEFAULT_PRESET_NAME]);
+const BUILTIN_PRESET_NAMES = new Set([DEFAULT_PRESET_NAME]);
 const BUILTIN_PRESET_TEMPLATES = new Map();
 let canonicalFieldMap = new Map();
 let defaultPresetBaseline = null;
@@ -1011,19 +1011,6 @@ async function seedLocalePresetEntries(options = {}) {
 	const timestamp = new Date();
 	const isoTimestamp = timestamp.toISOString();
 	const quarantinedLocales = [];
-
-	if (Object.prototype.hasOwnProperty.call(extensionSettings.presets, LEGACY_DEFAULT_PRESET_NAME)) {
-		const legacySnapshot = extensionSettings.presets[LEGACY_DEFAULT_PRESET_NAME];
-		if (!Object.prototype.hasOwnProperty.call(extensionSettings.presets, DEFAULT_PRESET_NAME) && legacySnapshot) {
-			extensionSettings.presets[DEFAULT_PRESET_NAME] = deepClone(legacySnapshot);
-		}
-		delete extensionSettings.presets[LEGACY_DEFAULT_PRESET_NAME];
-		legacyNameSet.add(DEFAULT_PRESET_NAME);
-		changesMade = true;
-		if (extensionSettings.selectedPreset === LEGACY_DEFAULT_PRESET_NAME) {
-			extensionSettings.selectedPreset = DEFAULT_PRESET_NAME;
-		}
-	}
 
 	const defaultPresetSource =
 		extensionSettings.presets[DEFAULT_PRESET_NAME] ||

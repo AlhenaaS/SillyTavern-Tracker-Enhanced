@@ -1,6 +1,4 @@
 export const DEFAULT_PRESET_NAME = "Locale Default (English)";
-export const LEGACY_DEFAULT_PRESET_NAME = "Default Built-In (EN)";
-
 const TARGET_VALUES = {
 	BOTH: "both",
 	USER: "user",
