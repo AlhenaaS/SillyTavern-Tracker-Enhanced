@@ -1,5 +1,4 @@
 export const DEFAULT_PRESET_NAME = "Locale Default (English)";
-export const LEGACY_DEFAULT_PRESET_NAME = "Default Built-In (EN)";
 
 const TARGET_VALUES = {
 	BOTH: "both",
@@ -16,16 +15,6 @@ export const trackerFormat = Object.freeze({
 	YAML: "YAML",
 });
 
-export const PREVIEW_PLACEMENT = Object.freeze({
-	BEFORE: "before",
-	AFTER: "after",
-	APPEND: "append",
-	PREPEND: "prepend",
-});
-
-const trackerPreviewSelector = ".mes_block .mes_text";
-const trackerPreviewPlacement = PREVIEW_PLACEMENT.BEFORE;
-
 export const defaultSettings = {
 	enabled: true,
 	languageOverride: "auto",
@@ -33,8 +22,6 @@ export const defaultSettings = {
 	selectedCompletionPreset: "current",
 	presetAutoMode: true,
 	selectedPreset: DEFAULT_PRESET_NAME,
-	trackerPreviewSelector,
-	trackerPreviewPlacement,
 	presets: {},
 };
 
