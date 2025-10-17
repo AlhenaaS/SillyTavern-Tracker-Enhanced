@@ -2,10 +2,11 @@
  * Development Test UI for SillyTavern Helper functions
  */
 
-import { SillyTavernHelper } from '../sillyTavernHelper.js';
-import { testTavernCardV2, testGroupData } from '../settings/defaultSettings.js';
-import { extensionName } from '../../index.js';
-import { callGenericPopup, POPUP_TYPE } from '../../../../../popup.js';
+import { SillyTavernHelper } from "../sillyTavernHelper.js";
+import { testTavernCardV2, testGroupData } from "../settings/defaultSettings.js";
+import { extensionName } from "../../index.js";
+import { callGenericPopup, POPUP_TYPE } from "../../../../../popup.js";
+import { warn } from "../../lib/utils.js";
 
 // toastr is available globally in SillyTavern
 const toastr = window.toastr;
@@ -13,43 +14,47 @@ const toastr = window.toastr;
 const DEV_SECTION_ID = "tracker_enhanced_dev_section";
 
 export class DevelopmentTestUI {
-    static init() {
-        // Cache the settings container for reuse
-        const container = document.querySelector('#tracker_enhanced_settings .inline-drawer-content');
-        if (!container) {
-            console.warn('[tracker-enhanced] Settings container not found for development test UI');
-            return;
-        }
-        this.settingsContainer = container;
-    }
+	static init() {
+		return Boolean(this.resolveSettingsContainer());
+	}
 
-    static setEnabled(enabled) {
-        if (!this.settingsContainer || !this.settingsContainer.isConnected) {
-            this.init();
-        }
+	static resolveSettingsContainer() {
+		if (this.settingsContainer?.isConnected) {
+			return this.settingsContainer;
+		}
+		const container = document.querySelector("#tracker_enhanced_settings .inline-drawer-content");
+		if (container) {
+			this.settingsContainer = container;
+			return container;
+		}
+		return null;
+	}
 
-        if (!this.settingsContainer) {
-            return;
-        }
+	static setEnabled(enabled) {
+		const container = this.resolveSettingsContainer();
 
-        const existingSection = document.getElementById(DEV_SECTION_ID);
-        if (enabled) {
-            if (existingSection) {
-                return;
-            }
-            const devSection = this.createDevSection();
-            devSection.id = DEV_SECTION_ID;
-            this.settingsContainer.appendChild(devSection);
-            return;
-        }
+		const existingSection = document.getElementById(DEV_SECTION_ID);
+		if (enabled) {
+			if (!container) {
+				warn("Settings container unavailable; skipping Development Test UI enable.");
+				return;
+			}
+			if (existingSection) {
+				return;
+			}
+			const devSection = this.createDevSection();
+			devSection.id = DEV_SECTION_ID;
+			container.appendChild(devSection);
+			return;
+		}
 
-        if (existingSection) {
-            existingSection.remove();
-        }
-    }
+		if (existingSection) {
+			existingSection.remove();
+		}
+	}
 
-    static createDevSection() {
-        const section = document.createElement('div');
+	static createDevSection() {
+		const section = document.createElement("div");
         section.className = 'tracker-enhanced-dev-section';
         section.innerHTML = `
             <details class="margin-bot-10px">
