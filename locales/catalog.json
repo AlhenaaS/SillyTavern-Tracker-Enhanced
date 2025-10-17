@@ -1,0 +1,26 @@
+{
+	"locales": [
+		{
+			"id": "en",
+			"label": "English",
+			"file": "en",
+			"aliases": [
+				"en-us",
+				"en-gb",
+				"en-au",
+				"en-ca"
+			]
+		},
+		{
+			"id": "zh-cn",
+			"label": "中文（简体）",
+			"file": "zh-cn",
+			"aliases": [
+				"zh",
+				"zh-hans",
+				"zh-sg",
+				"zh-my"
+			]
+		}
+	]
+}

@@ -1,6 +1,6 @@
 # Locale Contribution Guide
 
-This extension now asks SillyTavern for the authoritative locale catalogue at runtime. Dropping a matching JSON pair into `locales/` and `presets/` is enough for Tracker Enhanced to expose a new language—no code changes needed. This guide spells out the expectations for translators and reviewers.
+This extension still asks SillyTavern for the authoritative locale catalogue at runtime, but Tracker Enhanced now pairs that list with a lightweight manifest so we only advertise the locale bundles we actually ship. Dropping a matching JSON pair into `locales/` and `presets/` is no longer sufficient—you must also register the locale in `locales/catalog.json`. This guide spells out the expectations for translators and reviewers.
 
 ## Supported Locale IDs
 
@@ -32,6 +32,7 @@ SillyTavern currently exposes the following locale identifiers. The extension al
 
 ## File Layout & Naming Rules
 
+- Register every shipped locale in `locales/catalog.json`. Each entry declares the canonical `id`, human-readable `label`, optional `aliases`, and (if necessary) the on-disk `file` name. The manifest lets Tracker Enhanced short-circuit missing fetches and keeps the Settings dropdown aligned with our assets.
 - Use the exact locale ID (lowercase, hyphen-delimited) for both files:
 	- `locales/<locale>.json` – UI strings. Keys must appear in the same order as `locales/en.json`.
 	- `presets/<locale>.json` – preset snapshot. Structure must mirror `presets/en.json`, including field IDs and metadata.
@@ -42,10 +43,11 @@ SillyTavern currently exposes the following locale identifiers. The extension al
 ## Translation Checklist
 
 1. Copy `locales/en.json` → `locales/<locale>.json` and `presets/en.json` → `presets/<locale>.json`.
-2. Translate values while keeping key order and metadata untouched.
-3. Save the files with Unix newlines. If you plan to submit them upstream, stage the changes in Git; otherwise keep them local—forks and personal copies are absolutely fine.
-4. Reload the extension via **Settings → Extensions → Reload** (or restart SillyTavern) to pick up the new bundles.
-5. Switch SillyTavern’s UI language or use the Tracker Enhanced language override to confirm the locale appears and renders correctly.
+2. Add an entry to `locales/catalog.json` with the locale’s ID, label, and any aliases SillyTavern exposes (e.g., `en-US`, `en_GB`). Keep the array sorted alphabetically by label when possible to minimize diff churn.
+3. Translate values while keeping key order and metadata untouched.
+4. Save the files with Unix newlines. If you plan to submit them upstream, stage the changes in Git; otherwise keep them local—forks and personal copies are absolutely fine.
+5. Reload the extension via **Settings → Extensions → Reload** (or restart SillyTavern) to pick up the new bundles.
+6. Switch SillyTavern’s UI language or use the Tracker Enhanced language override to confirm the locale appears and renders correctly.
 
 ## Validation Tips
 
