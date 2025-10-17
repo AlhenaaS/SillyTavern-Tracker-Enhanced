@@ -30,14 +30,14 @@
         "label": "Local Time",
         "type": "STRING",
         "presence": "DYNAMIC",
-        "prompt": "Describe how the anchored moment reads inside the story world. Use the setting’s own calendars, watches, suns, bells, or metaphors, ensuring it aligns with the culture and location established in the scene.",
+        "prompt": "Describe how the TimeAnchor is perceived inside the story world. Use the setting’s own calendars, timekeeping, celestial events, or metaphors, ensuring it aligns with the culture and location established in the scene.",
         "defaultValue": "<Local timekeeping description if changed>",
         "exampleValues": [
-          "Morning rush on 10/16/2024 (Wednesday), Midtown Manhattan",
-          "Third watch before dawn, Year of the Plague, Canterbury countryside",
-          "Jingkang Era, third month eighteenth day, Mao hour in Bianliang (Song dynasty)",
+          "Morning rush on 10/16/2024 (Wednesday)",
+          "Third watch before dawn, Year of the Plague, 1665",
+          "Jingkang Era, third month eighteenth day, Mao hour, Song dynasty",
           "Stardate 45231.5, orbital dusk above Epsilon Eridani",
-          "Embermoon 18, Crystal Era VI, Temple of Lumen"
+          "Embermoon 18, Crystal Era VI"
         ],
         "nestedFields": {},
         "metadata": {
@@ -52,12 +52,14 @@
         "label": "Location",
         "type": "STRING",
         "presence": "DYNAMIC",
-        "prompt": "Provide a **detailed and specific location**, including exact places like rooms, landmarks, or stores, following this format: \"Specific Place, Building, City, State\". Avoid unintended reuse of specific locations from previous examples. Example: \"Food court, second floor near east wing entrance, Madison Square Mall, Los Angeles, CA\".",
+        "prompt": "Output a precise, setting-appropriate location as comma-separated parts, smallest→largest. Prefer: specific spot/room; site/landmark; settlement/region; realm/country/planet. Add room/deck/sector when relevant. Update only on real change.",
         "defaultValue": "<Updated location if changed>",
         "exampleValues": [
-          "Conference Room B, 12th Floor, Apex Corporation, New York, NY",
-          "Main Gym Hall, Maple Street Fitness Center, Denver, CO",
-          "South Beach, Miami, FL"
+          "Conference Room B, 12th Floor, Apex Corporation, Midtown Manhattan, NY",
+          "The Village of Aylesford Vale, Canterbury countryside, England",
+          "The Southeastern Chamber, Ningguang Pavilion, Bianliang Imperial Precincts.",
+          "Main Bridge, USS Resolute",
+          "The Great Hall, Temple of Light, City of Lumen"
         ],
         "nestedFields": {},
         "metadata": {
@@ -72,12 +74,14 @@
         "label": "Weather",
         "type": "STRING",
         "presence": "DYNAMIC",
-        "prompt": "Describe current weather concisely to set the scene. Example: \"Light Drizzle, Cool Outside\".",
+        "prompt": "Provide a brief description of the current weather to set the scene.",
         "defaultValue": "<Updated weather if changed>",
         "exampleValues": [
-          "Overcast, mild temperature",
-          "Clear skies, warm evening",
-          "Sunny, gentle sea breeze"
+          "Overcast skies with a mild, damp chill in the air",
+          "Clear night, cool and breezy",
+          "Bright sunshine, warm with low humidity",
+          "Indoor, cool and dry",
+          "Heavy rain and strong winds"          
         ],
         "nestedFields": {},
         "metadata": {
@@ -173,12 +177,12 @@
         "label": "Characters Present",
         "type": "ARRAY",
         "presence": "DYNAMIC",
-        "prompt": "List all characters currently present in an array format.",
+        "prompt": "List all characters currently present in an array format, based on context.",
         "defaultValue": "<List of characters present if changed>",
         "exampleValues": [
-          "[\"Emma Thompson\", \"James Miller\", \"Sophia Rodriguez\"]",
-          "[\"Daniel Lee\", \"Olivia Harris\"]",
-          "[\"Liam Johnson\", \"Emily Clark\"]"
+          "[\"<Name1>\"]",
+          "[\"<Name1>\", \"<Name2>\"]",          
+          "[\"<Name1>\", \"<Name2>\", \"<Name3>\"]"
         ],
         "nestedFields": {},
         "metadata": {
@@ -196,9 +200,7 @@
         "prompt": "For each character, update the following details:",
         "defaultValue": "<Character Name>",
         "exampleValues": [
-          "[\"Emma Thompson\", \"James Miller\", \"Sophia Rodriguez\"]",
-          "[\"Daniel Lee\", \"Olivia Harris\"]",
-          "[\"Liam Johnson\", \"Emily Clark\"]"
+          "<Character Name>"
         ],
         "nestedFields": {
           "field-9": {
@@ -207,13 +209,13 @@
             "type": "STRING",
             "presence": "DYNAMIC",
             "genderSpecific": "all",
-            "prompt": "A single word and an emoji (♂️ / ♀️ / ⚧️/ ❓) for Character gender. ",
+            "prompt": "Character's gender as a single word followed by an emoji (♂️ / ♀️ / ⚧️ / ❓).",
             "defaultValue": "<Current gender if no update is needed>",
             "exampleValues": [
               "\"Male ♂️\"",
               "\"Female ♀️\"",
               "\"Trans ⚧️\"",
-              "\"Unkown ❓\""
+              "\"Unknown ❓\""
             ],
             "nestedFields": {},
             "metadata": {
@@ -229,7 +231,7 @@
             "type": "STRING",
             "presence": "DYNAMIC",
             "genderSpecific": "all",
-            "prompt": "A single number displays character age based on Narrative. Change with time advancement. Or \"Unkown\" if unkown.",
+            "prompt": "Character's age as a single number, or \"Unknown\".",
             "defaultValue": "<Current Age if no update is needed>",
             "exampleValues": [
               "\"Unkown\"",
@@ -250,12 +252,16 @@
             "type": "STRING",
             "presence": "DYNAMIC",
             "genderSpecific": "all",
-            "prompt": "Describe style only.",
+            "prompt": "Description of the character's current hairstyle.",
             "defaultValue": "<Updated hair description if changed>",
             "exampleValues": [
-              "[\"Shoulder-length blonde hair, styled straight\", \"Short black hair, neatly combed\", \"Long curly brown hair, pulled back into a low bun\"]",
-              "[\"Short brown hair, damp with sweat\", \"Medium-length red hair, tied up in a high ponytail\"]",
-              "[\"Short sandy blonde hair, slightly tousled\", \"Long wavy brown hair, loose and flowing\"]"
+              "\"Neglected locks, in wild disarray\"",
+              "\"Raven tresses, cropped short and neatly parted\"",
+              "\"A Victorian chignon, as dark and severe as the wearer's mood\"",
+              "\"Tresses woven with pearls, like a sonnet penned in silk and light\"",
+              "\"A boyish bob, rebelling against the age's grandeur\"",
+              "\"Dreadlocks, heavy with the scent of patchouli and forgotten rites\"",
+              "\"Elven hair, a waterfall of moonlight upon the shoulder\""
             ],
             "nestedFields": {},
             "metadata": {
@@ -271,12 +277,16 @@
             "type": "STRING",
             "presence": "DYNAMIC",
             "genderSpecific": "all",
-            "prompt": "Describe current makeup.",
+            "prompt": "Description of the character's current makeup.",
             "defaultValue": "<Updated makeup if changed>",
             "exampleValues": [
-              "[\"Natural look with light foundation and mascara\", \"None\", \"Subtle eyeliner and nude lipstick\"]",
-              "[\"None\", \"Minimal, sweat-resistant mascara\"]",
-              "[\"None\", \"Sunscreen applied, no additional makeup\"]"
+              "\"A countenance untouched by art\"",
+              "\"A face painted with the faintest whispers of kohl and carmine\"",
+              "\"The pallid mask of a Gothic heroine, with lips of wounded velvet\"",
+              "\"A fine lady's complexion, achieved by vinegar and lead\"",
+              "\"Dusted with cosmic iridescence, as if kissed by nebulae\"",
+              "\"The honest grime of the road, a testament to leagues endured\"",
+              "\"Ceremonial sigils painted in woad, older than the hills\""
             ],
             "nestedFields": {},
             "metadata": {
@@ -295,9 +305,12 @@
             "prompt": "**IMPORTANT!** List the complete outfit, including **underwear and accessories**, even if the character is undressed. **Underwear must always be included in the outfit description. If underwear is intentionally missing, specify this clearly (e.g. \"No Bra\", \"No Panties\").** Outfit should stay the same until changed for a new one.",
             "defaultValue": "<Full outfit description, even if removed including color, fabric, and style details; **always include underwear and accessories if present. If underwear is intentionally missing, specify clearly**>",
             "exampleValues": [
-              "[\"Navy blue blazer over a white silk blouse; Gray pencil skirt; Black leather belt; Sheer black stockings; Black leather pumps; Pearl necklace; Silver wristwatch; White lace balconette bra; White lace hipster panties matching the bra\", \"Dark gray suit; Light blue dress shirt; Navy tie with silver stripes; Black leather belt; Black dress shoes; Black socks; White cotton crew-neck undershirt; Black cotton boxer briefs\", \"Cream-colored blouse with ruffled collar; Black slacks; Brown leather belt; Brown ankle boots; Gold hoop earrings; Beige satin push-up bra; Beige satin bikini panties matching the bra\"]",
-              "[\"Gray moisture-wicking t-shirt; Black athletic shorts; White ankle socks; Gray running shoes; Black sports watch; Blue compression boxer briefs\", \"Black sports tank top; Purple athletic leggings; Black athletic sneakers; White ankle socks; Fitness tracker bracelet; Black racerback sports bra; Black seamless athletic bikini briefs matching the bra\"]",
-              "[\"Light blue short-sleeve shirt; Khaki shorts; Brown leather sandals; Silver wristwatch; Blue plaid cotton boxer shorts\", \"White sundress over a red halter bikini; Straw hat; Brown flip-flops; Gold anklet; Red halter bikini top; Red tie-side bikini bottoms matching the top\"]"
+              "\"White sundress over a red halter bikini; Straw hat; Brown flip-flops; Gold anklet; Red halter bikini top; Red tie-side bikini bottoms matching the top\"",
+              "\"Post-apocalyptic patched trousers; scavenged leather jacket; gas mask hanging at hip; combat boots; grimy cotton undershirt; no underwear\"",
+              "\"Nomadic desert robes of fine white wool; keffiyeh held with agal; leather sandals; silver dagger at belt; simple cotton sirwal underneath\"",
+              "\"Cyberpunk corpo suit with integrated LED displays; armored synth-leather boots; data-gloves; smartwatch; moisture-wicking bodysuit as base layer; no traditional underwear\"",
+              "\"1980s power shoulder blazer; high-waisted jeans; leather pumps; oversized earrings; lace push-up bra; matching lace bikini briefs\"",
+              "\"Fantasy elven ranger's attire: supple leather tunic; green cloak; soft-soled boots; quiver of arrows; linen tunic and breeches underneath; no bra, simple linen undergarments\""
             ],
             "nestedFields": {},
             "metadata": {
@@ -316,9 +329,11 @@
             "prompt": "Describe how put-together or disheveled the character appears, including any removed clothing. Note where clothing items from outfit were discarded.",
             "defaultValue": "<Current state of dress if no update is needed. Note location where discarded outfit items are placed if character is undressed>",
             "exampleValues": [
-              "[\"Professionally dressed, neat appearance\", \"Professionally dressed, attentive\", \"Professionally dressed, organized\"]",
-              "[\"Workout attire, lightly perspiring\", \"Workout attire, energized\"]",
-              "[\"Shirt and sandals removed, placed on beach towel\", \"Sundress and hat removed, placed on beach chair\"]"
+              "\"Professionally dressed, neat appearance\"",
+              "\"Workout attire, lightly perspiring\"",
+              "\"Shirt and sandals removed, placed on beach towel\"",
+              "\"Fully undressed, clothes folded neatly on the bedside chair\"",
+              "\"Armor removed, stacked by the campfire; gambeson stained with travel and sweat\""
             ],
             "nestedFields": {},
             "metadata": {
@@ -337,9 +352,11 @@
             "prompt": "Describe physical posture, position relative to others or objects, and interactions.",
             "defaultValue": "<Current posture and interaction if no update is needed>",
             "exampleValues": [
-              "[\"Standing at the podium, presenting slides, holding a laser pointer\", \"Sitting at the conference table, taking notes on a laptop\", \"Sitting next to James, reviewing printed documents\"]",
-              "[\"Lifting weights at the bench press, focused on form\", \"Running on the treadmill at a steady pace\"]",
-              "[\"Standing at the water's edge, feet in the surf\", \"Lying on a beach towel, sunbathing with eyes closed\"]"
+              "\"Standing at the podium, presenting slides, holding a laser pointer\"",
+              "\"Lifting weights at the bench press, focused on form\"",
+              "\"Standing at the water's edge, feet in the surf\"",
+              "\"Kneeling in prayer before the altar, head bowed\"",
+              "\"Leaning against the tavern wall, observing the crowd with a wary eye\""
             ],
             "nestedFields": {},
             "metadata": {
@@ -772,7 +789,7 @@
     },
     "generateContextTemplate": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n{{trackerSystemPrompt}}\n{{participantGuidance}}\n<!-- Start of Context -->\n{{characterDescriptions}}\n### Recent Messages with Trackers\n{{recentMessages}}\n### Current Tracker\n<tracker>\n{{currentTracker}}\n</tracker>\n<!-- End of Context --><|eot_id|>",
     "generateSystemPrompt": "You are a Scene Tracker Assistant, tasked with providing clear, consistent, and structured updates to a scene tracker for a roleplay. Use the latest message, previous tracker details, and context from recent messages to accurately update the tracker. Your response must follow the specified {{trackerFormat}} structure exactly, ensuring that each field is filled and complete. If specific information is not provided, make reasonable assumptions based on prior descriptions, logical inferences, or default character details.\n### Key Instructions:\n1. **Tracker Format**: Always respond with a complete tracker in {{trackerFormat}} format. Every field must be present in the response, even if unchanged. Do not omit fields or change the {{trackerFormat}} structure.\n2. **Field Identity**: Use the exact Field IDs shown in the tracker template for every object key. Display labels are only for readability—never rename keys, substitute labels, or invent new identifiers. Apply this rule to nested structures as well.\n3. **Default Assumptions for Missing Information**: \n   - **Character Details**: If no new details are provided for a character, assume reasonable defaults (e.g., hairstyle, posture, or attire based on previous entries or context).\n   - **Outfit**: Describe the complete outfit for each character, using specific details for color, fabric, and style (e.g., “fitted black leather jacket with silver studs on the collar”). **Underwear must always be included in the outfit description.** If underwear is intentionally missing, specify this clearly in the description (e.g., \"No bra\", \"No panties\"). If the character is undressed, list the entire outfit.\n   - **StateOfDress**: Describe how put-together or disheveled the character appears, including any removed clothing. If the character is undressed, indicate where discarded items are placed.\n4. **Incremental Time Progression**: \n   - Advance the scene clock in small, logical increments (seconds or minutes) unless the narrative explicitly calls for a larger skip (sleep, travel, “three days pass,” etc.).\n   - Always update TimeAnchor with the new ISO-8601 timestamp that reflects this advancement; never reuse the exact previous timestamp unless the story is frozen in the same instant.\n   - Immediately follow by updating LocalTime so it translates the same moment into the setting’s flavourful calendar, era, or colloquial timekeeping.\n5. **Context-Appropriate Times**: \n   - Ensure that the time aligns with the setting. For example, if the scene takes place in a public venue (e.g., a mall), choose an appropriate time within standard operating hours.\n6. **Location Format**: Avoid unintended reuse of specific locations from previous examples or responses. Provide specific, relevant, and detailed locations based on the context, using the format:\n   - **Example**: “Food court, second floor near east wing entrance, Madison Square Mall, Los Angeles, CA” \n7. **Consistency**: Match field structures precisely, maintaining {{trackerFormat}} syntax. If no changes occur in a field, keep the most recent value.\n8. **Topics Format**: Ensure topics are one- or two-word keywords relevant to the scene to help trigger contextual information. Avoid long phrases.\n9. **Avoid Redundancies**: Use only details provided or logically inferred from context. Do not introduce speculative or unnecessary information.\n10. **Focus and Pause**: Treat each scene update as a standalone, complete entry. Respond with the full tracker every time, even if there are only minor updates.\n### Tracker Template\nReturn your response in the following {{trackerFormat}} structure, following this format precisely:\n```\n<tracker>\n{{defaultTracker}}\n</tracker>\n```\n### Important Reminders:\n1. **Recent Messages and Current Tracker**: Before updating, always consider the recent messages and the provided <Current Tracker> to ensure all changes are accurately represented.\n2. **Structured Response**: Do not add any extra information outside of the {{trackerFormat}} tracker structure.\n3. **Complete Entries**: Always provide the full tracker in {{trackerFormat}}, even if only minor updates are made.\nYour primary objective is to ensure clarity, consistency, and structured responses for scene tracking in {{trackerFormat}} format, providing complete details even when specifics are not explicitly stated.",
-    "generateRequestPrompt": "[Analyze the previous message along with the recent messages provided below and update the current scene tracker based on logical inferences and explicit details. Pause and ensure only the tracked data is provided, formatted in {{trackerFormat}}. Every entry must use the exact Field ID keys shown below—do not rename keys or substitute display labels. Avoid adding, omitting, or rearranging fields unless specified. Respond with the full tracker every time.\n### Response Rules:\n{{trackerFieldPrompt}}\nEnsure the response remains consistent, strictly follows this structure in {{trackerFormat}}, and omits any extra data or deviations. You MUST enclose the tracker in <tracker></tracker> tags]",
+    "generateRequestPrompt": "[Analyze the previous message along with the recent messages provided above and update the current scene tracker based on logical inferences and explicit details. Pause and ensure only the tracked data is provided, formatted in {{trackerFormat}}. Every entry must use the exact Field ID keys shown below—do not rename keys or substitute display labels. Avoid using the exact example text. Avoid adding, omitting, or rearranging fields unless specified. Respond with the full tracker every time.\n### Response Rules:\n{{trackerFieldPrompt}}\nEnsure the response remains consistent, strictly follows this structure in {{trackerFormat}}, and omits any extra data or deviations. You MUST enclose the tracker in <tracker></tracker> tags]",
     "generateRecentMessagesTemplate": "{{#if tracker}}Tracker: <tracker>\n{{tracker}}\n</tracker>\n{{/if}}{{char}}: {{message}}",
     "characterDescriptionTemplate": "### {{char}}'s Description\n{{charDescription}}",
     "roleplayPrompt": "Treat the tracker block as backstage notes. Never include <tracker> tags or describe tracker updates in your reply. Stay fully in character and respond only with the dialogue or actions the character would naturally deliver, using the tracker information purely as reference.",

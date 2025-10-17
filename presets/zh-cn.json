@@ -27,17 +27,17 @@
       },
       "field-1": {
         "id": "LocalTime",
-        "label": "本地时间",
+        "label": "故事时间",
         "type": "STRING",
         "presence": "DYNAMIC",
-        "prompt": "描述该时间锚点在故事世界中的呈现方式，可使用当地纪年、时辰、钟表、钟声等，确保与当前场景的地域文化氛围一致。",
-        "defaultValue": "<若时间有变化，请给出本地化描述>",
+        "prompt": "依据“时间锚点”(TimeAnchor)，使用符合故事世界观的纪年、时辰或天象进行表述，确保与当前场景的地域文化氛围一致。",
+        "defaultValue": "<若时间有变化，请更新描述>",
         "exampleValues": [
-          "2024年10月16日（星期三）清晨通勤，高峰时段的纽约曼哈顿",
-          "瘟疫之年三更天，英格兰坎特伯雷近郊",
-          "宋徽宗崇宁三年三月十八日卯时，汴梁皇城",
-          "星历45231.5，联邦星舰Resolute 轨道暮色",
-          "晶辉纪元VI年烁月十八日，路门神庙卫星时"
+          "2024年10月16日，周三早高峰时段",
+          "1665年，大瘟疫时期的深夜三更",
+          "宋徽宗崇宁三年三月十八日卯时",
+          "星历四五二三一·五，天苑四轨道暮色",
+          "晶辉纪元六年，烁月十八日，同步轨道夜面"
         ],
         "nestedFields": {},
         "metadata": {
@@ -52,12 +52,14 @@
         "label": "地点",
         "type": "STRING",
         "presence": "DYNAMIC",
-        "prompt": "Provide a **detailed and specific location**, including exact places like rooms, landmarks, or stores, following this format: \"Specific Place, Building, City, State\". Avoid unintended reuse of specific locations from previous examples. Example: \"Food court, second floor near east wing entrance, Madison Square Mall, Los Angeles, CA\".",
-        "defaultValue": "<Updated location if changed>",
+        "prompt": "提供精确的地点信息，按从宽泛到具体的顺序（如：星球/国度；地域/城镇；建筑/地标；具体区域/房间）。仅当位置发生实际变化时更新。地名应符合故事的世界观。",
+        "defaultValue": "<若地点有变化，请更新描述>",
         "exampleValues": [
-          "Conference Room B, 12th Floor, Apex Corporation, New York, NY",
-          "Main Gym Hall, Maple Street Fitness Center, Denver, CO",
-          "South Beach, Miami, FL"
+          "纽约州，曼哈顿中城，Apex公司12层B号会议室",
+          "英格兰坎特伯雷近郊，艾尔斯福德谷村",
+          "汴梁皇，凝光殿，城东南书阁",
+          "星舰‘启明号’，主舰桥",
+          "圣城卢米恩，光之神庙正殿"
         ],
         "nestedFields": {},
         "metadata": {
@@ -72,12 +74,14 @@
         "label": "天气",
         "type": "STRING",
         "presence": "DYNAMIC",
-        "prompt": "Describe current weather concisely to set the scene. Example: \"Light Drizzle, Cool Outside\".",
-        "defaultValue": "<Updated weather if changed>",
+        "prompt": "简要描述当前天气状况，用于烘托场景。",
+        "defaultValue": "<若天气有变化，请更新描述>",
         "exampleValues": [
-          "Overcast, mild temperature",
-          "Clear skies, warm evening",
-          "Sunny, gentle sea breeze"
+          "阴天，气温凉爽宜人",
+          "夜空晴朗，微风带寒",
+          "阳光炽烈，炎热无风",
+          "室内，温暖干燥",
+          "斜风细雨，略带寒意"
         ],
         "nestedFields": {},
         "metadata": {
@@ -102,15 +106,16 @@
         "nestedFields": {
           "field-4": {
             "id": "PrimaryTopic",
-            "label": "主要主题",
+            "label": "核心主题",
             "type": "STRING",
             "presence": "DYNAMIC",
-            "prompt": "**One- or two-word topic** describing main activity or focus of the scene.",
-            "defaultValue": "<Updated Primary Topic if changed>",
+            "prompt": "**一至两个词的主题**，描述场景中的主要活动或焦点。",
+            "defaultValue": "<若核心主题有变化，请更新>",
             "exampleValues": [
-              "Presentation",
-              "Workout",
-              "Relaxation"
+              "商务谈判",
+              "体能训练",
+              "线索调查",
+              "恋爱约会"
             ],
             "nestedFields": {},
             "metadata": {
@@ -125,12 +130,13 @@
             "label": "情绪基调",
             "type": "STRING",
             "presence": "DYNAMIC",
-            "prompt": "**One- or two-word topic** describing dominant emotional atmosphere of the scene.",
-            "defaultValue": "<Updated Emotional Tone if changed>",
+            "prompt": "**一至两个词的主题**，描述场景中主导的情绪氛围。",
+            "defaultValue": "<若情绪基调有变化，请更新>",
             "exampleValues": [
-              "Tense",
-              "Focused",
-              "Calm"
+              "平静",
+              "专注",
+              "紧张",           
+              "不知所措"        
             ],
             "nestedFields": {},
             "metadata": {
@@ -142,15 +148,17 @@
           },
           "field-6": {
             "id": "InteractionTheme",
-            "label": "互动主题",
+            "label": "互动氛围",
             "type": "STRING",
             "presence": "DYNAMIC",
-            "prompt": "**One- or two-word topic** describing primary type of interactions or relationships in the scene.",
-            "defaultValue": "<Updated Interaction Theme if changed>",
+            "prompt": "**一至两个词的主题**，描述场景中互动或关系的主要类型。",
+            "defaultValue": "<若互动氛围有变化，请更新>",
             "exampleValues": [
-              "Professional",
-              "Supportive",
-              "Casual"
+              "指导",
+              "暧昧",
+              "亲情",
+              "心有灵犀",
+              "公事公办"
             ],
             "nestedFields": {},
             "metadata": {
@@ -173,12 +181,12 @@
         "label": "出场角色",
         "type": "ARRAY",
         "presence": "DYNAMIC",
-        "prompt": "List all characters currently present in an array format.",
-        "defaultValue": "<List of characters present if changed>",
-        "exampleValues": [
-          "[\"Emma Thompson\", \"James Miller\", \"Sophia Rodriguez\"]",
-          "[\"Daniel Lee\", \"Olivia Harris\"]",
-          "[\"Liam Johnson\", \"Emily Clark\"]"
+        "prompt": "按array格式列出当前所有出场角色的名单，请根据上下文填写。",
+        "defaultValue": "<若出场角色有变化，请更新名单>",
+        "exampleValues": [          
+          "[\"<角色名1>\"]",
+          "[\"<角色名1>\", \"<角色名2>\"]",
+          "[\"<角色名1>\", \"<角色名2>\", \"<角色名3>\"]"
         ],
         "nestedFields": {},
         "metadata": {
@@ -193,12 +201,10 @@
         "label": "角色",
         "type": "FOR_EACH_OBJECT",
         "presence": "DYNAMIC",
-        "prompt": "For each character, update the following details:",
-        "defaultValue": "<Character Name>",
+        "prompt": "为每位角色更新细节:",
+        "defaultValue": "<角色姓名>",
         "exampleValues": [
-          "[\"Emma Thompson\", \"James Miller\", \"Sophia Rodriguez\"]",
-          "[\"Daniel Lee\", \"Olivia Harris\"]",
-          "[\"Liam Johnson\", \"Emily Clark\"]"
+          "<角色姓名>"
         ],
         "nestedFields": {
           "field-9": {
@@ -207,7 +213,7 @@
             "type": "STRING",
             "presence": "DYNAMIC",
             "genderSpecific": "all",
-            "prompt": "请用一个词加上对应的 emoji（♂️ / ♀️ / ⚧️ / ❓）表示角色性别。",
+            "prompt": "角色的性别，一个词加上对应emoji（♂️ / ♀️ / ⚧️ / ❓）。",
             "defaultValue": "<若无变更，请保持当前性别>",
             "exampleValues": [
               "\"男 ♂️\"",
@@ -229,10 +235,10 @@
             "type": "STRING",
             "presence": "DYNAMIC",
             "genderSpecific": "all",
-            "prompt": "A single number displays character age based on Narrative. Change with time advancement. Or \"Unkown\" if unkown.",
-            "defaultValue": "<Current Age if no update is needed>",
+            "prompt": "角色的年龄，一个数字，或\"未知\"。",
+            "defaultValue": "<若年龄有变化，请更新描述>",
             "exampleValues": [
-              "\"Unkown\"",
+              "\"未知\"",
               "\"18\"",
               "\"32\""
             ],
@@ -250,12 +256,16 @@
             "type": "STRING",
             "presence": "DYNAMIC",
             "genderSpecific": "all",
-            "prompt": "Describe style only.",
-            "defaultValue": "<Updated hair description if changed>",
+            "prompt": "角色当前的发型描述。",
+            "defaultValue": "<若发型有变化，请更新描述>",
             "exampleValues": [
-              "[\"Shoulder-length blonde hair, styled straight\", \"Short black hair, neatly combed\", \"Long curly brown hair, pulled back into a low bun\"]",
-              "[\"Short brown hair, damp with sweat\", \"Medium-length red hair, tied up in a high ponytail\"]",
-              "[\"Short sandy blonde hair, slightly tousled\", \"Long wavy brown hair, loose and flowing\"]"
+              "\"不加修饰，散乱的头发\"",
+              "\"梳理整齐的黑色短发\"",
+              "\"维多利亚时代的发髻，点缀着黑玉发簪\"", 
+              "\"青丝绾作浮云髻，斜插一支碧玉簪\"",
+              "\"1920年代的摩波波波头，光滑并带着手推波纹\"",
+              "\"脏辫，其间编入细小的骨头与羽毛\"",
+              "\"精灵的银发，仿佛凝结了月光\""
             ],
             "nestedFields": {},
             "metadata": {
@@ -271,12 +281,16 @@
             "type": "STRING",
             "presence": "DYNAMIC",
             "genderSpecific": "all",
-            "prompt": "Describe current makeup.",
-            "defaultValue": "<Updated makeup if changed>",
-            "exampleValues": [
-              "[\"Natural look with light foundation and mascara\", \"None\", \"Subtle eyeliner and nude lipstick\"]",
-              "[\"None\", \"Minimal, sweat-resistant mascara\"]",
-              "[\"None\", \"Sunscreen applied, no additional makeup\"]"
+            "prompt": "角色当前的妆容描述。",
+            "defaultValue": "<若妆容有变化，请更新描述>",
+            "exampleValues": [              
+              "\"干干净净的素颜\"",
+              "\"化了不易察觉的眼线和裸色唇膏\"",
+              "\"雪肤衬斜红，眉间花钿映秋波；朱唇一点，似芙蓉含露胜春华。\"",
+              "\"维多利亚时代追求的苍白面色，微含砒霜粉末\"",
+              "\"宛如缀满星尘的闪粉\"",
+              "\"素面朝天，只有艰苦旅途留下的风霜\"",
+              "\"按庙宇传统点上的对称檀香膏圆点\""
             ],
             "nestedFields": {},
             "metadata": {
@@ -288,16 +302,19 @@
           },
           "field-13": {
             "id": "Outfit",
-            "label": "服装",
+            "label": "着装",
             "type": "STRING",
             "presence": "DYNAMIC",
             "genderSpecific": "all",
-            "prompt": "**IMPORTANT!** List the complete outfit, including **underwear and accessories**, even if the character is undressed. **Underwear must always be included in the outfit description. If underwear is intentionally missing, specify this clearly (e.g. \"No Bra\", \"No Panties\").** Outfit should stay the same until changed for a new one.",
-            "defaultValue": "<Full outfit description, even if removed including color, fabric, and style details; **always include underwear and accessories if present. If underwear is intentionally missing, specify clearly**>",
+            "prompt": "**重要！** 列出完整的着装，**包括内衣和配饰**，即使角色已脱衣。**描述中必须始终包含内衣。若故意未穿内衣，请明确说明（例如：\"未穿胸罩\"、\"未穿内裤\"）**。着装应保持不变，直至更换新装。",
+            "defaultValue": "<完整的着装描述，即使已脱下的衣物也需包括颜色、面料和款式细节；**若穿着内衣和配饰则必须描述。若故意未穿内衣，请明确说明**>",
             "exampleValues": [
-              "[\"Navy blue blazer over a white silk blouse; Gray pencil skirt; Black leather belt; Sheer black stockings; Black leather pumps; Pearl necklace; Silver wristwatch; White lace balconette bra; White lace hipster panties matching the bra\", \"Dark gray suit; Light blue dress shirt; Navy tie with silver stripes; Black leather belt; Black dress shoes; Black socks; White cotton crew-neck undershirt; Black cotton boxer briefs\", \"Cream-colored blouse with ruffled collar; Black slacks; Brown leather belt; Brown ankle boots; Gold hoop earrings; Beige satin push-up bra; Beige satin bikini panties matching the bra\"]",
-              "[\"Gray moisture-wicking t-shirt; Black athletic shorts; White ankle socks; Gray running shoes; Black sports watch; Blue compression boxer briefs\", \"Black sports tank top; Purple athletic leggings; Black athletic sneakers; White ankle socks; Fitness tracker bracelet; Black racerback sports bra; Black seamless athletic bikini briefs matching the bra\"]",
-              "[\"Light blue short-sleeve shirt; Khaki shorts; Brown leather sandals; Silver wristwatch; Blue plaid cotton boxer shorts\", \"White sundress over a red halter bikini; Straw hat; Brown flip-flops; Gold anklet; Red halter bikini top; Red tie-side bikini bottoms matching the top\"]"
+              "\"白色太阳裙，内搭红色挂颈比基尼；草帽；棕色人字拖；金色脚链；红色挂颈比基尼上装；配套的红色系带比基尼下装\"",
+              "\"废土风格的打补丁长裤；拾荒得来的皮夹克；防毒面具挂在腰间；军靴；污渍斑斑的棉质汗衫；未穿内裤\"",
+              "\"游牧民族沙漠长袍，白色精纺羊毛；头戴红格头巾与黑绳头箍；皮凉鞋；腰带别银制匕首；内穿简易棉质长裤\"",
+              "\"赛博朋克公司制服，带集成LED显示屏；装甲合成皮靴；数据手套；智能手表；吸湿排汗的连体衣作为打底；未穿传统内衣\"",
+              "\"1980年代权力垫肩西装外套；高腰牛仔裤；皮质浅口高跟鞋；超大耳环；蕾丝聚拢胸罩；配套的蕾丝比基尼内裤\"",
+              "\"奇幻精灵游侠装束：柔软的皮革束腰外衣；绿色斗篷；软底靴；箭袋；内穿亚麻长衫与马裤；未穿胸罩，仅着简易亚麻衬裤\""
             ],
             "nestedFields": {},
             "metadata": {
@@ -309,16 +326,18 @@
           },
           "field-14": {
             "id": "StateOfDress",
-            "label": "穿着状态",
+            "label": "衣着状态",
             "type": "STRING",
             "presence": "DYNAMIC",
             "genderSpecific": "all",
-            "prompt": "Describe how put-together or disheveled the character appears, including any removed clothing. Note where clothing items from outfit were discarded.",
-            "defaultValue": "<Current state of dress if no update is needed. Note location where discarded outfit items are placed if character is undressed>",
+            "prompt": "描述角色衣着是整齐还是凌乱，包括任何已脱下的衣物。注明从 outfit 中脱下的衣物被放置在何处。",
+            "defaultValue": "<若衣着状态变更，请更新描述。若角色已脱衣，请注明衣物放置位置>",
             "exampleValues": [
-              "[\"Professionally dressed, neat appearance\", \"Professionally dressed, attentive\", \"Professionally dressed, organized\"]",
-              "[\"Workout attire, lightly perspiring\", \"Workout attire, energized\"]",
-              "[\"Shirt and sandals removed, placed on beach towel\", \"Sundress and hat removed, placed on beach chair\"]"
+              "\"衣着专业，整洁得体\"",
+              "\"上衣半遮半掩，下身衣物凌乱\"",
+              "\"衬衫和凉鞋已脱下，放在沙滩巾上\"",
+              "\"全身赤裸，衣物整齐叠放在床边的椅子上\"",
+              "\"盔甲已卸下，堆放在营火旁；武装衣上沾满旅途的风尘与汗渍\""
             ],
             "nestedFields": {},
             "metadata": {
@@ -334,12 +353,14 @@
             "type": "STRING",
             "presence": "DYNAMIC",
             "genderSpecific": "all",
-            "prompt": "Describe physical posture, position relative to others or objects, and interactions.",
-            "defaultValue": "<Current posture and interaction if no update is needed>",
+            "prompt": "描述角色的身体姿态、与他人或物体的相对位置以及互动情况。",
+            "defaultValue": "<若姿态变更，请更新描述>",
             "exampleValues": [
-              "[\"Standing at the podium, presenting slides, holding a laser pointer\", \"Sitting at the conference table, taking notes on a laptop\", \"Sitting next to James, reviewing printed documents\"]",
-              "[\"Lifting weights at the bench press, focused on form\", \"Running on the treadmill at a steady pace\"]",
-              "[\"Standing at the water's edge, feet in the surf\", \"Lying on a beach towel, sunbathing with eyes closed\"]"
+              "\"站在讲台后，演示着幻灯片，手持激光笔\"",
+              "\"在卧推凳上举重，专注於动作规范\"",
+              "\"立于水边，双脚没入浪花中\"",
+              "\"跪在祭坛前祈祷，低着头\"",
+              "\"斜倚在酒馆的墙边，以警惕的目光观察着人群\""
             ],
             "nestedFields": {},
             "metadata": {
@@ -782,7 +803,7 @@
     },
     "generateContextTemplate": "<|begin_of_text|><|start_header_id|>system<|end_header_id|>\n\n{{trackerSystemPrompt}}\n\n{{participantGuidance}}\n\n<!-- 上下文开始 -->\n\n{{characterDescriptions}}\n\n### 带追踪器的近期消息\n{{recentMessages}}\n\n### 当前追踪器\n<tracker>\n{{currentTracker}}\n</tracker>\n\n<!-- 上下文结束 --><|eot_id|>",
     "generateSystemPrompt": "你是一名场景追踪助手，负责根据最新消息、既有追踪器细节以及近期消息提供的上下文，对角色扮演场景的追踪器进行清晰、一致且结构化的更新。请严格遵循指定的 {{trackerFormat}} 结构，确保所有字段都被完整填写。若缺少明确信息，请根据既往描述、合理推断或角色默认信息给出恰当补全。\n\n### 核心要求：\n1. **追踪器格式**：始终返回完整的 {{trackerFormat}} 追踪器。字段不可缺漏，也不得改动 {{trackerFormat}} 的结构。\n2. **缺失信息的默认处理**：\n   - **角色细节**：若未提供新信息，可基于以往记录或上下文作合理假设（如发型、姿态、服饰等）。\n   - **服装**：为每位角色描述完整着装，包含颜色、材质和风格（示例：“黑色合身皮夹克，领口饰银色铆钉”）。**必须描述内衣**；若角色未穿内衣，请明确说明（如“未穿胸罩”、“未穿内裤”）。若角色赤身，请列出整套服装。\n   - **着装状态**：说明角色看起来多整洁或凌乱，并注明脱下衣物的放置位置。\n3. **时间推进**：\n   - 时间应以小幅度顺推（几秒或几分钟），除非叙事明确指示较大的跳跃（如三天后、旅程结束、入睡再醒等）。\n   - 每次都必须更新 TimeAnchor，使其成为新的 ISO-8601 时间戳；除非剧情明确停留在同一瞬间，否则不要重复上一条的时间戳。\n   - 与之对应，LocalTime 必须立刻用当地纪年、时辰或氛围化描述呈现同一时刻，保持与场景的地域文化一致。\n4. **情境匹配的时间**：确保时间与场景相符（例如商场场景应处于营业时段）。\n5. **地点格式**：避免重复示例中的地点，请根据上下文给出具体、相关且详尽的位置描述。\n   - **示例**：“美食广场，二层东翼入口旁，麦迪逊广场购物中心，美国加州洛杉矶市”。\n6. **一致性**：严格保持字段结构与 {{trackerFormat}} 语法。如字段无变化，请沿用上次的值。\n7. **主题关键词**：Topics 应为一到两个词的关键词，用于概括场景主题。\n8. **避免冗余**：仅使用上下文已提供或可合理推断的信息，避免无根据的臆测。\n9. **专注与停顿**：每次更新都应视为独立完整条目，即使改动不大也要返回完整追踪器。\n\n### 追踪器模板\n请完全按照以下 {{trackerFormat}} 模板输出：\n\n```\n<tracker>\n{{defaultTracker}}\n</tracker>\n```\n\n### 重要提醒：\n1. **近期消息与当前追踪器**：在更新前，请先阅读近期消息与提供的 <Current Tracker>，以确保所有变化被准确记录。\n2. **结构化回复**：不要在 {{trackerFormat}} 结构之外添加额外内容。\n3. **完整条目**：即使只有微调，也必须返回完整的 {{trackerFormat}} 追踪器。",
-    "generateRequestPrompt": "[请分析上一条消息以及下方提供的近期消息，结合明确细节与合理推断更新当前场景追踪器。请先停顿思考，仅输出追踪数据，并使用 {{trackerFormat}} 格式。除非特别说明，不要新增、删除或重新排序字段。每次都要返回完整追踪器。\n\n### 输出规则：\n{{trackerFieldPrompt}}\n\n确保回复保持一致，严格遵循 {{trackerFormat}} 结构，并且不要出现额外内容。必须使用 <tracker></tracker> 标签包裹追踪器。]",
+    "generateRequestPrompt": "[请分析上一条消息以及上面提供的近期消息，结合明确细节与合理推断更新当前场景追踪器。请先停顿思考，仅输出追踪数据，并使用 {{trackerFormat}} 格式。不要新增、删除或重新排序字段。请勿直接套用示例。每次都要返回完整追踪器。\n\n### 输出规则：\n{{trackerFieldPrompt}}\n\n确保回复保持一致，严格遵循 {{trackerFormat}} 结构，并且不要出现额外内容。必须使用 <tracker></tracker> 标签包裹追踪器。]",
     "generateRecentMessagesTemplate": "{{#if tracker}}追踪器：<tracker>\n{{tracker}}\n</tracker>\n{{/if}}{{char}}：{{message}}",
     "characterDescriptionTemplate": "### {{char}} 的描述\n{{charDescription}}",
     "roleplayPrompt": "请把追踪器区块视为幕后记录。不要在回复中包含 <tracker> 标签，也不要描述追踪器的更新。请完全保持角色扮演，只输出角色会自然说出的内容，把追踪器仅作为参考信息。",
