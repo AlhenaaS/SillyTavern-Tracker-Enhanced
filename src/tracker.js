@@ -124,14 +124,19 @@ export async function prepareMessageGeneration(type, options, dryRun) {
  * @param {object} options - Additional options for message generation.
  * @param {boolean} dryRun - If true, the function will simulate the operation without side effects.
  */
+
+// in src/tracker.js
+
 async function handleStagedGeneration(type, options, dryRun) {
 	const manageStopButton = $("#mes_stop").css("display") === "none";
 	if (manageStopButton) deactivateSendButtons();
 
 	await sendUserMessage(type, options, dryRun);
 
-	chat_metadata.tracker.tempTrackerId = null;
-	chat_metadata.tracker.tempTracker = null;
+	if (chat_metadata.tracker) {
+		chat_metadata.tracker.tempTrackerId = null;
+		chat_metadata.tracker.tempTracker = null;
+	}
 
 	const mesId = getLastNonSystemMessageIndex();
 	if (mesId === -1) {
@@ -148,14 +153,33 @@ async function handleStagedGeneration(type, options, dryRun) {
 		}
 	}
 
-	const lastMes = chat[mesId];
-
 	let tracker;
-	let position;
+	let position = 0;
 
-	if ([ACTION_TYPES.CONTINUE, ACTION_TYPES.SWIPE, ACTION_TYPES.REGENERATE].includes(type)) {
-		const hasTracker = trackerExists(lastMes.tracker, extensionSettings.trackerDef);
-		if (!hasTracker && shouldGenerateTracker(mesId, type)) {
+	// --- НАЧАЛО ФИНАЛЬНОЙ, ИСПРАВЛЕННОЙ ЛОГИКИ ---
+
+	if (type === ACTION_TYPES.IMPERSONATE) {
+		// Приоритет №1: Обработка impersonate
+		debug("Handling impersonate: checking current message first, then searching backwards.");
+
+		// Сначала проверяем ТЕКУЩЕЕ последнее сообщение. Это и есть исправление.
+		if (chat[mesId]?.tracker) {
+			tracker = chat[mesId].tracker;
+			position = 0;
+			debug(`Found tracker directly on the current message (${mesId}).`);
+		} else {
+			// Если на текущем нет, ищем в предыдущих.
+			const lastMesWithTrackerIndex = getLastMessageWithTracker(chat, mesId);
+			if (lastMesWithTrackerIndex !== null) {
+				tracker = chat[lastMesWithTrackerIndex].tracker;
+				position = mesId - lastMesWithTrackerIndex;
+				debug(`Found last known tracker on a previous message (${lastMesWithTrackerIndex}).`);
+			}
+		}
+	} else if ([ACTION_TYPES.CONTINUE, ACTION_TYPES.SWIPE, ACTION_TYPES.REGENERATE].includes(type)) {
+		// Приоритет №2: Обработка continue, swipe, regenerate
+		const lastMes = chat[mesId];
+		if (!trackerExists(lastMes.tracker, extensionSettings.trackerDef) && shouldGenerateTracker(mesId, type)) {
 			const previousMesId = getPreviousNonSystemMessageIndex(mesId);
 			lastMes.tracker = await generateTracker(previousMesId);
 			if (type !== ACTION_TYPES.REGENERATE) {
@@ -163,22 +187,19 @@ async function handleStagedGeneration(type, options, dryRun) {
 				TrackerPreviewManager.updatePreview(mesId);
 			}
 		}
-
-		if (type === ACTION_TYPES.REGENERATE && hasTracker) {
+		if (type === ACTION_TYPES.REGENERATE && trackerExists(lastMes.tracker, extensionSettings.trackerDef)) {
 			chat_metadata.tracker.tempTrackerId = mesId;
 			chat_metadata.tracker.tempTracker = lastMes.tracker;
 			await saveChatConditional();
 			TrackerPreviewManager.updatePreview(mesId);
 		}
-
-		position = 0;
 		tracker = lastMes.tracker;
 	} else {
-		if(chat_metadata.tracker.cmdTrackerOverride) {
+		// Приоритет №3: Новые сообщения
+		if (chat_metadata?.tracker?.cmdTrackerOverride) {
 			tracker = { ...chat_metadata.tracker.cmdTrackerOverride };
 			chat_metadata.tracker.cmdTrackerOverride = null;
 		} else if (shouldGenerateTracker(mesId + 1, type)) {
-			debug("Generating new tracker for message:", mesId);
 			tracker = await generateTracker(mesId);
 		} else if (shouldShowPopup(mesId + 1, type)) {
 			const manualTracker = await showManualTrackerPopup(mesId + 1);
@@ -189,24 +210,16 @@ async function handleStagedGeneration(type, options, dryRun) {
 			chat_metadata.tracker.tempTrackerId = mesId + 1;
 			chat_metadata.tracker.tempTracker = tracker;
 			await saveChatConditional();
-
-			position = 0;
 		}
 	}
 
+	// Финальная проверка: если трекер по какой-то причине всё ещё не найден,
+	// (например, для нового сообщения), инъекции не будет.
 	if (!tracker) {
-		const lastMesWithTrackerIndex = getLastMessageWithTracker(chat, mesId);
-
-		if (lastMesWithTrackerIndex !== null) {
-			const lastMesWithTracker = chat[lastMesWithTrackerIndex];
-
-			tracker = getCleanTracker(lastMesWithTracker.tracker, extensionSettings.trackerDef, FIELD_INCLUDE_OPTIONS.ALL, true, OUTPUT_FORMATS.JSON);
-			position = lastMesReverseIndex;
-		} else {
-			tracker = "";
-			position = 0;
-		}
+		debug("No tracker found or generated for this action. Clearing prompt.");
 	}
+
+	// --- КОНЕЦ ФИНАЛЬНОЙ, ИСПРАВЛЕННОЙ ЛОГИКИ ---
 
 	if (extensionSettings.trackerInjectionEnabled === false) {
 		await injectTracker("", 0);
